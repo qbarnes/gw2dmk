@@ -1,0 +1,129 @@
+#
+# Build releases of gw2dmk for all supported platforms and upload
+# their release artifacts.
+#
+
+name: Build gw2dmk
+
+on:
+  workflow_dispatch:
+    inputs:
+      make_build_target:
+        description: Make build target
+        required: false
+        type: string
+        default: "release"
+      container_base:
+        description: Base path for containers
+        required: false
+        type: string
+        default: "ghcr.io/qbarnes/containers-for-cross-compiling"
+
+  workflow_call:
+    inputs:
+      make_build_target:
+        description: Make build target
+        required: false
+        type: string
+        default: "release"
+      container_base:
+        description: Base path for containers
+        required: false
+        type: string
+        default: "ghcr.io/qbarnes/containers-for-cross-compiling"
+    outputs:
+      package_name:
+        description: Name of package
+        value: ${{ jobs.build_all.outputs.package_name }}
+      package_version:
+        description: Build version
+        value: ${{ jobs.build_all.outputs.package_version }}
+
+
+jobs:
+  build_name_version:
+    name: Determine Build Package Name and Version
+    runs-on: ubuntu-latest
+    outputs:
+      package_name: ${{ steps.package_and_version.outputs.package_name }}
+      package_version: ${{ steps.package_and_version.outputs.package_version }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - id: package_and_version
+        run: |
+          echo "package_name=$(make show_package)" >> $GITHUB_OUTPUT
+          echo "package_version=$(make show_version)" >> $GITHUB_OUTPUT
+
+
+  build_platform:
+    runs-on: ubuntu-latest
+    needs: build_name_version
+    outputs:
+      build_artifacts_name: ${{ steps.build_artifacts_name.outputs.build_artifacts_name }}
+    env:
+      package: ${{ needs.build_name_version.outputs.package_name }}
+      version: ${{ needs.build_name_version.outputs.package_version }}
+      target_platform_full_name: ${{ matrix.target_platform_name }}${{ matrix.target_arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux_x86_64, linux_armv7l, linux_aarch64, mswin32, mswin64]
+        include:
+          - platform: linux_x86_64
+            target_platform_name: linux
+            target_platform: LINUX_X86_64
+            target_arch: .x86_64
+          - platform: linux_armv7l
+            container: ${{ inputs.container_base }}/ubuntu-20.04-crossbuild-armv7l
+            target_platform_name: linux
+            target_platform: LINUX_ARMV7L
+            target_arch: .armv7l
+          - platform: linux_aarch64
+            container: ${{ inputs.container_base }}/ubuntu-20.04-crossbuild-aarch64
+            target_platform_name: linux
+            target_platform: LINUX_AARCH64
+            target_arch: .aarch64
+          - platform: mswin32
+            container: ${{ inputs.container_base }}/fedora-40-crossbuild-mswindows_regex
+            target_platform_name: win32
+            target_platform: MSWIN32
+          - platform: mswin64
+            container: ${{ inputs.container_base }}/fedora-40-crossbuild-mswindows_regex
+            target_platform_name: win64
+            target_platform: MSWIN64
+    container:
+      image: ${{ matrix.container }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Build target
+        id: build_target
+        run: |
+          make -f Makefile.cross \
+            "BUILDS=${{ matrix.target_platform }}" "${{ inputs.make_build_target }}"
+          echo "build_artifacts_name=${package}-${version}-${target_platform_full_name}-build-artifacts" >> $GITHUB_OUTPUT
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.build_target.outputs.build_artifacts_name }}
+          path: build.${{ env.target_platform_full_name }}/${{ env.package }}-${{ env.version }}-${{ env.target_platform_full_name }}.tar.gz
+          if-no-files-found: error
+          retention-days: 2
+
+
+  build_all:
+    name: Build All
+    runs-on: ubuntu-latest
+    needs: [build_name_version, build_platform]
+    outputs:
+      package_name: ${{ needs.build_name_version.outputs.package_name }}
+      package_version: ${{ needs.build_name_version.outputs.package_version }}
+    steps:
+      - name: Build All Done
+        run: echo 'Build All' done!

@@ -1,0 +1,3 @@
+[submodule "dmklib"]
+	path = dmklib
+	url = git@github.com:qbarnes/dmklib

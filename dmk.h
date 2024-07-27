@@ -1,0 +1,163 @@
+#ifndef DMK_H
+#define DMK_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+
+#if linux
+#include <endian.h>
+#elif defined(WIN64) || defined(WIN32)
+#include <winsock2.h>
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+/* These can be considered no-ops. */
+#define htole16(x) ((uint16_t)(x))
+#define htole32(x) ((uint32_t)(x))
+#define le16toh(x) ((uint16_t)(x))
+#define le32toh(x) ((uint32_t)(x))
+#else
+#error "Need macros for BE MSW."
+#endif
+#endif
+
+
+/* Some constants for DMK format */
+#define DMK_WRITEPROT		0
+#define DMK_NTRACKS		1
+#define DMK_TRACKLEN		2
+#define DMK_TRACKLEN_SIZE	2
+#define DMK_OPTIONS		4
+#define DMK_FORMAT		0x0c
+#define DMK_FORMAT_SIZE		4
+#define DMK_HDR_SIZE		0x10
+#define DMK_TKHDR_SIZE		0x80    /* Space reserved for IDAM pointers */
+
+#define DMK_SIDES		2
+#define DMK_MAX_SECTORS		64
+#define DMK_MAX_TRACKS		83
+
+
+/* Conventional track lengths used by DMK's emulator, plus one for
+ * 3.5" HD.  These are okay for images formatted by the emulator, but
+ * they are a little too small for cw2dmk when reading a real disk,
+ * because the real disk may have been written in a drive whose motor
+ * was 1% slow or so.  The "nominal" value in the comments is the
+ * ideal track length assuming that the drive motor and the data clock
+ * are both exactly at their specified speeds.
+ */
+#define DMK_TRACKLEN_5SD  0x0cc0 /* DMK_TKHDR_SIZE + 3136 (nominal 3125) */
+#define DMK_TRACKLEN_5    0x1900 /* DMK_TKHDR_SIZE + 6272 (nominal 6250) */
+#define DMK_TRACKLEN_8SD  0x14e0 /* DMK_TKHDR_SIZE + 5216 (nominal 5208) */
+#define DMK_TRACKLEN_8    0x2940 /* DMK_TKHDR_SIZE + 10432 (nominal 10416) */
+#define DMK_TRACKLEN_3HD  0x3180 /* DMK_TKHDR_SIZE + 12544 (nominal 12500) */
+#define DMK_TRACKLEN_MAX  DMK_TRACKLEN_3HD
+
+/* Bit assignments in options */
+#define DMK_SSIDE_OPT	0x10
+#define DMK_RX02_OPT	0x20    /* DMK extension, set if -e3 */
+#define DMK_SDEN_OPT	0x40
+#define DMK_IGNDEN_OPT	0x80	/* Obsolete flag, unused */
+
+/* Bit assignments in IDAM pointers */
+#define DMK_DDEN_FLAG	0x8000
+#define DMK_EXTRA_FLAG	0x4000  /* unused */
+#define DMK_IDAMP_BITS	0x3fff
+
+
+enum dmk_encoding_mode {
+	MIXED  = 0,
+	FM     = 1,
+	MFM    = 2,
+	RX02   = 3,
+	N_ENCS
+};
+
+
+struct dmk_disk_stats {
+	int		retries_total;
+	int		good_sectors_total;
+
+	int		errcount_total;
+	int		enc_count_total[N_ENCS];
+
+	int		err_tracks;
+	int		good_tracks;
+
+	bool		flippy;
+};
+
+
+struct dmk_track_stats {
+	int		good_sectors;
+
+	int		errcount;
+	int		bad_sectors;
+	int		reused_sectors;
+
+	int		enc_sec[DMK_MAX_SECTORS];
+	int		enc_count[N_ENCS];
+};
+
+
+struct dmk_header {
+	uint8_t		writeprot;
+	uint8_t		ntracks;
+	uint16_t	tracklen;
+	uint8_t		options;
+	uint8_t		padding[7];
+	uint32_t	real_format;
+};
+
+
+struct dmk_track {
+	uint16_t	track_len;
+
+	/* Anonymous union to let us avoid casting. */
+	// XXX Eventually work at eliminating use of "track".
+	union {
+		/* Worst case working size, use track_len for actual size. */
+		uint8_t		track[DMK_TRACKLEN_MAX];
+		struct {
+			uint16_t	idam_offset[DMK_MAX_SECTORS];
+			uint8_t		data[DMK_TRACKLEN_MAX - DMK_TKHDR_SIZE];
+		};
+	};
+};
+
+
+struct dmk_file {
+	struct dmk_header	header;
+	struct dmk_track	track[DMK_MAX_TRACKS][DMK_SIDES];
+};
+
+
+extern void dmk_disk_stats_init(struct dmk_disk_stats *dds);
+
+extern void dmk_track_stats_init(struct dmk_track_stats *dts);
+
+extern void dmk_header_init(struct dmk_header *dmkh, uint8_t tracks,
+			    uint16_t tracklen);
+
+extern int dmk_header_fwrite(FILE *fp, struct dmk_header *dmkh);
+
+extern long dwk_track_file_offset(struct dmk_header *dmkh, int track, int side);
+
+extern size_t dmk_track_fwrite(FILE *fp, struct dmk_header *dmkh,
+			       struct dmk_track *trk);
+
+extern void dmk_data_rotate(struct dmk_track *trk, uint8_t *data_hole);
+
+extern uint16_t dmk_track_length_optimal(const struct dmk_file *dmkf);
+
+extern int dmk2fp(struct dmk_file *dmkf, FILE *fp);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

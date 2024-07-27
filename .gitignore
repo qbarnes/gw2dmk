@@ -1,0 +1,14 @@
+*~
+*.o
+*.obj
+*.dmk
+*.log
+*.exe
+*.tar.gz
+cscope.*
+build
+build.*
+core.*
+tags
+m2
+gwhist

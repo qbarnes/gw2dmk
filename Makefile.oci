@@ -1,0 +1,55 @@
+include defines.mk product.mk
+
+
+BUILDS    ?= LINUX_X86_64 LINUX_ARMV7L LINUX_AARCH64 MSWIN32 MSWIN64
+
+repo_dir  ?= /tmp/$(PRODUCT)
+
+oci_base  ?= ghcr.io/qbarnes/containers-for-cross-compiling
+oci_tag   ?= latest
+
+define nl
+
+
+endef
+
+# Any of the cross containers will work for the LINUX_X86_64 native build
+# since they all contain the native build environment.
+
+oci_LINUX_X86_64  = $(oci_base)/ubuntu-20.04-crossbuild-aarch64:$(oci_tag)
+oci_LINUX_AARCH64 = $(oci_base)/ubuntu-20.04-crossbuild-aarch64:$(oci_tag)
+oci_LINUX_ARMV7L  = $(oci_base)/ubuntu-20.04-crossbuild-armv7l:$(oci_tag)
+oci_MSDOS         = $(oci_base)/ubuntu-22.04-crossbuild-msdos:$(oci_tag)
+oci_mswindows     = $(oci_base)/fedora-40-crossbuild-mswindows_regex:$(oci_tag)
+oci_MSWIN32       = $(oci_mswindows)
+oci_MSWIN64       = $(oci_mswindows)
+
+
+container_cmd_defaults = podman docker
+container_cmd_default_paths := \
+	$(shell bash -c "command -v $(container_cmd_defaults)")
+
+ifndef container_cmd
+  container_cmd = $(firstword $(container_cmd_default_paths))
+  ifeq ($(container_cmd),)
+    $(error Must install docker or podman)
+  endif
+endif
+
+
+all::
+
+%::
+	$(foreach v,$(BUILDS),\
+		$(container_cmd) run --rm \
+			-v "$(PWD):$(repo_dir):Z" \
+			"$(oci_$v)" \
+			make \
+				-C "$(repo_dir)" \
+				-f Makefile.cross \
+				top_dir="$(repo_dir)" BUILDS="$v" \
+				"$*"$(nl) \
+	)
+
+
+.DELETE_ON_ERROR:

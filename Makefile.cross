@@ -1,0 +1,60 @@
+include defines.mk product.mk
+
+build_dir  ?= build
+
+BUILDS     ?= LINUX_X86_64 LINUX_ARMV7L LINUX_AARCH64 MSWIN32 MSWIN64
+
+native_os   := $(shell uname -o)
+native_arch := $(shell uname -m)
+
+LINUX_X86_64_CC  ?= x86_64-linux-gnu-gcc
+LINUX_ARMV7L_CC  ?= arm-linux-gnueabi-gcc
+LINUX_AARCH64_CC ?= aarch64-linux-gnu-gcc
+
+ifeq ($(native_os),GNU/Linux)
+  ifeq ($(native_arch),x86_64)
+    LINUX_X86_64_CC  = $(CC)
+  else ifeq ($(native_arch),armv7l)
+    LINUX_ARMV7L_CC  = $(CC)
+  else ifeq ($(native_arch),aarch64)
+    LINUX_AARCH64_CC = $(CC)
+  endif
+endif
+
+define cross_settings
+$(eval $(1)_cross_os        = $(2))
+$(eval $(1)_cross_arch      = $(3))
+$(eval $(1)_cross_cc        = $(4))
+$(eval $(1)_exe             = $(6))
+$(eval $(1)_dir_suffix      = $$($(1)_cross_os).$$($(1)_cross_arch))
+$(eval $(1)_build_dir       = $$(build_dir).$(5))
+$(eval $(1)_release_targz   = $(patsubst %.tar.gz,%,$(TARBALLGZ))-$(5).tar.gz)
+endef
+
+$(call cross_settings,LINUX_X86_64,linux,x86_64,\
+			$(LINUX_X86_64_CC),$$(LINUX_X86_64_dir_suffix),)
+$(call cross_settings,LINUX_ARMV7L,linux,armv7l,\
+			$(LINUX_ARMV7L_CC),$$(LINUX_ARMV7L_dir_suffix),)
+$(call cross_settings,LINUX_AARCH64,linux,aarch64,\
+			$(LINUX_AARCH64_CC),$$(LINUX_AARCH64_dir_suffix),)
+$(call cross_settings,MSWIN32,win,x86,\
+			i686-w64-mingw32-gcc,$$(MSWIN32_cross_os)32,.exe)
+$(call cross_settings,MSWIN64,win,x64,\
+			x86_64-w64-mingw32-gcc,$$(MSWIN64_cross_os)64,.exe)
+
+BUILD_CMD_call = $(MAKE) \
+		CC='$($(1)_cross_cc)' \
+		NATIVE_CC='$(CC)' \
+		build_dir='$($(1)_build_dir)' \
+		E='$($(1)_exe)' \
+		tar_extras='$($(1)_tar_extras)' \
+		TARBALLGZ='$($(1)_release_targz)' \
+		VERSION='$(VERSION)'
+
+
+all release clean clobber distclean:
+	$(foreach v,$(BUILDS),$(call BUILD_CMD_call,$v) '$@'$(nl))
+
+
+.PHONY: all release clean clobber distclean
+.DELETE_ON_ERROR:

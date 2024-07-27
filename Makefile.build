@@ -1,0 +1,100 @@
+include defines.mk
+include product.mk
+
+CPPFLAGS =
+CFLAGS   = -O -g -Wall -Werror -Wfatal-errors
+LDLIBS  += -lm
+ifdef E
+LDLIBS  += -static -lregex
+endif
+
+build_dir	?= build
+dmklib_dir	?= dmklib
+
+ifndef top_dir
+top_dir		:= ..
+else
+ifndef PWD
+PWD := $(shell pwd)
+endif
+top_dir		:= $(shell realpath --relative-to '$(PWD)' '$(top_dir)')
+endif
+
+src_dir		?= $(top_dir)
+inc_dir		?= $(top_dir)
+
+vpath %.c	$(src_dir)
+vpath %.h	$(inc_dir)
+vpath %		$(top_dir)
+
+obj_targets	= gw2dmk.o gw.o gwx.o msg.o m2.o gwhisto.o \
+		   gwhist.o gwdetectinit.o crc.o \
+		   $(dmklib_dir)/libdmk.o
+
+targets		= gw2dmk$E gwhist$E m2$E
+
+#tar_files	= LICENSE README.md $(targets) $(tar_extras)
+tar_files	= LICENSE README.md gw2dmk$E gwhist$E $(tar_extras)
+
+dmklib_args	= SOURCES=libdmk.c TARGETS=libdmk.o CC=$(CC)
+
+clean_files	= $(targets) $(obj_targets)
+
+
+all: $(targets)
+
+release: $(TARBALLGZ)
+
+$(dmklib_dir)/libdmk.o: FORCE
+	$(MAKE) -C '$(dmklib_dir)' $(dmklib_args)
+
+msg.o: msg.c msg.h
+
+gw.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gw.c
+
+gwx.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwx.c
+
+gwhisto.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
+	   gwhisto.h gwhisto.c
+
+gwhist.o gw2dmk.o: CFLAGS += '-DVERSION="$(VERSION)"'
+
+gwdetect.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwmedia.h \
+		gwcmdsettings.h gwdetect.h gwdetect.c
+
+gwdecode.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h dmk.h \
+		gwdecode.h gwdecode.c
+
+gwmedia.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
+		gwmedia.h gwmedia.c
+
+dmkmerge.o: msg.h dmk.h dmkmerge.h dmkmerge.c
+
+dmk.o: dmk.h dmk.c
+
+gw2dmk.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwcmdsettings.h \
+	  dmk.h gw2dmk.c
+
+gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwdecode.o gwmedia.o dmk.o \
+	dmkmerge.o gw2dmk.o crc.o $(dmklib_dir)/libdmk.o
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
+
+gwhist$E: msg.o gw.o gwx.o gwhisto.o gwhist.o
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
+
+m2$E: msg.o m2.o gw.o gwx.o
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
+
+$(TARBALLGZ): $(tar_files)
+	tar -czP \
+		--transform='s:^$(top_dir)/::' \
+		-f '$@' $^
+
+
+clean clobber distclean:
+	$(call scrub_files_call,$($*_files))
+
+
+.PHONY: FORCE all release
+.PHONY: clean clobber distclean
+.DELETE_ON_ERROR:

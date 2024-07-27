@@ -1,0 +1,75 @@
+#
+# Call gw2dmk-build to make build artifacts, release those
+# artifacts for all supported platforms, tag the build from
+# product.mk's VERSION, and publish the new release.
+#
+# If a "release_description" file exists in one of the release
+# tarballs, use its contents for the release description text,
+# otherwise, remember to edit the release yourself and update its
+# description.
+#
+
+name: Release gw2dmk
+
+on:
+  workflow_dispatch:
+
+
+jobs:
+  call_build:
+    uses: ./.github/workflows/gw2dmk-build.yml
+    with:
+      make_build_target: "release"
+    secrets: inherit
+
+
+  release:
+    name: Make Release
+    needs: call_build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Show package name and version
+        run: |
+          echo needs.call_build.outputs.package_name=${{ needs.call_build.outputs.package_name }}
+          echo needs.call_build.outputs.package_version=${{ needs.call_build.outputs.package_version }}
+
+      - name: Make artifacts directory
+        run: mkdir github_artifacts
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: github_artifacts
+
+      - name: Show downloaded artifacts
+        run: ls -lR github_artifacts
+
+      - name: Find release description, if any
+        id: rel_desc_files
+        shell: bash
+        run: |
+          shopt -s nullglob
+          rel_desc_files=(github_artifacts/*/release_description)
+          rel_desc_file="${rel_desc_files[0]}" >> $GITHUB_OUTPUT
+
+      - name: Show release description file, if any
+        run: echo "rel_desc_file=${{ steps.rel_desc_files.output.rel_desc_file }}"
+
+      - name: Create tag for release
+        uses: rickstaa/action-create-tag@v1
+        with:
+          tag: "v${{ needs.call_build.outputs.package_version }}"
+
+      - name: Publish release
+        uses: ncipollo/release-action@v1
+        with:
+          artifactErrorsFailBuild: true
+          makeLatest: true
+          name: "Release ${{ needs.call_build.outputs.package_version }}"
+          tag: "v${{ needs.call_build.outputs.package_version }}"
+          bodyFile: "${{ steps.rel_desc_files.output.rel_desc_file }}"
+          artifacts: github_artifacts/*/*.tar.gz
