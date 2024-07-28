@@ -1,5 +1,5 @@
 #
-# Call gw2dmk-build to make build artifacts, release those 
+# Call gw2dmk-build to make build artifacts, release those
 # artifacts for all supported platforms, tag the build from
 # product.mk's VERSION, and publish the new release.
 #

@@ -298,7 +298,7 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 			cmd_set->bus == BUS_SHUGART ?
 			cmd_set->drive + '0' : cmd_set->drive + 'a');
 	fprintf(stderr, "  -v verbosity    Amount of output [%d]\n",
-			(cmd_set->file_verbosity << 10) +
+			(cmd_set->file_verbosity * 10) +
 			cmd_set->scrn_verbosity);
   	fprintf(stderr, "                  0 = No output\n");
   	fprintf(stderr, "                  1 = Summary of disk\n");
@@ -360,8 +360,6 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	fprintf(stderr, "                  1 = always odd\n");
 	fprintf(stderr, "                  2 = even, then odd\n");
 	fprintf(stderr, "                  3 = odd, then even\n");
-	fprintf(stderr, "  -h hole         Track start: 1 = index hole, "
-			"0 = anywhere [%d]\n", cmd_set->hole);
 	fprintf(stderr, "  -l bytes        DMK track length\n");
 	fprintf(stderr, "  -g ign          Ignore first ign bytes of track "
 			"[%d]\n", cmd_set->ignore);
@@ -782,7 +780,9 @@ parse_args(int argc,
 			} else {
 				optav = strtol_strict(optarg, 10, vstr);
 
-				if (optav >= 10) {
+				if (optav >= 100) {
+					goto err_usage;
+				} else if (optav >= 10) {
 					cmd_set->scrn_verbosity = optav % 10;
 					cmd_set->file_verbosity = optav / 10;
 				} else {
