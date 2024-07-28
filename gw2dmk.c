@@ -1018,8 +1018,12 @@ read_track(gw_devt gwfd,
 	int retry = 0;
 
 retry:
-	msg(MSG_TSUMMARY, "Track %d, side %d, pass %d:",
+	msg(MSG_TSUMMARY, "Track %d, side %d, pass %d",
 	    track, side, retry + 1);
+	if (retry)
+		msg(MSG_TSUMMARY, "/%d:", cmd_set->retries[track][side] + 1);
+	else
+		msg(MSG_TSUMMARY, ":");
 	msg_scrn_flush();
 
 	int headpos = track * cmd_set->steps;
@@ -1055,7 +1059,6 @@ retry:
 	flux2dmk.dtsm.dmk_ignore     = cmd_set->ignore;
 	flux2dmk.dtsm.accum_sectors  = cmd_set->join_sectors;
 
-//keep_reading:
 	uint8_t *fbuf = 0;
 	ssize_t bytes_read = gw_read_stream(gwfd, 1, 0, &fbuf);
 
@@ -1207,9 +1210,10 @@ retry:
 	 */
 
 	bool failing =
-		(dts.errcount > 0) ||
+		((dts.errcount > 0) ||
 		(retry < cmd_set->min_retries[track][side]) ||
-		(dts.good_sectors < cmd_set->min_sectors[track][side]);
+		(dts.good_sectors < cmd_set->min_sectors[track][side])) &&
+		(retry < cmd_set->retries[track][side]);
 
 	/* Generally just reporting on the latest read. */
 	if (failing) {
