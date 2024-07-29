@@ -226,8 +226,7 @@ struct cmd_settings cmd_settings = {
 	.guess_steps = false,
 	.check_compat_sides = true,
 	.usr_encoding = MIXED,
-	.usr_densel = -1,
-	.densel = 1,
+	.densel = DS_NOTSET,
 	.reverse_sides = false,
 	.hole = true,
 	.alternate = 0,
@@ -325,7 +324,7 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 			"menu\n");
 	fprintf(stderr, "                  d = Disables invoking menu\n");
 	fprintf(stderr, "  --dd|--hd       Density Select, pin 2 "
-			"[%s]\n", cmd_set->densel ? "dd" : "hd");
+			"[%s]\n", cmd_set->densel == DS_HD ? "hd" : "dd");
 	fprintf(stderr, "  --{no}hole      Use index hole for track "
 			"start [%shole]\n", cmd_set->hole ? "" : "no");
 	fprintf(stderr, "  --{no}join      Join sectors between retries "
@@ -606,10 +605,9 @@ parse_args(int argc,
 			const char *name = cmd_long_args[lindex].name;
 
 			if (!strcmp(name, "hd")) {
-				cmd_set->usr_densel = 0;
-				cmd_set->densel     = 0;
+				cmd_set->densel = DS_HD;
 			} else if (!strcmp(name, "dd")) {
-				cmd_set->usr_densel = 1;
+				cmd_set->densel = DS_DD;
 			} else if (!strcmp(name, "hole")) {
 				cmd_set->hole = true;
 			} else if (!strcmp(name, "nohole")) {

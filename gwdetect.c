@@ -115,19 +115,17 @@ gw_detect_drive_kind(gw_devt gwfd,
 			  "  Drive speed: %f RPM\n", dclock, rpm);
 	}
 
-	if (cmd_set->usr_densel == -1) {
+	if (cmd_set->densel == DS_NOTSET) {
 		switch (cmd_set->kind) {
 		case 1: /* FALLTHRU */
 		case 2:
-			cmd_set->densel = 1;
+			cmd_set->densel = DS_DD;
 			break;
 		case 3: /* FALLTHRU */
 		case 4:
-			cmd_set->densel = 0;
+			cmd_set->densel = DS_HD;
 			break;
 		}
-	} else {
-		cmd_set->densel = cmd_set->usr_densel;
 	}
 
 	media_encoding_init_from_histo(&cmd_set->gme, &ha,

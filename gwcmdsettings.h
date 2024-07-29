@@ -13,6 +13,13 @@ extern "C" {
 #include "gwmedia.h"
 #include "dmk.h"
 
+/* Density select */
+// Should this go somewhere else?
+enum {
+	DS_NOTSET = -1,	/* Defaults to DD */
+	DS_HD     = 0,
+	DS_DD     = 1
+};
 
 /*
  * XXX Including this file in any other C file than gw2dmk.c and maybe
@@ -41,7 +48,6 @@ struct cmd_settings {
 	bool			guess_steps;
 	bool			check_compat_sides;
 	enum dmk_encoding_mode	usr_encoding;
-	int			usr_densel;
 	int			densel;
 	bool			reverse_sides;
 	bool			hole;
