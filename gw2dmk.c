@@ -325,14 +325,14 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	fprintf(stderr, "                  d = Disables invoking menu\n");
 	fprintf(stderr, "  --dd|--hd       Density Select, pin 2 "
 			"[%s]\n", cmd_set->densel == DS_HD ? "hd" : "dd");
-	fprintf(stderr, "  --{no}hole      Use index hole for track "
+	fprintf(stderr, "  --{no}hole      Use or not index hole for track "
 			"start [%shole]\n", cmd_set->hole ? "" : "no");
-	fprintf(stderr, "  --{no}join      Join sectors between retries "
+	fprintf(stderr, "  --{no}join      Join or not sectors between retries "
 			"[%sjoin]\n", cmd_set->join_sectors ? "" : "no");
-	fprintf(stderr, "  --{no}compat    Compare sides for incompatible "
-			"[%scompat]\n",
+	fprintf(stderr, "  --{no}compat    Compare or not sides for "
+			"incompatible formats [%scompat]\n",
 				cmd_set->check_compat_sides ? "" : "no");
-	fprintf(stderr, "  --{no}dmkopt    Optimize DMK track length "
+	fprintf(stderr, "  --{no}dmkopt    Optimize or not DMK track length "
 			"[%sdmkopt]\n", cmd_set->dmkopt ? "" : "no");
 
 	fprintf(stderr, "\n Options to manually set values that are normally "
@@ -1019,9 +1019,8 @@ retry:
 	msg(MSG_TSUMMARY, "Track %d, side %d, pass %d",
 	    track, side, retry + 1);
 	if (retry)
-		msg(MSG_TSUMMARY, "/%d:", cmd_set->retries[track][side] + 1);
-	else
-		msg(MSG_TSUMMARY, ":");
+		msg(MSG_TSUMMARY, "/%d", cmd_set->retries[track][side] + 1);
+	msg(MSG_TSUMMARY, ":");
 	msg_scrn_flush();
 
 	int headpos = track * cmd_set->steps;
