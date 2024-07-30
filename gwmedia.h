@@ -10,6 +10,7 @@
 struct gw_media_encoding {
 	double	rpm;		// XXX Needed?  Right place?
 	double	data_clock;	// XXX Needed?  Right place?
+	double	pulse_rate;	// XXX Needed?  Right place?
 	int	fmthresh;
 	int	mfmthresh1;
 	int	mfmthresh2;

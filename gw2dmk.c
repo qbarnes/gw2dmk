@@ -135,6 +135,12 @@ static const struct option cmd_long_args[] = {
 		'M'
 	},
 	{
+		"stepdelay",
+		required_argument,
+		NULL,
+		'T'
+	},
+	{
 		"gwlogfile",
 		required_argument,
 		NULL,
@@ -224,6 +230,8 @@ struct cmd_settings cmd_settings = {
 	.guess_sides = false,
 	.steps = -1,
 	.guess_steps = false,
+	.step_ms = -1,
+	.settle_ms = -1,
 	.check_compat_sides = true,
 	.usr_encoding = MIXED,
 	.densel = DS_NOTSET,
@@ -244,6 +252,7 @@ struct cmd_settings cmd_settings = {
 	.dmkfile = NULL,
 	.gme.rpm = 0.0,
 	.gme.data_clock = 0.0,
+	.gme.pulse_rate = 0.0,
 	.gme.fmthresh = 0,
 	.gme.mfmthresh1 = 0,
 	.gme.mfmthresh2 = 0,
@@ -325,14 +334,14 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	fprintf(stderr, "                  d = Disables invoking menu\n");
 	fprintf(stderr, "  --dd|--hd       Density Select, pin 2 "
 			"[%s]\n", cmd_set->densel == DS_HD ? "hd" : "dd");
-	fprintf(stderr, "  --{no}hole      Use or not index hole for track "
+	fprintf(stderr, "  --[no]hole      Use or not index hole for track "
 			"start [%shole]\n", cmd_set->hole ? "" : "no");
-	fprintf(stderr, "  --{no}join      Join or not sectors between retries "
+	fprintf(stderr, "  --[no]join      Join or not sectors between retries "
 			"[%sjoin]\n", cmd_set->join_sectors ? "" : "no");
-	fprintf(stderr, "  --{no}compat    Compare or not sides for "
+	fprintf(stderr, "  --[no]compat    Compare or not sides for "
 			"incompatible formats [%scompat]\n",
 				cmd_set->check_compat_sides ? "" : "no");
-	fprintf(stderr, "  --{no}dmkopt    Optimize or not DMK track length "
+	fprintf(stderr, "  --[no]dmkopt    Optimize or not DMK track length "
 			"[%sdmkopt]\n", cmd_set->dmkopt ? "" : "no");
 
 	fprintf(stderr, "\n Options to manually set values that are normally "
@@ -597,7 +606,7 @@ parse_args(int argc,
 	int	lindex = 0;
 
 	while ((opt = getopt_long(argc, argv,
-			"a:d:e:g:i:k:l:m:q:r:s:t:u:v:w:x:G:M:S:U:X:",
+			"a:d:e:g:i:k:l:m:q:r:s:t:u:v:w:x:G:M:S:T:U:X:",
 			cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -843,6 +852,23 @@ parse_args(int argc,
 		case 'S':
 			if (parse_tracks(optarg, cmd_set->min_sectors))
 				goto err_usage;
+			break;
+
+		case 'T':;
+			int step_ms, settle_ms;
+			int sfn = sscanf(optarg, "%u,%u", &step_ms, &settle_ms);
+
+			switch (sfn) {
+			case 2:
+				cmd_set->settle_ms = settle_ms;
+				/* FALLTHRU */
+			case 1:
+				cmd_set->step_ms = step_ms;
+				break;
+			default:
+				goto err_usage;
+				break;
+			}
 			break;
 
 		case 'U':
@@ -1532,9 +1558,9 @@ main(int argc, char **argv)
 		dmkf->header.tracklen = cmd_settings.usr_dmktracklen;
 	} else {
 		dmkf->header.tracklen = 
-			(uint16_t[]){ DMK_TRACKLEN_5, DMK_TRACKLEN_5,
-				      DMK_TRACKLEN_8,
-				      DMK_TRACKLEN_3HD }[cmd_settings.kind-1];
+			(uint16_t[]){ 0, DMK_TRACKLEN_5, DMK_TRACKLEN_5,
+				      DMK_TRACKLEN_8, DMK_TRACKLEN_3HD
+				    }[cmd_settings.kind];
 
 		if (cmd_settings.dmkopt) {
 			uint16_t	old_tracklen = dmkf->header.tracklen;

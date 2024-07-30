@@ -46,6 +46,8 @@ struct cmd_settings {
 	bool			guess_sides;
 	int			steps;
 	bool			guess_steps;
+	int			step_ms;
+	int			settle_ms;
 	bool			check_compat_sides;
 	enum dmk_encoding_mode	usr_encoding;
 	int			densel;

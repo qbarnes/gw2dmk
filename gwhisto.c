@@ -83,6 +83,9 @@ histo_analyze(const struct histogram *histo,
 		}
 	}
 
+	ha->pulse_rate_khz = histo->sample_freq / 1000.0 / 
+			     histo->ticks_per_bucket / ha->peak[0];
+
 	switch ((ha->peaks = j)) {
 	case 2:
 		/* FM encoding */
@@ -137,12 +140,17 @@ histo_show(int msg_level,
 			   j, ha->peak[j], ha->std_dev[j]);
 	}
 
-	msg(msg_level, "Average drive speed:   %.3f RPM\n",
+
+	msg(msg_level, "Average drive speed:   %7.3f RPM\n",
 			60.0 * histo->sample_freq * histo->revs /
 			histo->total_ticks);
 
-	msg(msg_level, "%s data clock approx: %.3f kHz\n",
-		ha->peaks == 2 ? "FM" : "MFM", ha->data_clock_khz);
+	msg(msg_level, "Pulse rate approx:     %7.3f kHz\n",
+		ha->pulse_rate_khz);
+	msg(msg_level, "%s data clock approx:%s %3.3f kHz\n",
+		ha->peaks == 2 ? "FM" : "MFM",
+		ha->peaks == 2 ? " " : "",
+		ha->data_clock_khz);
 
 	return 0;
 }

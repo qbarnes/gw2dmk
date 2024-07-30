@@ -71,6 +71,11 @@ gw_detect_drive_kind(gw_devt gwfd,
 
 	histo_init(0, 0, 1, gw_info->sample_freq, TICKS_PER_BUCKET, &histo);
 
+	// XXX Assume it's DS_DD for now?  Should we retry here if
+	// wrong guess and guess again?
+	gw_setdrive(cmd_set->gwfd, cmd_set->drive,
+		    cmd_set->densel == DS_HD ? DS_HD : DS_DD);
+
 	int chft_ret = collect_histo_from_track(gwfd, &histo);
 
 	if (chft_ret)
@@ -87,23 +92,23 @@ gw_detect_drive_kind(gw_devt gwfd,
 		msg_fatal(EXIT_FAILURE, "Track 0 side 0 is unformatted.\n");
 
 	double rpm    = ha.rpm;
-	double dclock = ha.data_clock_khz;
+	double pclock = ha.pulse_rate_khz;
 
 	if (rpm > 270.0 && rpm < 330.0) {
 		/* 300 RPM */
-		if (dclock > 225.0 && dclock < 287.5) {
-			/* Data rate 250 kHz */
+		if (pclock > 225.0 && pclock < 287.5) {
+			/* Pulse rate 250 kHz */
 			cmd_set->kind   = 2;
-		} else if (dclock > 450.0 && dclock < 575.5) {
-			/* Data rate 500 kHz */
+		} else if (pclock > 450.0 && pclock < 575.5) {
+			/* Pulse rate 500 kHz */
 			cmd_set->kind   = 4;
 		}
 	} else if (rpm > 330.0 && rpm < 396.0) {
 		/* 360 RPM */
-		if (dclock > 270.0 && dclock < 345.0) {
-			/* Data rate 300 kHz */
+		if (pclock > 270.0 && pclock < 345.0) {
+			/* Pulse rate 300 kHz */
 			cmd_set->kind   = 1;
-		} else if (dclock > 450.0 && dclock < 575.0) {
+		} else if (pclock > 450.0 && pclock < 575.0) {
 			cmd_set->kind   = 3;
 		}
 	}
@@ -111,8 +116,8 @@ gw_detect_drive_kind(gw_devt gwfd,
 	if (cmd_set->kind == -1) {
 		msg_fatal(EXIT_FAILURE,
 			  "Failed to detect media type.\n"
-			  "  Data clock : %f kHz\n"
-			  "  Drive speed: %f RPM\n", dclock, rpm);
+			  "  Pulse clock: %f kHz\n"
+			  "  Drive speed: %f RPM\n", pclock, rpm);
 	}
 
 	if (cmd_set->densel == DS_NOTSET) {
@@ -132,8 +137,8 @@ gw_detect_drive_kind(gw_devt gwfd,
 					gw_info->sample_freq);
 
 	msg(MSG_NORMAL, "Detected %s\n", kind2desc(cmd_set->kind));
-
-	msg(MSG_TSUMMARY, "    (clock %.1f kHz, rpm %.1f)\n", dclock, rpm);
+	msg(MSG_TSUMMARY, "    (pulse clock %.1f kHz, rpm %.1f)\n",
+			  pclock, rpm);
 
 	return 0;
 }
@@ -250,10 +255,13 @@ gw_detect_init_all(struct cmd_settings *cmd_set,
 	if (cmd_set->drive == -1)
 		gw_detect_drive(cmd_set->gwfd, cmd_set);
 
-	gw_setdrive(cmd_set->gwfd, cmd_set->drive, cmd_set->densel);
-
 	if (cmd_set->kind == -1)
 		gw_detect_drive_kind(cmd_set->gwfd, gw_info, cmd_set);
+
+	if (cmd_set->densel == DS_NOTSET)
+		cmd_set->densel = DS_DD;
+
+	gw_setdrive(cmd_set->gwfd, cmd_set->drive, cmd_set->densel);
 
 	if (cmd_set->sides == -1)
 		gw_detect_sides(cmd_set->gwfd, gw_info, cmd_set);

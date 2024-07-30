@@ -59,21 +59,23 @@ gwhisto.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
 
 gwhist.o gw2dmk.o: CFLAGS += '-DVERSION="$(VERSION)"'
 
+gwhist.o: gw.h gwx.h gwhisto.h msg_levels.h msg.h
+
 gwdetect.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwmedia.h \
-		gwcmdsettings.h gwdetect.h gwdetect.c
+		gwhisto.h gwcmdsettings.h gwdetect.h gwdetect.c
 
 gwdecode.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h dmk.h \
-		gwdecode.h gwdecode.c
+		gwmedia.h gwhisto.h gwdecode.h gwdecode.c
 
 gwmedia.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
-		gwmedia.h gwmedia.c
+		gwmedia.h gwhisto.h gwmedia.c
 
 dmkmerge.o: msg.h dmk.h dmkmerge.h dmkmerge.c
 
 dmk.o: dmk.h dmk.c
 
 gw2dmk.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwcmdsettings.h \
-	  dmk.h gw2dmk.c
+	  gwhisto.c dmk.h gw2dmk.c
 
 gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwdecode.o gwmedia.o dmk.o \
 	dmkmerge.o gw2dmk.o crc.o $(dmklib_dir)/libdmk.o
