@@ -20,7 +20,7 @@ struct gw_media_encoding {
 
 
 extern void media_encoding_init(struct gw_media_encoding *gme,
-				uint32_t sample_freq);
+				uint32_t sample_freq, double mult);
 
 extern void media_encoding_init_from_histo(struct gw_media_encoding *gme,
 					   const struct histo_analysis *histo,

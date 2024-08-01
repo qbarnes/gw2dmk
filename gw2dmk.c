@@ -207,6 +207,18 @@ static const struct option cmd_long_args[] = {
 		NULL,
 		0
 	},
+	{
+		"usehisto",
+		no_argument,
+		NULL,
+		0
+	},
+	{
+		"nousehisto",
+		no_argument,
+		NULL,
+		0
+	},
 	{ 0, 0, 0, 0 }
 };
 
@@ -233,6 +245,7 @@ struct cmd_settings cmd_settings = {
 	.step_ms = -1,
 	.settle_ms = -1,
 	.check_compat_sides = true,
+	.use_histo = true,
 	.usr_encoding = MIXED,
 	.densel = DS_NOTSET,
 	.reverse_sides = false,
@@ -343,6 +356,9 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 				cmd_set->check_compat_sides ? "" : "no");
 	fprintf(stderr, "  --[no]dmkopt    Optimize or not DMK track length "
 			"[%sdmkopt]\n", cmd_set->dmkopt ? "" : "no");
+	fprintf(stderr, "  --[no]usehisto  Use histogram or not for tuning "
+			"thresholds [%susehisto]\n",
+			cmd_set->use_histo ? "" : "no");
 
 	fprintf(stderr, "\n Options to manually set values that are normally "
 			"autodetected:\n");
@@ -350,6 +366,13 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	for (int k = 1; k <= 4; ++k)
 		fprintf(stderr, "                  %d = %s\n", k, kind2desc(k));
 	fprintf(stderr, "  -m steps        Step multiplier, 1 or 2\n");
+	fprintf(stderr, "  -T stp[,stl]    Step time");
+	if (cmd_set->step_ms != -1)
+		fprintf(stderr, " [%u]", cmd_set->step_ms);
+	fprintf(stderr, " and head settling time");
+	if (cmd_set->settle_ms != -1)
+		fprintf(stderr, " [%u]", cmd_set->settle_ms);
+	fprintf(stderr, " in ms\n");
 	fprintf(stderr, "  -t tracks       Number of tracks per side\n");
 	fprintf(stderr, "  -s sides        Number of sides, 1 or 2\n");
 	fprintf(stderr, "  -e encoding     0 = mixed, 1 = FM (SD), 2 = MFM "
@@ -633,6 +656,10 @@ parse_args(int argc,
 				cmd_set->dmkopt = true;
 			} else if (!strcmp(name, "nodmkopt")) {
 				cmd_set->dmkopt = false;
+			} else if (!strcmp(name, "usehisto")) {
+				cmd_set->use_histo = true;
+			} else if (!strcmp(name, "nousehisto")) {
+				cmd_set->use_histo = false;
 			} else {
 				goto err_usage;
 			}
@@ -855,14 +882,16 @@ parse_args(int argc,
 			break;
 
 		case 'T':;
-			int step_ms, settle_ms;
+			unsigned int step_ms, settle_ms;
 			int sfn = sscanf(optarg, "%u,%u", &step_ms, &settle_ms);
 
 			switch (sfn) {
 			case 2:
+				if (settle_ms > 65000) goto err_usage;
 				cmd_set->settle_ms = settle_ms;
 				/* FALLTHRU */
 			case 1:
+				if (step_ms > 65) goto err_usage;
 				cmd_set->step_ms = step_ms;
 				break;
 			default:

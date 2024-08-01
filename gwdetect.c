@@ -84,7 +84,7 @@ gw_detect_drive(gw_devt gwfd, struct cmd_settings *cmd_set)
 /*
  * Detect kind of drive.
  *
- * Returns with cmd_set->kind and cmd_set->densel set.
+ * Returns with cmd_set->kind, cmd_set->densel, and cmd_set->gme set.
  */
 
 int
@@ -150,8 +150,8 @@ redo_kind:;
 	if (kind == -1) {
 		msg_fatal(EXIT_FAILURE,
 			  "Failed to detect media type.\n"
-			  "  Pulse clock: %f kHz\n"
-			  "  Drive speed: %f RPM\n", prate, rpm);
+			  "  Pulse rate:  %7.3f kHz\n"
+			  "  Drive speed: %7.3f RPM\n", prate, rpm);
 	}
 
 	if (densel == DS_NOTSET) {
@@ -167,8 +167,14 @@ redo_kind:;
 
 	// XXX Should a command line option control using this?
 	// -1, -2 and -f should disable.
-	media_encoding_init_from_histo(&cmd_set->gme, &ha,
-					gw_info->sample_freq);
+	if (cmd_set->use_histo) {
+		media_encoding_init_from_histo(&cmd_set->gme, &ha,
+						gw_info->sample_freq);
+	} else {
+		media_encoding_init(&cmd_set->gme, gw_info->sample_freq,
+				    (double[]){ 0, 300.0/360.0, 1.0, 0.5, 0.5
+				    }[cmd_set->kind]);
+	}
 
 	msg(MSG_NORMAL, "Detected %s\n", kind2desc(cmd_set->kind));
 	msg(MSG_TSUMMARY, "    (pulse rate %.1f kHz, rpm %.1f, "
@@ -240,6 +246,10 @@ gw_detect_tracks(gw_devt gwfd, struct cmd_settings *cmd_set)
 }
 
 
+/*
+ * Detect and initialize GW and drive.
+ */
+
 gw_devt
 gw_detect_init_all(struct cmd_settings *cmd_set,
 		   struct gw_info *gw_info)
@@ -284,8 +294,6 @@ gw_detect_init_all(struct cmd_settings *cmd_set,
 		return GW_DEVT_INVALID;
 	}
 
-	media_encoding_init(&cmd_set->gme, gw_info->sample_freq);
-
 	gw_set_bus_type(cmd_set->gwfd, cmd_set->bus);
 
 	if (cmd_set->drive == -1)
@@ -307,6 +315,20 @@ gw_detect_init_all(struct cmd_settings *cmd_set,
 
 	if (cmd_set->tracks == -1)
 		gw_detect_tracks(cmd_set->gwfd, cmd_set);
+
+	if (cmd_set->step_ms != -1 || cmd_set->settle_ms != -1) {
+		struct gw_delay	gw_delay;
+
+		gw_get_params(cmd_set->gwfd, &gw_delay);
+
+		if (cmd_set->step_ms != -1)
+			gw_delay.step_delay = cmd_set->step_ms * 1000;
+
+		if (cmd_set->settle_ms != -1)
+			gw_delay.seek_settle = cmd_set->settle_ms;
+
+		gw_set_params(cmd_set->gwfd, &gw_delay);
+	}
 
 	return cmd_set->gwfd;
 }

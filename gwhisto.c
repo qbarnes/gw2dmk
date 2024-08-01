@@ -136,21 +136,25 @@ histo_show(int msg_level,
 				histo->data_overflow);
 
 	for (int j = 0; j < ha->peaks; ++j) {
-		msg(msg_level, "Peak %d: Mean %.05f, SD %.05f\n",
-			   j, ha->peak[j], ha->std_dev[j]);
+		msg(msg_level, "Peak %d: Mean %.05f (%.03fus), SD %.05f\n",
+			   j, ha->peak[j],
+			   ha->peak[j] * 1000000.0 *
+			   	histo->ticks_per_bucket / histo->sample_freq,
+			   ha->std_dev[j]);
 	}
-
 
 	msg(msg_level, "Average drive speed:   %7.3f RPM\n",
 			60.0 * histo->sample_freq * histo->revs /
 			histo->total_ticks);
 
-	msg(msg_level, "Pulse rate approx:     %7.3f kHz\n",
-		ha->pulse_rate_khz);
-	msg(msg_level, "%s data clock approx:%s %3.3f kHz\n",
-		ha->peaks == 2 ? "FM" : "MFM",
-		ha->peaks == 2 ? " " : "",
-		ha->data_clock_khz);
+	if (ha->peaks > 0) {
+		msg(msg_level, "Pulse rate approx:     %7.3f kHz\n",
+			ha->pulse_rate_khz);
+		msg(msg_level, "%s data clock approx:%s %3.3f kHz\n",
+			ha->peaks == 2 ? "FM" : "MFM",
+			ha->peaks == 2 ? " " : "",
+			ha->data_clock_khz);
+	}
 
 	return 0;
 }

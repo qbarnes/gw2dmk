@@ -2,15 +2,16 @@
 
 
 void
-media_encoding_init(struct gw_media_encoding *gme, uint32_t sample_freq)
+media_encoding_init(struct gw_media_encoding *gme, uint32_t sample_freq,
+		    double mult)
 {
 	/*
 	 * Assume FM is 4us and 8us and MFM is 4us, 6us, and 8us.
 	 */
 
-	double p4us = sample_freq * 4000.0 / 1e9;
-	double p6us = sample_freq * 6000.0 / 1e9;
-	double p8us = sample_freq * 8000.0 / 1e9;
+	double p4us = sample_freq * 4000.0 / 1e9 * mult;
+	double p6us = sample_freq * 6000.0 / 1e9 * mult;
+	double p8us = sample_freq * 8000.0 / 1e9 * mult;
 
 	*gme = (struct gw_media_encoding){
 		.rpm	    = 0.0,
@@ -35,7 +36,7 @@ media_encoding_init_from_histo(struct gw_media_encoding *gme,
 			       uint32_t sample_freq)
 {
 
-	media_encoding_init(gme, sample_freq);
+	media_encoding_init(gme, sample_freq, 1.0);
 
 	gme->rpm	= ha->rpm;
 	gme->data_clock = ha->data_clock_khz;
