@@ -24,6 +24,8 @@ extern "C" {
 
 extern const char *kind2desc(int kind);
 
+extern int kind2densel(int kind);
+
 extern gw_devt gw_find_gw(const char **device_list);
 
 extern int gw_detect_drive(gw_devt gwfd, struct cmd_settings *cmd_settings);

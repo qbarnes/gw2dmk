@@ -12,7 +12,30 @@ kind2desc(int kind)
 		"3.5\" HD disk"
 	};
 
-	return kinddesc[kind];
+	return (kind >= 1 && kind <= 4) ? kinddesc[kind] : kinddesc[0];
+}
+
+
+int
+kind2densel(int kind)
+{
+	int	r = -2;
+
+	switch (kind) {
+	case -1:
+		r = -1;
+		break;
+	case 1:
+	case 2:
+		r = DS_DD;
+		break;
+	case 3:
+	case 4:
+		r = DS_HD;
+		break;
+	};
+
+	return r;
 }
 
 
@@ -58,6 +81,12 @@ gw_detect_drive(gw_devt gwfd, struct cmd_settings *cmd_set)
 }
 
 
+/*
+ * Detect kind of drive.
+ *
+ * Returns with cmd_set->kind and cmd_set->densel set.
+ */
+
 int
 gw_detect_drive_kind(gw_devt gwfd,
 		     const struct gw_info *gw_info,
@@ -69,12 +98,17 @@ gw_detect_drive_kind(gw_devt gwfd,
 
 	struct histogram	histo;
 
+	int	densel = cmd_set->densel;
+
+redo_kind:;
+	int	kind   = cmd_set->kind;
+
 	histo_init(0, 0, 1, gw_info->sample_freq, TICKS_PER_BUCKET, &histo);
 
-	// XXX Assume it's DS_DD for now?  Should we retry here if
-	// wrong guess and guess again?
+	/* If densel not set, assume it's DS_DD for now.  Redo if
+	 * guess is wrong. */
 	gw_setdrive(cmd_set->gwfd, cmd_set->drive,
-		    cmd_set->densel == DS_HD ? DS_HD : DS_DD);
+		    densel == DS_HD ? DS_HD : DS_DD);
 
 	int chft_ret = collect_histo_from_track(gwfd, &histo);
 
@@ -91,54 +125,56 @@ gw_detect_drive_kind(gw_devt gwfd,
 	if (histo.data_overflow > 25)	/* 25 is arbitrary */
 		msg_fatal(EXIT_FAILURE, "Track 0 side 0 is unformatted.\n");
 
-	double rpm    = ha.rpm;
-	double pclock = ha.pulse_rate_khz;
+	double rpm   = ha.rpm;
+	double prate = ha.pulse_rate_khz;
 
 	if (rpm > 270.0 && rpm < 330.0) {
 		/* 300 RPM */
-		if (pclock > 225.0 && pclock < 287.5) {
+		if (prate > 225.0 && prate < 287.5) {
 			/* Pulse rate 250 kHz */
-			cmd_set->kind   = 2;
-		} else if (pclock > 450.0 && pclock < 575.5) {
+			kind = 2;
+		} else if (prate > 450.0 && prate < 575.5) {
 			/* Pulse rate 500 kHz */
-			cmd_set->kind   = 4;
+			kind = 4;
 		}
 	} else if (rpm > 330.0 && rpm < 396.0) {
 		/* 360 RPM */
-		if (pclock > 270.0 && pclock < 345.0) {
+		if (prate > 270.0 && prate < 345.0) {
 			/* Pulse rate 300 kHz */
-			cmd_set->kind   = 1;
-		} else if (pclock > 450.0 && pclock < 575.0) {
-			cmd_set->kind   = 3;
+			kind = 1;
+		} else if (prate > 450.0 && prate < 575.0) {
+			kind = 3;
 		}
 	}
 
-	if (cmd_set->kind == -1) {
+	if (kind == -1) {
 		msg_fatal(EXIT_FAILURE,
 			  "Failed to detect media type.\n"
 			  "  Pulse clock: %f kHz\n"
-			  "  Drive speed: %f RPM\n", pclock, rpm);
+			  "  Drive speed: %f RPM\n", prate, rpm);
 	}
 
-	if (cmd_set->densel == DS_NOTSET) {
-		switch (cmd_set->kind) {
-		case 1: /* FALLTHRU */
-		case 2:
-			cmd_set->densel = DS_DD;
-			break;
-		case 3: /* FALLTHRU */
-		case 4:
-			cmd_set->densel = DS_HD;
-			break;
-		}
+	if (densel == DS_NOTSET) {
+		densel = kind2densel(kind);
+
+		/* If density changed, redo in case it changes the RPM. */
+		if (densel == DS_HD)
+			goto redo_kind;
 	}
 
+	cmd_set->kind   = kind;
+	cmd_set->densel = densel;
+
+	// XXX Should a command line option control using this?
+	// -1, -2 and -f should disable.
 	media_encoding_init_from_histo(&cmd_set->gme, &ha,
 					gw_info->sample_freq);
 
 	msg(MSG_NORMAL, "Detected %s\n", kind2desc(cmd_set->kind));
-	msg(MSG_TSUMMARY, "    (pulse clock %.1f kHz, rpm %.1f)\n",
-			  pclock, rpm);
+	msg(MSG_TSUMMARY, "    (pulse rate %.1f kHz, rpm %.1f, "
+			  "density select %s)\n",
+			  prate, rpm,
+			  cmd_set->densel == DS_HD ? "HD" : "DD");
 
 	return 0;
 }
@@ -255,11 +291,11 @@ gw_detect_init_all(struct cmd_settings *cmd_set,
 	if (cmd_set->drive == -1)
 		gw_detect_drive(cmd_set->gwfd, cmd_set);
 
+	if (cmd_set->kind != -1 && cmd_set->densel == DS_NOTSET)
+		cmd_set->densel = kind2densel(cmd_set->kind);
+
 	if (cmd_set->kind == -1)
 		gw_detect_drive_kind(cmd_set->gwfd, gw_info, cmd_set);
-
-	if (cmd_set->densel == DS_NOTSET)
-		cmd_set->densel = DS_DD;
 
 	gw_setdrive(cmd_set->gwfd, cmd_set->drive, cmd_set->densel);
 

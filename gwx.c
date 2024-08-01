@@ -179,7 +179,7 @@ gw_decode_stream(const uint8_t *fbuf,
 			ff = f;
 			goto done;
 		} else if (c == 255) {
-			if ((f + 5) < fend) {
+			if ((f + 4) < fend) {
 				uint8_t  fop = *f++;
 				uint32_t v   = gw_read_28(f);
 				f += 4;
@@ -194,6 +194,7 @@ gw_decode_stream(const uint8_t *fbuf,
 				case FLUXOP_SPACE:
 					gw_ticks += v;
 					ff = f;
+					gwds->status = 0;
 					break;
 
 				default:
@@ -206,7 +207,7 @@ gw_decode_stream(const uint8_t *fbuf,
 			gw_ticks += c;
 			ff = f;
 			gwds->status = (*f_pulse)(c, gwds->pulse_data);
-		} else if ((f + 1) < fend) {
+		} else if (f < fend) {
 			uint32_t old_ticks = gw_ticks;
 
 			gw_ticks += 250 + (c - 250) * 255 + *f++ - 1;

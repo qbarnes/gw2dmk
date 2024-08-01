@@ -1105,7 +1105,10 @@ retry:
 		return 2;
 	} else if (dsv < bytes_read) {
 		// XXX Just not handling this at present, but warn.
-		msg(MSG_ERRORS, "Leftover bytes in stream!\n");
+		msg(MSG_ERRORS, "Leftover bytes in stream! "
+				"(%d out of %d bytes unparsed, status %d)\n",
+				(int)(bytes_read - dsv), (int)bytes_read,
+				gwds.status);
 	}
 
 	free(fbuf);
