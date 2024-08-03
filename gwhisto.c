@@ -227,6 +227,13 @@ flux2histo(const uint8_t *fbuf, size_t bytes_read, struct histogram *histo)
 }
 
 
+/*
+ * Collect histogram from track and side.
+ *
+ * "histo" must be prepped prior to invocation.  "histo" is both
+ * read and written by this function.
+ */
+
 int
 collect_histo_from_track(gw_devt gwfd, struct histogram *histo)
 {

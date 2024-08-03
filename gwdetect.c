@@ -82,51 +82,63 @@ gw_detect_drive(gw_devt gwfd, struct cmd_settings *cmd_set)
 
 
 /*
+ * "histo" must be prepped before calling.
+ */
+
+static void
+get_histo_analysis(gw_devt gwfd,
+		   struct histogram *histo,
+		   struct histo_analysis *ha)
+{
+	int ret = collect_histo_from_track(gwfd, histo);
+
+	if (ret)
+		msg_fatal(EXIT_FAILURE,
+			  "Couldn't collect histogram (%d)\n", ret);
+	
+	histo_analysis_init(ha);
+	histo_analyze(histo, ha);
+	histo_show(MSG_SAMPLES, histo, ha);
+}
+
+
+/*
  * Detect kind of drive.
  *
- * Returns with cmd_set->kind, cmd_set->densel, and cmd_set->gme set.
+ * Returns GW drive set and with vars cmd_set->kind and cmd_set->densel set.
  */
 
 int
 gw_detect_drive_kind(gw_devt gwfd,
 		     const struct gw_info *gw_info,
-		     struct cmd_settings *cmd_set)
+		     struct cmd_settings *cmd_set,
+		     struct histo_analysis *ha)
 {
 	if (cmd_set->drive == -1)
 		msg_fatal(EXIT_FAILURE,
 			  "Drive should have previously been set.\n");
-
-	struct histogram	histo;
 
 	int	densel = cmd_set->densel;
 
 redo_kind:;
 	int	kind   = cmd_set->kind;
 
-	histo_init(0, 0, 1, gw_info->sample_freq, TICKS_PER_BUCKET, &histo);
-
 	/* If densel not set, assume it's DS_DD for now.  Redo if
 	 * guess is wrong. */
 	gw_setdrive(cmd_set->gwfd, cmd_set->drive,
 		    densel == DS_HD ? DS_HD : DS_DD);
 
-	int chft_ret = collect_histo_from_track(gwfd, &histo);
+	struct histogram	histo;
 
-	if (chft_ret)
-		msg_fatal(EXIT_FAILURE,
-			  "Couldn't collect histogram (%d)\n", chft_ret);
+	histo_init(0, 0, 1, gw_info->sample_freq, TICKS_PER_BUCKET, &histo);
 
-	struct histo_analysis	ha;
-
-	histo_analysis_init(&ha);
-	histo_analyze(&histo, &ha);
-	histo_show(MSG_SAMPLES, &histo, &ha);
+	get_histo_analysis(gwfd, &histo, ha);
 
 	if (histo.data_overflow > 25)	/* 25 is arbitrary */
 		msg_fatal(EXIT_FAILURE, "Track 0 side 0 is unformatted.\n");
 
-	double rpm   = ha.rpm;
-	double prate = ha.pulse_rate_khz;
+	double rpm   = ha->rpm;
+	double prate = ha->pulse_rate_khz;
 
 	if (rpm > 270.0 && rpm < 330.0) {
 		/* 300 RPM */
@@ -165,17 +177,6 @@ redo_kind:;
 	cmd_set->kind   = kind;
 	cmd_set->densel = densel;
 
-	// XXX Should a command line option control using this?
-	// -1, -2 and -f should disable.
-	if (cmd_set->use_histo) {
-		media_encoding_init_from_histo(&cmd_set->gme, &ha,
-						gw_info->sample_freq);
-	} else {
-		media_encoding_init(&cmd_set->gme, gw_info->sample_freq,
-				    (double[]){ 0, 300.0/360.0, 1.0, 0.5, 0.5
-				    }[cmd_set->kind]);
-	}
-
 	msg(MSG_NORMAL, "Detected %s\n", kind2desc(cmd_set->kind));
 	msg(MSG_TSUMMARY, "    (pulse rate %.1f kHz, rpm %.1f, "
 			  "density select %s)\n",
@@ -213,12 +214,43 @@ gw_detect_sides(gw_devt gwfd,
 
 	cmd_set->sides = (histo.data_overflow > 25) ? 1 : 2;
 
-	if (cmd_set->gme.rpm == 0.0) {
-		media_encoding_init_from_histo(&cmd_set->gme, &ha,
-						gw_info->sample_freq);
+	return 0;
+}
+
+
+static void
+gw_set_gme(gw_devt gwfd,
+	   const struct gw_info *gw_info,
+	   struct cmd_settings *cmd_set,
+	   struct histo_analysis *ha)
+{
+	struct gw_media_encoding	*gme = &cmd_set->gme;
+
+	if (cmd_set->use_histo) {
+		if (!ha) {
+			struct histogram	histo;
+
+			histo_init(0, 0, 1, gw_info->sample_freq,
+				   TICKS_PER_BUCKET, &histo);
+
+			get_histo_analysis(gwfd, &histo, ha);
+		}
+
+		media_encoding_init_from_histo(gme, ha,
+					       gw_info->sample_freq);
+	} else {
+		media_encoding_init(gme, gw_info->sample_freq,
+				    (double[]){ 0, 300.0/360.0, 1.0, 0.5, 0.5
+				    }[cmd_set->kind]);
 	}
 
-	return 0;
+	msg(MSG_TSUMMARY, "Thresholds");
+	if (cmd_set->use_histo)
+		msg(MSG_TSUMMARY, " from histogram");
+	msg(MSG_TSUMMARY, ": FM = %d, MFM = {%d,%d}\n",
+			  gme->fmthresh,
+			  gme->mfmthresh1,
+			  gme->mfmthresh2);
 }
 
 
@@ -299,16 +331,23 @@ gw_detect_init_all(struct cmd_settings *cmd_set,
 	if (cmd_set->drive == -1)
 		gw_detect_drive(cmd_set->gwfd, cmd_set);
 
-	if (cmd_set->kind != -1 && cmd_set->densel == DS_NOTSET)
-		cmd_set->densel = kind2densel(cmd_set->kind);
+	struct histo_analysis	ha;
+	bool			have_ha = false;
 
-	if (cmd_set->kind == -1)
-		gw_detect_drive_kind(cmd_set->gwfd, gw_info, cmd_set);
+	if (cmd_set->kind == -1) {
+		gw_detect_drive_kind(cmd_set->gwfd, gw_info, cmd_set, &ha);
+		have_ha = true;
+	} else {
+		if (cmd_set->densel == DS_NOTSET)
+			cmd_set->densel = kind2densel(cmd_set->kind);
 
-	gw_setdrive(cmd_set->gwfd, cmd_set->drive, cmd_set->densel);
+		gw_setdrive(cmd_set->gwfd, cmd_set->drive, cmd_set->densel);
+	}
 
 	if (cmd_set->sides == -1)
 		gw_detect_sides(cmd_set->gwfd, gw_info, cmd_set);
+
+	gw_set_gme(cmd_set->gwfd, gw_info, cmd_set, have_ha ? &ha : NULL);
 
 	if (cmd_set->steps == -1)
 		gw_detect_steps(cmd_set->gwfd, cmd_set);

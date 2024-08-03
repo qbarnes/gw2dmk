@@ -32,7 +32,8 @@ extern int gw_detect_drive(gw_devt gwfd, struct cmd_settings *cmd_settings);
 
 extern int gw_detect_drive_kind(gw_devt gwfd,
 				const struct gw_info *gw_info,
-				struct cmd_settings *cmd_settings);
+				struct cmd_settings *cmd_settings,
+				struct histo_analysis *ha);
 
 extern int gw_detect_tracks(gw_devt gwfd, struct cmd_settings *cmd_settings);
 
