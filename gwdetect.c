@@ -257,8 +257,14 @@ gw_set_gme(gw_devt gwfd,
 int
 gw_detect_steps(gw_devt gwfd, struct cmd_settings *cmd_set)
 {
+	if (cmd_set->kind == -1)
+		msg_fatal(EXIT_FAILURE,
+			  "Kind should have previously been set.\n");
+
 	cmd_set->steps = (cmd_set->kind == 1) ? 2 : 1;
 	cmd_set->guess_steps = true;
+
+	/* Actual detection is done while processing tracks. */
 
 	return 0;
 }
@@ -273,6 +279,8 @@ gw_detect_tracks(gw_devt gwfd, struct cmd_settings *cmd_set)
 
 	cmd_set->tracks = GW_MAX_TRACKS / cmd_set->steps;
 	cmd_set->guess_tracks = true;
+
+	/* Actual detection is done while processing tracks. */
 
 	return 0;
 }
@@ -354,6 +362,38 @@ gw_detect_init_all(struct cmd_settings *cmd_set,
 
 	if (cmd_set->tracks == -1)
 		gw_detect_tracks(cmd_set->gwfd, cmd_set);
+
+	/*
+	 * If given, override thresholds.
+	 */
+
+	if (cmd_set->usr_fmthresh != -1) {
+		int	old_fmthr = cmd_set->gme.fmthresh;
+
+		cmd_set->gme.fmthresh = cmd_set->usr_fmthresh;
+
+		msg(MSG_TSUMMARY, "Overriding FM threshold: was %d, now %d\n",
+		    old_fmthr, cmd_set->gme.fmthresh);
+	}
+
+	if (cmd_set->usr_mfmthresh1 != -1 || cmd_set->usr_mfmthresh2 != -1) {
+		int	old_mfmthr1 = cmd_set->gme.mfmthresh1;
+		int	old_mfmthr2 = cmd_set->gme.mfmthresh2;
+
+		if (cmd_set->usr_mfmthresh1 != -1)
+			cmd_set->gme.mfmthresh1 = cmd_set->usr_mfmthresh1;
+
+		if (cmd_set->usr_mfmthresh2 != -1)
+			cmd_set->gme.mfmthresh2 = cmd_set->usr_mfmthresh2;
+
+		msg(MSG_TSUMMARY, "Overriding MFM thresholds: were [%d, %d], "
+		    "now [%d, %d]\n", old_mfmthr1, old_mfmthr2,
+		    cmd_set->gme.mfmthresh1, cmd_set->gme.mfmthresh2);
+	}
+
+	/*
+	 * If other than default, set delays for step and settle.
+	 */
 
 	if (cmd_set->step_ms != -1 || cmd_set->settle_ms != -1) {
 		struct gw_delay	gw_delay;

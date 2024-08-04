@@ -52,6 +52,12 @@ static const struct option cmd_long_args[] = {
 		'e'
 	},
 	{
+		"fmthresh",
+		required_argument,
+		NULL,
+		'f'
+	},
+	{
 		"ignore",
 		required_argument,
 		NULL,
@@ -145,6 +151,18 @@ static const struct option cmd_long_args[] = {
 		required_argument,
 		NULL,
 		'U'
+	},
+	{
+		"mfmthresh1",
+		required_argument,
+		NULL,
+		'1'
+	},
+	{
+		"mfmthresh2",
+		required_argument,
+		NULL,
+		'2'
 	},
 	/* Start of long options only that are booleans. */
 	{
@@ -253,6 +271,9 @@ struct cmd_settings cmd_settings = {
 	.alternate = 0,
 	.iam_ipos = -1,
 	.fmtimes = 2,
+	.usr_fmthresh = -1,
+	.usr_mfmthresh1 = -1,
+	.usr_mfmthresh2 = -1,
 	.ignore = 0,
 	.join_sectors = true,
 	.menu_intr_enabled = false,
@@ -418,11 +439,13 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	fprintf(stderr, "                  0x80 = Extra MFM clocks may be "
 			"present\n");
 
-	//fprintf(stderr, "\n Fine-tuning options; effective only after the "
-	//		"-k option:\n");
-	// XXX -1
-	// XXX -2
-	// XXX -f
+	fprintf(stderr, "\n Fine-tuning options:\n");
+	fprintf(stderr, "  -f threshold    FM threshold for short vs. long\n");
+	fprintf(stderr, "  -1 threshold    MFM threshold for short vs. "
+			"medium\n");
+	fprintf(stderr, "  -2 threshold    MFM threshold for medium vs. "
+			"long\n");
+
 	fprintf(stderr, "\n%s version %s\n\n", pgm_name, version);
 
 	exit(EXIT_FAILURE);
@@ -629,7 +652,7 @@ parse_args(int argc,
 	int	lindex = 0;
 
 	while ((opt = getopt_long(argc, argv,
-			"a:d:e:g:i:k:l:m:q:r:s:t:u:v:w:x:G:M:S:T:U:X:",
+			"a:d:e:f:g:i:k:l:m:q:r:s:t:u:v:w:x:G:M:S:T:U:X:1:2:",
 			cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -699,6 +722,12 @@ parse_args(int argc,
 			const int uenc = strtol_strict(optarg, 10, "'e'");
 			if (uenc < FM || uenc > RX02) goto err_usage;
 			cmd_set->usr_encoding = uenc;
+			break;
+
+		case 'f':;
+			const int fmthr = strtol_strict(optarg, 10, "'f'");
+			if (fmthr < 1) goto err_usage;
+			cmd_set->usr_fmthresh = fmthr;
 			break;
 
 		case 'g':;
@@ -907,6 +936,18 @@ parse_args(int argc,
 		case 'X':
 			if (parse_tracks(optarg, cmd_set->min_retries))
 				goto err_usage;
+			break;
+
+		case '1':;
+			const int mfmthr1 = strtol_strict(optarg, 10, "'1'");
+			if (mfmthr1 < 1) goto err_usage;
+			cmd_set->usr_mfmthresh1 = mfmthr1;
+			break;
+
+		case '2':;
+			const int mfmthr2 = strtol_strict(optarg, 10, "'2'");
+			if (mfmthr2 < 1) goto err_usage;
+			cmd_set->usr_mfmthresh2 = mfmthr2;
 			break;
 
 		default:  /* '?' */

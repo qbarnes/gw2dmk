@@ -58,6 +58,9 @@ struct cmd_settings {
 	unsigned int		quirk;
 	int			iam_ipos;
 	int			fmtimes;
+	int			usr_fmthresh;
+	int			usr_mfmthresh1;
+	int			usr_mfmthresh2;
 	int			ignore;
 	bool			join_sectors;
 	volatile bool		menu_intr_enabled;
