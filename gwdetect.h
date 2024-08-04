@@ -17,7 +17,7 @@ extern "C" {
 
 #include "gw.h"
 #include "gwx.h"
-#include "gwcmdsettings.h"
+#include "gw2dmkcmdset.h"
 #include "gwmedia.h"
 #include "gwhisto.h"
 

@@ -16,7 +16,7 @@
 #include "gw.h"
 #include "gwx.h"
 #include "gwhisto.h"
-#include "gwcmdsettings.h"
+#include "gw2dmkcmdset.h"
 #include "gwdetect.h"
 #include "gwdecode.h"
 #include "dmk.h"
