@@ -339,6 +339,41 @@ gw_detect_init_all(struct cmd_settings *cmd_set,
 	if (cmd_set->drive == -1)
 		gw_detect_drive(cmd_set->gwfd, cmd_set);
 
+	/*
+	 * If other than default, set delays for step and settle.
+	 * XXX Is setting step and settle per drive or per GW?
+	 */
+
+	if (cmd_set->step_ms != -1 || cmd_set->settle_ms != -1) {
+		struct gw_delay	gw_delay;
+
+		gw_get_params(cmd_set->gwfd, &gw_delay);
+
+		if (cmd_set->step_ms != -1) {
+			uint16_t	old_delay = gw_delay.step_delay;
+
+			gw_delay.step_delay = cmd_set->step_ms * 1000;
+			msg(MSG_TSUMMARY, "Changing step delay from %dms "
+			    "to %dms.\n", (int)old_delay / 1000,
+			    (int)gw_delay.step_delay / 1000);
+		}
+
+		if (cmd_set->settle_ms != -1) {
+			uint16_t	old_settle = gw_delay.seek_settle;
+
+			gw_delay.seek_settle = cmd_set->settle_ms;
+			msg(MSG_TSUMMARY, "Changing settle delay from %dms "
+			    "to %dms.\n", (int)old_settle,
+			    (int)gw_delay.seek_settle);
+		}
+
+		gw_set_params(cmd_set->gwfd, &gw_delay);
+	}
+
+	/*
+	 * Detect drive kind and characteristics.
+	 */
+
 	struct histo_analysis	ha;
 	bool			have_ha = false;
 
@@ -389,24 +424,6 @@ gw_detect_init_all(struct cmd_settings *cmd_set,
 		msg(MSG_TSUMMARY, "Overriding MFM thresholds: were [%d, %d], "
 		    "now [%d, %d]\n", old_mfmthr1, old_mfmthr2,
 		    cmd_set->gme.mfmthresh1, cmd_set->gme.mfmthresh2);
-	}
-
-	/*
-	 * If other than default, set delays for step and settle.
-	 */
-
-	if (cmd_set->step_ms != -1 || cmd_set->settle_ms != -1) {
-		struct gw_delay	gw_delay;
-
-		gw_get_params(cmd_set->gwfd, &gw_delay);
-
-		if (cmd_set->step_ms != -1)
-			gw_delay.step_delay = cmd_set->step_ms * 1000;
-
-		if (cmd_set->settle_ms != -1)
-			gw_delay.seek_settle = cmd_set->settle_ms;
-
-		gw_set_params(cmd_set->gwfd, &gw_delay);
 	}
 
 	return cmd_set->gwfd;
