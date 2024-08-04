@@ -28,7 +28,7 @@ vpath %.h	$(inc_dir)
 vpath %		$(top_dir)
 
 obj_targets	= gw2dmk.o gw.o gwx.o msg.o m2.o gwhisto.o \
-		   gwhist.o gwdetectinit.o crc.o \
+		   gwhist.o gwdetect.o crc.o \
 		   $(dmklib_dir)/libdmk.o
 
 targets		= gw2dmk$E gwhist$E m2$E
@@ -78,7 +78,7 @@ gw2dmk.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gw2dmkcmdset.h \
 	  gwhisto.c dmk.h gw2dmk.c
 
 gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwdecode.o gwmedia.o dmk.o \
-	dmkmerge.o gw2dmk.o crc.o $(dmklib_dir)/libdmk.o
+	dmkmerge.o gw2dmk.o crc.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 gwhist$E: msg.o gw.o gwx.o gwhisto.o gwhist.o
