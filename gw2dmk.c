@@ -237,6 +237,18 @@ static const struct option cmd_long_args[] = {
 		NULL,
 		0
 	},
+	{
+		"force",
+		no_argument,
+		NULL,
+		0
+	},
+	{
+		"noforce",
+		no_argument,
+		NULL,
+		0
+	},
 	{ 0, 0, 0, 0 }
 };
 
@@ -263,6 +275,7 @@ struct cmd_settings cmd_settings = {
 	.step_ms = -1,
 	.settle_ms = -1,
 	.check_compat_sides = true,
+	.forcewrite = false,
 	.use_histo = true,
 	.usr_encoding = MIXED,
 	.densel = DS_NOTSET,
@@ -366,8 +379,6 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	fprintf(stderr, "                  e = Errors equals retries invokes "
 			"menu\n");
 	fprintf(stderr, "                  d = Disables invoking menu\n");
-	fprintf(stderr, "  --dd|--hd       Density Select, pin 2 "
-			"[%s]\n", cmd_set->densel == DS_HD ? "hd" : "dd");
 	fprintf(stderr, "  --[no]hole      Use or not index hole for track "
 			"start [%shole]\n", cmd_set->hole ? "" : "no");
 	fprintf(stderr, "  --[no]join      Join or not sectors between retries "
@@ -377,9 +388,12 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 				cmd_set->check_compat_sides ? "" : "no");
 	fprintf(stderr, "  --[no]dmkopt    Optimize or not DMK track length "
 			"[%sdmkopt]\n", cmd_set->dmkopt ? "" : "no");
-	fprintf(stderr, "  --[no]usehisto  Use histogram or not for tuning "
-			"thresholds [%susehisto]\n",
+	fprintf(stderr, "  --[no]usehisto  Use histogram or not for "
+			"autotuning of thresholds [%susehisto]\n",
 			cmd_set->use_histo ? "" : "no");
+	fprintf(stderr, "  --[no]force     Force or not to overwrite "
+			"existing DMK output file [%sforce]\n",
+			cmd_set->forcewrite ? "" : "no");
 
 	fprintf(stderr, "\n Options to manually set values that are normally "
 			"autodetected:\n");
@@ -387,36 +401,17 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	for (int k = 1; k <= 4; ++k)
 		fprintf(stderr, "                  %d = %s\n", k, kind2desc(k));
 	fprintf(stderr, "  -m steps        Step multiplier, 1 or 2\n");
-	fprintf(stderr, "  -T stp[,stl]    Step time");
-	if (cmd_set->step_ms != -1)
-		fprintf(stderr, " [%u]", cmd_set->step_ms);
-	fprintf(stderr, " and head settling time");
-	if (cmd_set->settle_ms != -1)
-		fprintf(stderr, " [%u]", cmd_set->settle_ms);
-	fprintf(stderr, " in ms\n");
 	fprintf(stderr, "  -t tracks       Number of tracks per side\n");
 	fprintf(stderr, "  -s sides        Number of sides, 1 or 2\n");
 	fprintf(stderr, "  -e encoding     0 = mixed, 1 = FM (SD), 2 = MFM "
 			"(DD or HD), 3 = RX02 [%d]\n", cmd_set->usr_encoding);
-	fprintf(stderr, "  -w fmtimes      Write FM bytes 1 or 2 times "
-			"[%d]\n", cmd_set->fmtimes);
+	fprintf(stderr, "  --dd|--hd       Density Select, pin 2\n");
 	fprintf(stderr, "  -x max_retry    Max retries on errors [%d]\n",
 			cmd_set->retries[0][0]);
 	fprintf(stderr, "  -X min_retry    Min retries even if no errors "
 			"[%d]\n", cmd_set->min_retries[0][0]);
 	fprintf(stderr, "  -S min_sector   Min sector count [%d]\n",
 			cmd_set->min_sectors[0][0]);
-	fprintf(stderr, "  -a alternate    Alternate even/odd tracks on "
-			"retries with -m2 [%d]\n", cmd_set->alternate);
-	fprintf(stderr, "                  0 = always even\n");
-	fprintf(stderr, "                  1 = always odd\n");
-	fprintf(stderr, "                  2 = even, then odd\n");
-	fprintf(stderr, "                  3 = odd, then even\n");
-	fprintf(stderr, "  -l bytes        DMK track length\n");
-	fprintf(stderr, "  -g ign          Ignore first ign bytes of track "
-			"[%d]\n", cmd_set->ignore);
-	fprintf(stderr, "  -i ipos         Force IAM to ipos from track "
-			"start; if -1, don't [%d]\n", cmd_set->iam_ipos);
 	// XXX -z
 	fprintf(stderr, "  -r reverse      0 = normal, 1 = reverse sides "
 			"[%d]\n", cmd_set->reverse_sides);
@@ -438,13 +433,33 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 			"0xd7 or 0xc7 clock\n");
 	fprintf(stderr, "                  0x80 = Extra MFM clocks may be "
 			"present\n");
+	fprintf(stderr, "  -w fmtimes      Write FM bytes 1 or 2 times "
+			"[%d]\n", cmd_set->fmtimes);
+	fprintf(stderr, "  -l bytes        DMK track length\n");
 
-	fprintf(stderr, "\n Fine-tuning options:\n");
+	fprintf(stderr, "\n Rarely used fine-tuning options:\n");
 	fprintf(stderr, "  -f threshold    FM threshold for short vs. long\n");
 	fprintf(stderr, "  -1 threshold    MFM threshold for short vs. "
 			"medium\n");
 	fprintf(stderr, "  -2 threshold    MFM threshold for medium vs. "
 			"long\n");
+	fprintf(stderr, "  -T stp[,stl]    Step time");
+	if (cmd_set->step_ms != -1)
+		fprintf(stderr, " [%u]", cmd_set->step_ms);
+	fprintf(stderr, " and head settling time");
+	if (cmd_set->settle_ms != -1)
+		fprintf(stderr, " [%u]", cmd_set->settle_ms);
+	fprintf(stderr, " in ms\n");
+	fprintf(stderr, "  -g ign          Ignore first ign bytes of track "
+			"[%d]\n", cmd_set->ignore);
+	fprintf(stderr, "  -i ipos         Force IAM to ipos from track "
+			"start; if -1, don't [%d]\n", cmd_set->iam_ipos);
+	fprintf(stderr, "  -a alternate    Alternate even/odd tracks on "
+			"retries with -m2 [%d]\n", cmd_set->alternate);
+	fprintf(stderr, "                  0 = always even\n");
+	fprintf(stderr, "                  1 = always odd\n");
+	fprintf(stderr, "                  2 = even, then odd\n");
+	fprintf(stderr, "                  3 = odd, then even\n");
 
 	fprintf(stderr, "\n%s version %s\n\n", pgm_name, version);
 
@@ -683,6 +698,10 @@ parse_args(int argc,
 				cmd_set->use_histo = true;
 			} else if (!strcmp(name, "nousehisto")) {
 				cmd_set->use_histo = false;
+			} else if (!strcmp(name, "force")) {
+				cmd_set->forcewrite = true;
+			} else if (!strcmp(name, "noforce")) {
+				cmd_set->forcewrite = false;
 			} else {
 				goto err_usage;
 			}
@@ -988,7 +1007,7 @@ parse_args(int argc,
 	}
 
 	if (cmd_set->devlogfile) {
-		FILE *dlfp = fopen(cmd_set->devlogfile, "a");
+		FILE *dlfp = fopen(cmd_set->devlogfile, "w");
 
 		if (!dlfp) {
 			msg_error("Failed to open device log file '%s': %s\n",
@@ -1577,6 +1596,17 @@ main(int argc, char **argv)
 	msg(MSG_ERRORS, "\n");
 
 	/*
+	 * Ensure DMK file doesn't yet exist if force writing not active.
+	 */
+
+	if (!cmd_settings.forcewrite &&
+	    access(cmd_settings.dmkfile, F_OK) == 0) {
+		msg_fatal(EXIT_FAILURE, "DMK file '%s' exists.\n"
+		"    (Use the --force option if you want to ignore this "
+		"check.\n", cmd_settings.dmkfile);
+	}
+
+	/*
 	 * Stop spinning the drive when handling fatal signals
 	 * XXX Is this even needed for GW with its motor timeout?
 	 */
@@ -1649,14 +1679,14 @@ main(int argc, char **argv)
 	msg(MSG_NORMAL, "Writing DMK...");
 	msg_scrn_flush();
 
-	// XXX Use "false" argument for testing only.
-	FILE *dmkfp = dmkfile2fp(cmd_settings.dmkfile, false);
+	FILE *dmkfp = dmkfile2fp(cmd_settings.dmkfile,
+				 !cmd_settings.forcewrite);
 
 	if (!dmkfp) {
-		// XXX Use "false" argument for testing only.
 		msg_fatal(EXIT_FAILURE, "Failed to open DMK file '%s'%s: "
 			  "%s (%d)\n",
-			  cmd_settings.dmkfile, false ? " exclusively" : " ",
+			  cmd_settings.dmkfile,
+			  cmd_settings.forcewrite ? " " : " exclusively",
 			  strerror(errno), errno);
 	}
 

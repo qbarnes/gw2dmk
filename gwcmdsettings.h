@@ -49,6 +49,7 @@ struct cmd_settings {
 	int			step_ms;
 	int			settle_ms;
 	bool			check_compat_sides;
+	bool			forcewrite;
 	bool			use_histo;
 	enum dmk_encoding_mode	usr_encoding;
 	int			densel;

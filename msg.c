@@ -93,7 +93,7 @@ msg_fopen(const char *filename)
 	if (!fn)
 		return NULL;
 
-	FILE *f = fopen(filename, "a");
+	FILE *f = fopen(filename, "w");
 
 	if (f) {
 		msg_filename = fn;
