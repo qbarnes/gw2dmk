@@ -3,6 +3,7 @@
 *.obj
 *.dmk
 *.log
+*.gwlog
 *.exe
 *.tar.gz
 cscope.*

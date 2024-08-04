@@ -123,7 +123,7 @@ static const struct option cmd_long_args[] = {
 		'w'
 	},
 	{
-		"tracks",
+		"maxtries",
 		required_argument,
 		NULL,
 		'x'
