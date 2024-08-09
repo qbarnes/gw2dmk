@@ -1109,8 +1109,9 @@ dmkfile2fp(const char *dmkfile, bool fail_if_exists)
  *
  *    -2	Attempt restart.
  *    -1	Side count changed to 1 (cmd_set->sides=1).
- *     0	Everything good.
- *     1+	Error.
+ *     0	Everything good, continue reading next track.
+ *     1	Everything good, but done reading this disk.
+ *     2+	Error.
  */
 
 // XXX Too many args.  Rethink.
@@ -1177,7 +1178,7 @@ retry:
 	if (bytes_read == -1) {
 		msg(MSG_ERRORS, "gw_read_stream() failure\n");
 		free(fbuf);
-		return 1;
+		return 2;
 	}
 
 	struct pulse_data pdata = { &cmd_set->gme, &flux2dmk,
@@ -1191,7 +1192,7 @@ retry:
 	if (dsv == -1) {
 		msg(MSG_ERRORS, "Decode error from stream\n");
 		free(fbuf);
-		return 2;
+		return 3;
 	} else if (dsv < bytes_read) {
 		// XXX Just not handling this at present, but warn.
 		msg(MSG_ERRORS, "Leftover bytes in stream! "
@@ -1209,10 +1210,16 @@ retry:
 				flux2dmk.dtsm.track_hole_p);
 	}
 
-	merge_sectors(flux2dmk.dtsm.trk_merged,
-		      flux2dmk.dtsm.trk_merged_stats,
-		      &flux2dmk.dtsm.trk_working,
-		      &flux2dmk.dtsm.trk_working_stats);
+	if (flux2dmk.dtsm.accum_sectors) {
+		merge_sectors(flux2dmk.dtsm.trk_merged,
+			      flux2dmk.dtsm.trk_merged_stats,
+			      &flux2dmk.dtsm.trk_working,
+			      &flux2dmk.dtsm.trk_working_stats);
+	} else {
+		*flux2dmk.dtsm.trk_merged = flux2dmk.dtsm.trk_working;
+		*flux2dmk.dtsm.trk_merged_stats =
+					flux2dmk.dtsm.trk_working_stats;
+	}
 
 	gw_post_process_track(&flux2dmk);
 
@@ -1317,7 +1324,7 @@ retry:
 	       flux2dmk.fdec.cyl_seen == track/2))) {
 		msg(MSG_NORMAL, "[apparently only %d tracks; done]\n", track);
 		dmkf->header.ntracks = track;
-		return 0;
+		return 1;
 	}
 
 	/*
@@ -1481,14 +1488,20 @@ restart:
 					     dmkf, &dds, h, s);
 
 			switch (rtv) {
-			case -2: goto restart;
+			case -2:
+				goto restart;
+
 			case -1:
 				sides = cmd_set->sides;
 				dmkf->header.options |= DMK_SSIDE_OPT;
 				break;
 
-			case 0:  break;
-			default: goto leave;
+			case 0:
+				break;
+
+			case 1:  /* FALL THRU */
+			default:
+				goto leave;
 			}
 
 			if (exit_requested)

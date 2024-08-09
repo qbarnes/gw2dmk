@@ -114,7 +114,6 @@ fdecoder_init(struct fdecoder *fdec,
 }
 
 
-// XXX Need to do something about importing command line options.
 void
 dmk_track_sm_init(struct dmk_track_sm *dtsm,
 		  struct dmk_disk_stats *dds,
@@ -136,8 +135,8 @@ dmk_track_sm_init(struct dmk_track_sm *dtsm,
 		.dmk_full         = 0,
 
 		/* Should be from user args upon return. */
-		.dmk_ignore       = 0,
 		.dmk_iam_pos      = -1,
+		.dmk_ignore       = 0,
 		.accum_sectors    = 1
 	};
 }
