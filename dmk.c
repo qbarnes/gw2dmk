@@ -30,25 +30,54 @@ dmk_header_init(struct dmk_header *dmkh,
 }
 
 
-int
-dmk_header_fwrite(FILE *fp, struct dmk_header *dmkh)
+size_t
+dmk_header_fread(struct dmk_header *dmkh, FILE *fp)
 {
-	// XXX need error checking
+	size_t	frsz = 0;
 
-	fseek(fp, 0, SEEK_SET);
-	fwrite(&dmkh->writeprot, sizeof(dmkh->writeprot), 1, fp);
-	fwrite(&dmkh->ntracks, sizeof(dmkh->ntracks), 1, fp);
+	fseek(fp, 0, SEEK_SET);  // XXX Probably should not do this here.
+
+	frsz += fread(&dmkh->writeprot, sizeof(dmkh->writeprot), 1, fp);
+	frsz += fread(&dmkh->ntracks, sizeof(dmkh->ntracks), 1, fp);
+
+	uint16_t tracklen;
+	frsz += fread(&tracklen, sizeof(tracklen), 1, fp);
+
+	dmkh->tracklen = le16toh(tracklen);
+
+	frsz += fread(&dmkh->options, sizeof(dmkh->options), 1, fp);
+	frsz += fread(dmkh->padding, sizeof(dmkh->padding), 1, fp);
+
+	uint32_t format;
+	frsz += fread(&format, sizeof(format), 1, fp);
+
+	dmkh->real_format = le32toh(format);
+
+	return frsz;
+}
+
+
+size_t
+dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp)
+{
+	size_t	fwsz = 0;
+
+	fseek(fp, 0, SEEK_SET);  // XXX Probably should not do this here.
+
+	fwsz += fwrite(&dmkh->writeprot, sizeof(dmkh->writeprot), 1, fp);
+	fwsz += fwrite(&dmkh->ntracks, sizeof(dmkh->ntracks), 1, fp);
 
 	uint16_t tracklen = htole16(dmkh->tracklen);
-	fwrite(&tracklen, sizeof(tracklen), 1, fp);
 
-	fwrite(&dmkh->options, sizeof(dmkh->options), 1, fp);
-	fwrite(dmkh->padding, sizeof(dmkh->padding), 1, fp);
+	fwsz += fwrite(&tracklen, sizeof(tracklen), 1, fp);
+	fwsz += fwrite(&dmkh->options, sizeof(dmkh->options), 1, fp);
+	fwsz += fwrite(dmkh->padding, sizeof(dmkh->padding), 1, fp);
 
 	uint32_t format = htole32(dmkh->real_format);
-	fwrite(&format, sizeof(format), 1, fp);
 
-	return 0;
+	fwsz += fwrite(&format, sizeof(format), 1, fp);
+
+	return fwsz;
 }
 
 
@@ -62,18 +91,39 @@ dwk_track_file_offset(struct dmk_header *dmkh, int track, int side)
 
 
 int
-dmk_track_fseek(FILE *fp,
-		struct dmk_header *dmkh,
-		int track, int side)
+dmk_track_fseek(struct dmk_header *dmkh,
+		int track, int side,
+		FILE *fp)
 {
 	return fseek(fp, dwk_track_file_offset(dmkh, track, side), SEEK_SET);
 }
 
 
 size_t
-dmk_track_fwrite(FILE *fp,
-		 struct dmk_header *dmkh,
-		 struct dmk_track *trk)
+dmk_track_fread(const struct dmk_header *dmkh,
+		struct dmk_track *trk,
+		FILE *fp)
+{
+	size_t	fwsz = 0;
+
+	for (int i = 0; i < DMK_MAX_SECTORS; ++i) {
+		uint16_t	idam_off;
+
+		// XXX error checking
+		fwsz += fread(&idam_off, sizeof(idam_off), 1, fp);
+
+		trk->idam_offset[i] = le16toh(idam_off);
+	}
+
+	return fwsz + fread(trk->track + DMK_TKHDR_SIZE,
+				dmkh->tracklen - DMK_TKHDR_SIZE, 1, fp);
+}
+
+
+size_t
+dmk_track_fwrite(const struct dmk_header *dmkh,
+		 const struct dmk_track *trk,
+		 FILE *fp)
 {
 	size_t	fwsz = 0;
 
@@ -183,6 +233,31 @@ dmk_track_length_optimal(const struct dmk_file *dmkf)
 
 
 /*
+ * Read in the DMK file to a dmk_file data structure.
+ */
+
+int
+fp2dmk(FILE *fp, struct dmk_file *dmkf)
+{
+	// XXX Error checking
+
+	fseek(fp, 0, SEEK_SET);  // XXX Do this here?
+
+	dmk_header_fread(&dmkf->header, fp);
+
+	int sides = 2 - !!(dmkf->header.options & DMK_SSIDE_OPT);
+
+	for (int t = 0; t < dmkf->header.ntracks; ++t) {
+		for (int s = 0; s < sides; ++s) {
+			dmk_track_fread(&dmkf->header, &dmkf->track[t][s], fp);
+		}
+	}
+
+	return 0;
+}
+
+
+/*
  * Write out the dmk_file data structure as a DMK to file stream fp.
  */
 
@@ -191,42 +266,17 @@ dmk2fp(struct dmk_file *dmkf, FILE *fp)
 {
 	// XXX Error checking
 
-	fseek(fp, 0, SEEK_SET);
+	fseek(fp, 0, SEEK_SET);  // XXX Do this here?
 
-	dmk_header_fwrite(fp, &dmkf->header);
+	dmk_header_fwrite(&dmkf->header, fp);
 
 	int sides = 2 - !!(dmkf->header.options & DMK_SSIDE_OPT);
 
 	for (int t = 0; t < dmkf->header.ntracks; ++t) {
 		for (int s = 0; s < sides; ++s) {
-			dmk_track_fwrite(fp, &dmkf->header, &dmkf->track[t][s]);
+			dmk_track_fwrite(&dmkf->header, &dmkf->track[t][s], fp);
 		}
 	}
 
 	return 0;
 }
-
-
-#if 0
-uint8_t
-dmk_tracks_get
-
-uint8_t
-dmk_tracks_set
-
-dmk_track_length_get
-
-dmk_track_length_set
-
-uint8_t
-dmk_option_flags_get
-
-uint8_t
-dmk_option_flags_set
-
-dmk_track_write
-
-dmk_track_read
-
-dmk_track_merge
-#endif
