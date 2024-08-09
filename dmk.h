@@ -39,7 +39,7 @@ extern "C" {
 
 #define DMK_SIDES		2
 #define DMK_MAX_SECTORS		64
-#define DMK_MAX_TRACKS		83
+#define DMK_MAX_TRACKS		88
 
 
 /* Conventional track lengths used by DMK's emulator, plus one for

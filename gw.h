@@ -44,7 +44,7 @@ extern "C" {
 #include "greaseweazle.h"
 
 
-#define GW_MAX_TRACKS	83
+#define GW_MAX_TRACKS	88
 
 #if defined(WIN64) || defined(WIN32)
 #define GW_DEVT_INVALID	INVALID_HANDLE_VALUE
