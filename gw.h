@@ -14,21 +14,6 @@ extern "C" {
 #include <unistd.h>
 
 #if defined(WIN64) || defined(WIN32)
-#include <winsock2.h>
-  #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-  /* These can be considered no-ops. */
-  #define htole16(x) ((uint16_t)(x))
-  #define htole32(x) ((uint32_t)(x))
-  #define le16toh(x) ((uint16_t)(x))
-  #define le32toh(x) ((uint32_t)(x))
-  #else
-  #error "Need macros for BE MSW."
-  #endif
-#else
-#include <endian.h>
-#endif
-
-#if defined(WIN64) || defined(WIN32)
 #include <windows.h>
 #include <tchar.h>
 #else

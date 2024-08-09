@@ -26,8 +26,23 @@ extern "C" {
 #define MEMBER_SIZE(type, member) sizeof(((type *)0)->member)
 
 
-inline
-const char *plu(int val)
+#if linux
+#include <endian.h>
+#elif defined(WIN64) || defined(WIN32)
+  #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    /* These can be considered no-ops. */
+    #define htole16(x) ((uint16_t)(x))
+    #define htole32(x) ((uint32_t)(x))
+    #define le16toh(x) ((uint16_t)(x))
+    #define le32toh(x) ((uint32_t)(x))
+  #else
+    #error "Need macros for BE MSW."
+  #endif
+#endif
+
+
+inline const char *
+plu(int val)
 {
 	return (val == 1) ? "" : "s";
 }
