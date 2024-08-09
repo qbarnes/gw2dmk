@@ -1,5 +1,11 @@
-#ifndef CMD_SETTINGS_H
-#define CMD_SETTINGS_H
+/*
+ * XXX Including this file in any other C file than gw2dmk.c and maybe
+ * gwdetect.c probably indicates an abstraction inversion that
+ * should be dealt with.
+ */
+
+#ifndef GW2DMKCMDSET_H
+#define GW2DMKCMDSET_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -11,48 +17,25 @@ extern "C" {
 #include "msg_levels.h"
 #include "msg.h"
 #include "gwmedia.h"
+#include "gwfddrv.h"
 #include "dmk.h"
-
-/* Density select */
-// Should this go somewhere else?
-enum {
-	DS_NOTSET = -1,	/* Defaults to DD */
-	DS_HD     = 0,
-	DS_DD     = 1
-};
-
-/*
- * XXX Including this file in any other C file than gw2dmk.c and maybe
- * gwdetect.c probably indicates an abstraction inversion that
- * should be dealt with.
- */
 
 /*
  * Variable settings that come from command line arguments.
  */
 
-// XXX Should gme be pulled out and passed as a separate parameter?
+// XXX Should gme and gw_fddrv be pulled out and passed as a separate parameter?
 
 struct cmd_settings {
 	const char		**device_list;
-	const char		*device;
-	gw_devt			gwfd;
-	int			bus;
-	int			drive;
-	int			kind;
-	int			tracks;
+	struct gw_fddrv		fdd;
 	bool			guess_tracks;
-	int			sides;
 	bool			guess_sides;
-	int			steps;
 	bool			guess_steps;
-	int			step_ms;
-	int			settle_ms;
 	bool			check_compat_sides;
 	bool			forcewrite;
 	bool			use_histo;
 	enum dmk_encoding_mode	usr_encoding;
-	int			densel;
 	bool			reverse_sides;
 	bool			hole;
 	bool			alternate;

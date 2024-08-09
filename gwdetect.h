@@ -5,20 +5,16 @@
 extern "C" {
 #endif
 
-// All needed?
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <math.h>
 
 #include "gw.h"
 #include "gwx.h"
-#include "gw2dmkcmdset.h"
 #include "gwmedia.h"
+#include "gwfddrv.h"
 #include "gwhisto.h"
 
 
@@ -26,25 +22,24 @@ extern const char *kind2desc(int kind);
 
 extern int kind2densel(int kind);
 
-extern gw_devt gw_find_gw(const char **device_list);
+extern gw_devt gw_openlist(const char **device_list, const char **selected_dev);
 
-extern int gw_detect_drive(gw_devt gwfd, struct cmd_settings *cmd_settings);
+extern gw_devt gw_find_open_gw(const char *device, const char **device_list,
+			       const char **selected_dev);
 
-extern int gw_detect_drive_kind(gw_devt gwfd,
+extern gw_devt gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info);
+
+extern int gw_detect_drive(struct gw_fddrv *fdd);
+
+extern void gw_get_histo_analysis(gw_devt gwfd, struct histogram *histo,
+				  struct histo_analysis *ha);
+
+extern int gw_detect_drive_kind(struct gw_fddrv *fdd,
 				const struct gw_info *gw_info,
-				struct cmd_settings *cmd_settings,
 				struct histo_analysis *ha);
 
-extern int gw_detect_tracks(gw_devt gwfd, struct cmd_settings *cmd_settings);
-
-extern int gw_detect_sides(gw_devt gwfd,
-			   const struct gw_info *gw_info,
-			   struct cmd_settings *cmd_settings);
-
-extern int gw_detect_steps(gw_devt gwfd, struct cmd_settings *cmd_settings);
-
-extern gw_devt gw_detect_init_all(struct cmd_settings *cmd_settings,
-				  struct gw_info *gw_info);
+extern int gw_detect_sides(struct gw_fddrv *fdd,
+			   const struct gw_info *gw_info);
 
 
 #ifdef __cplusplus

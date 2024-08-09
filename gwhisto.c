@@ -84,7 +84,7 @@ histo_analyze(const struct histogram *histo,
 	}
 
 	ha->bit_rate_khz = histo->sample_freq / 1000.0 / 
-			     histo->ticks_per_bucket / ha->peak[0];
+				histo->ticks_per_bucket / ha->peak[0];
 
 	switch ((ha->peaks = j)) {
 	case 2:

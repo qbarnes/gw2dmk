@@ -40,13 +40,14 @@ kind2densel(int kind)
 
 
 /*
- * Detect GW, open and return file descriptor.
+ * Find and open a GW on the device list.
  *
- * Return device descriptor or GW_DEVT_INVALID on failure.
+ * Return device descriptor and set "device" to point to the device
+ * opened, or return GW_DEVT_INVALID on failure.
  */
 
 gw_devt
-gw_find_gw(const char **device_list)
+gw_openlist(const char **device_list, const char **selected_dev)
 {
 	gw_devt	gwfd = GW_DEVT_INVALID;
 
@@ -54,16 +55,48 @@ gw_find_gw(const char **device_list)
 		gwfd = gw_open(*p);
 
 		if (gwfd != GW_DEVT_INVALID) {
-			msg(MSG_TSUMMARY,
-			    "Found Greaseweazle using '%s'.\n", *p);
+			if (*selected_dev)
+				*selected_dev = *p;
 			break;
 		}
-
 	}
 
-	if (gwfd == GW_DEVT_INVALID) {
-		msg_fatal(EXIT_FAILURE,
-			  "Failed to find Greaseweazle's device.\n");
+	return gwfd;
+}
+
+
+/*
+ * Find and open GW.
+ *
+ * Returns device file descriptor and sets selected_dev to device name
+ * or GW_DEVT_INVALID on failure.
+ */
+
+gw_devt
+gw_find_open_gw(const char *device,
+		const char **device_list,
+		const char **selected_dev)
+{
+	// XXX Check returns.
+
+	gw_devt gwfd;
+
+	if (device) {
+		gwfd = gw_open(device);
+
+		if (gwfd == GW_DEVT_INVALID) {
+			msg_error("Failed open Greaseweazle ('%s').\n", device);
+			return GW_DEVT_INVALID;
+		}
+
+		*selected_dev = device;
+	} else {
+		gwfd = gw_openlist(device_list, selected_dev);
+
+		if (gwfd == GW_DEVT_INVALID) {
+			msg_error("Failed find Greaseweazle.  Use '-G'.\n");
+			return GW_DEVT_INVALID;
+		}
 	}
 
 	return gwfd;
@@ -71,9 +104,9 @@ gw_find_gw(const char **device_list)
 
 
 int
-gw_detect_drive(gw_devt gwfd, struct cmd_settings *cmd_set)
+gw_detect_drive(struct gw_fddrv *fdd)
 {
-	if (cmd_set->drive == -1)
+	if (fdd->drive == -1)
 		msg_fatal(EXIT_FAILURE,
 			  "Must specify drive with '-d' for now.\n");
 
@@ -82,13 +115,83 @@ gw_detect_drive(gw_devt gwfd, struct cmd_settings *cmd_set)
 
 
 /*
+ * Initialize GW and drive.
+ */
+
+gw_devt
+gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info)
+{
+	// XXX Check returns.
+	gw_devt		gwfd = fdd->gwfd;
+
+	int init_ret = gw_init(gwfd);
+
+	if (init_ret != 0) {
+		msg_error("Failed initialize Greaseweazle (%d).\n", init_ret);
+		return GW_DEVT_INVALID;
+	}
+
+	// Get us back into a saner state if crashed on last run.
+	int cmd_ret = gw_reset(gwfd);
+
+	if (cmd_ret != ACK_OKAY) {
+		msg_error("Failed to reset Greaseweazle (%d).\n", cmd_ret);
+		return GW_DEVT_INVALID;
+	}
+
+	cmd_ret = gw_get_info(gwfd, gw_info);
+
+	if (cmd_ret != ACK_OKAY) {
+		msg_error("Failed to get info from Greaseweazle (%d).\n",
+			  cmd_ret);
+		return GW_DEVT_INVALID;
+	}
+
+	gw_set_bus_type(gwfd, fdd->bus);
+
+	/*
+	 * If other than default, set delays for step and settle.
+	 * XXX Is setting step and settle per drive or per GW?
+	 */
+
+	if (fdd->step_ms != -1 || fdd->settle_ms != -1) {
+		struct gw_delay	gw_delay;
+
+		gw_get_params(gwfd, &gw_delay);
+
+		if (fdd->step_ms != -1) {
+			uint16_t	old_delay = gw_delay.step_delay;
+
+			gw_delay.step_delay = fdd->step_ms * 1000;
+			msg(MSG_TSUMMARY, "Changing step delay from %dms "
+			    "to %dms.\n", (int)old_delay / 1000,
+			    (int)gw_delay.step_delay / 1000);
+		}
+
+		if (fdd->settle_ms != -1) {
+			uint16_t	old_settle = gw_delay.seek_settle;
+
+			gw_delay.seek_settle = fdd->settle_ms;
+			msg(MSG_TSUMMARY, "Changing settle delay from %dms "
+			    "to %dms.\n", (int)old_settle,
+			    (int)gw_delay.seek_settle);
+		}
+
+		gw_set_params(gwfd, &gw_delay);
+	}
+
+	return gwfd;
+}
+
+
+/*
  * "histo" must be prepped before calling.
  */
 
-static void
-get_histo_analysis(gw_devt gwfd,
-		   struct histogram *histo,
-		   struct histo_analysis *ha)
+void
+gw_get_histo_analysis(gw_devt gwfd,
+		      struct histogram *histo,
+		      struct histo_analysis *ha)
 {
 	int ret = collect_histo_from_track(gwfd, histo);
 
@@ -105,34 +208,32 @@ get_histo_analysis(gw_devt gwfd,
 /*
  * Detect kind of drive.
  *
- * Returns GW drive set and with vars cmd_set->kind and cmd_set->densel set.
+ * Returns GW drive set and with vars fdd->kind and fdd->densel set.
  */
 
 int
-gw_detect_drive_kind(gw_devt gwfd,
+gw_detect_drive_kind(struct gw_fddrv *fdd,
 		     const struct gw_info *gw_info,
-		     struct cmd_settings *cmd_set,
 		     struct histo_analysis *ha)
 {
-	if (cmd_set->drive == -1)
+	if (fdd->drive == -1)
 		msg_fatal(EXIT_FAILURE,
 			  "Drive should have previously been set.\n");
 
-	int	densel = cmd_set->densel;
+	int	densel = fdd->densel;
 
 redo_kind:;
-	int	kind   = cmd_set->kind;
+	int	kind   = fdd->kind;
 
 	/* If densel not set, assume it's DS_DD for now.  Redo if
 	 * guess is wrong. */
-	gw_setdrive(cmd_set->gwfd, cmd_set->drive,
-		    densel == DS_HD ? DS_HD : DS_DD);
+	gw_setdrive(fdd->gwfd, fdd->drive, densel == DS_HD ? DS_HD : DS_DD);
 
 	struct histogram	histo;
 
 	histo_init(0, 0, 1, gw_info->sample_freq, TICKS_PER_BUCKET, &histo);
 
-	get_histo_analysis(gwfd, &histo, ha);
+	gw_get_histo_analysis(fdd->gwfd, &histo, ha);
 
 	if (histo.data_overflow > 25)	/* 25 is arbitrary */
 		msg_fatal(EXIT_FAILURE, "Track 0 side 0 is unformatted.\n");
@@ -174,25 +275,24 @@ redo_kind:;
 			goto redo_kind;
 	}
 
-	cmd_set->kind   = kind;
-	cmd_set->densel = densel;
+	fdd->kind   = kind;
+	fdd->densel = densel;
 
-	msg(MSG_NORMAL, "Detected %s\n", kind2desc(cmd_set->kind));
+	msg(MSG_NORMAL, "Detected %s\n", kind2desc(fdd->kind));
 	msg(MSG_TSUMMARY, "    (bit rate %.1f kHz, rpm %.1f, "
 			  "density select %s)\n",
 			  brate, rpm,
-			  cmd_set->densel == DS_HD ? "HD" : "DD");
+			  fdd->densel == DS_HD ? "HD" : "DD");
 
 	return 0;
 }
 
 
 int
-gw_detect_sides(gw_devt gwfd,
-		const struct gw_info *gw_info,
-		struct cmd_settings *cmd_set)
+gw_detect_sides(struct gw_fddrv *fdd,
+		const struct gw_info *gw_info)
 {
-	if (cmd_set->drive == -1)
+	if (fdd->drive == -1)
 		msg_fatal(EXIT_FAILURE,
 			  "Drive should have previously been set.\n");
 
@@ -200,7 +300,7 @@ gw_detect_sides(gw_devt gwfd,
 
 	histo_init(0, 1, 1, gw_info->sample_freq, TICKS_PER_BUCKET, &histo);
 
-	int chft_ret = collect_histo_from_track(gwfd, &histo);
+	int chft_ret = collect_histo_from_track(fdd->gwfd, &histo);
 
 	if (chft_ret)
 		msg_fatal(EXIT_FAILURE,
@@ -212,219 +312,7 @@ gw_detect_sides(gw_devt gwfd,
 	histo_analyze(&histo, &ha);
 	histo_show(MSG_SAMPLES, &histo, &ha);
 
-	cmd_set->sides = (histo.data_overflow > 25) ? 1 : 2;
+	fdd->sides = (histo.data_overflow > 25) ? 1 : 2;
 
 	return 0;
-}
-
-
-static void
-gw_set_gme(gw_devt gwfd,
-	   const struct gw_info *gw_info,
-	   struct cmd_settings *cmd_set,
-	   struct histo_analysis *ha)
-{
-	struct gw_media_encoding	*gme = &cmd_set->gme;
-
-	if (cmd_set->use_histo) {
-		if (!ha) {
-			struct histogram	histo;
-
-			histo_init(0, 0, 1, gw_info->sample_freq,
-				   TICKS_PER_BUCKET, &histo);
-
-			get_histo_analysis(gwfd, &histo, ha);
-		}
-
-		media_encoding_init_from_histo(gme, ha,
-					       gw_info->sample_freq);
-	} else {
-		media_encoding_init(gme, gw_info->sample_freq,
-				    (double[]){ 0, 300.0/360.0, 1.0, 0.5, 0.5
-				    }[cmd_set->kind]);
-	}
-
-	msg(MSG_TSUMMARY, "Thresholds");
-	if (cmd_set->use_histo)
-		msg(MSG_TSUMMARY, " from histogram");
-	msg(MSG_TSUMMARY, ": FM = %d, MFM = {%d,%d}\n",
-			  gme->fmthresh,
-			  gme->mfmthresh1,
-			  gme->mfmthresh2);
-}
-
-
-int
-gw_detect_steps(gw_devt gwfd, struct cmd_settings *cmd_set)
-{
-	if (cmd_set->kind == -1)
-		msg_fatal(EXIT_FAILURE,
-			  "Kind should have previously been set.\n");
-
-	cmd_set->steps = (cmd_set->kind == 1) ? 2 : 1;
-	cmd_set->guess_steps = true;
-
-	/* Actual detection is done while processing tracks. */
-
-	return 0;
-}
-
-
-int
-gw_detect_tracks(gw_devt gwfd, struct cmd_settings *cmd_set)
-{
-	if (cmd_set->steps == -1)
-		msg_fatal(EXIT_FAILURE,
-			  "Steps should have previously been set.\n");
-
-	cmd_set->tracks = GW_MAX_TRACKS / cmd_set->steps;
-	cmd_set->guess_tracks = true;
-
-	/* Actual detection is done while processing tracks. */
-
-	return 0;
-}
-
-
-/*
- * Detect and initialize GW and drive.
- */
-
-gw_devt
-gw_detect_init_all(struct cmd_settings *cmd_set,
-		   struct gw_info *gw_info)
-{
-	// XXX Check returns.
-
-	if (cmd_set->device) {
-		cmd_set->gwfd = gw_open(cmd_set->device);
-		if (cmd_set->gwfd == GW_DEVT_INVALID) {
-			msg_error("Failed open Greaseweazle ('%s').\n",
-				  cmd_set->device);
-			return GW_DEVT_INVALID;
-		}
-	} else {
-		cmd_set->gwfd = gw_find_gw(cmd_set->device_list);
-		if (cmd_set->gwfd == GW_DEVT_INVALID) {
-			msg_error("Failed find Greaseweazle.  Use '-G'.\n");
-			return GW_DEVT_INVALID;
-		}
-	}
-
-	int init_ret = gw_init(cmd_set->gwfd);
-
-	if (init_ret != 0) {
-		msg_error("Failed initialize Greaseweazle (%d).\n", init_ret);
-		return GW_DEVT_INVALID;
-	}
-
-	// Get us back into a saner state if crashed on last run.
-	int cmd_ret = gw_reset(cmd_set->gwfd);
-
-	if (cmd_ret != ACK_OKAY) {
-		msg_error("Failed to reset Greaseweazle (%d).\n", cmd_ret);
-		return GW_DEVT_INVALID;
-	}
-
-	cmd_ret = gw_get_info(cmd_set->gwfd, gw_info);
-
-	if (cmd_ret != ACK_OKAY) {
-		msg_error("Failed to get info from Greaseweazle (%d).\n",
-			  cmd_ret);
-		return GW_DEVT_INVALID;
-	}
-
-	gw_set_bus_type(cmd_set->gwfd, cmd_set->bus);
-
-	if (cmd_set->drive == -1)
-		gw_detect_drive(cmd_set->gwfd, cmd_set);
-
-	/*
-	 * If other than default, set delays for step and settle.
-	 * XXX Is setting step and settle per drive or per GW?
-	 */
-
-	if (cmd_set->step_ms != -1 || cmd_set->settle_ms != -1) {
-		struct gw_delay	gw_delay;
-
-		gw_get_params(cmd_set->gwfd, &gw_delay);
-
-		if (cmd_set->step_ms != -1) {
-			uint16_t	old_delay = gw_delay.step_delay;
-
-			gw_delay.step_delay = cmd_set->step_ms * 1000;
-			msg(MSG_TSUMMARY, "Changing step delay from %dms "
-			    "to %dms.\n", (int)old_delay / 1000,
-			    (int)gw_delay.step_delay / 1000);
-		}
-
-		if (cmd_set->settle_ms != -1) {
-			uint16_t	old_settle = gw_delay.seek_settle;
-
-			gw_delay.seek_settle = cmd_set->settle_ms;
-			msg(MSG_TSUMMARY, "Changing settle delay from %dms "
-			    "to %dms.\n", (int)old_settle,
-			    (int)gw_delay.seek_settle);
-		}
-
-		gw_set_params(cmd_set->gwfd, &gw_delay);
-	}
-
-	/*
-	 * Detect drive kind and characteristics.
-	 */
-
-	struct histo_analysis	ha;
-	bool			have_ha = false;
-
-	if (cmd_set->kind == -1) {
-		gw_detect_drive_kind(cmd_set->gwfd, gw_info, cmd_set, &ha);
-		have_ha = true;
-	} else {
-		if (cmd_set->densel == DS_NOTSET)
-			cmd_set->densel = kind2densel(cmd_set->kind);
-
-		gw_setdrive(cmd_set->gwfd, cmd_set->drive, cmd_set->densel);
-	}
-
-	if (cmd_set->sides == -1)
-		gw_detect_sides(cmd_set->gwfd, gw_info, cmd_set);
-
-	gw_set_gme(cmd_set->gwfd, gw_info, cmd_set, have_ha ? &ha : NULL);
-
-	if (cmd_set->steps == -1)
-		gw_detect_steps(cmd_set->gwfd, cmd_set);
-
-	if (cmd_set->tracks == -1)
-		gw_detect_tracks(cmd_set->gwfd, cmd_set);
-
-	/*
-	 * If given, override thresholds.
-	 */
-
-	if (cmd_set->usr_fmthresh != -1) {
-		int	old_fmthr = cmd_set->gme.fmthresh;
-
-		cmd_set->gme.fmthresh = cmd_set->usr_fmthresh;
-
-		msg(MSG_TSUMMARY, "Overriding FM threshold: was %d, now %d\n",
-		    old_fmthr, cmd_set->gme.fmthresh);
-	}
-
-	if (cmd_set->usr_mfmthresh1 != -1 || cmd_set->usr_mfmthresh2 != -1) {
-		int	old_mfmthr1 = cmd_set->gme.mfmthresh1;
-		int	old_mfmthr2 = cmd_set->gme.mfmthresh2;
-
-		if (cmd_set->usr_mfmthresh1 != -1)
-			cmd_set->gme.mfmthresh1 = cmd_set->usr_mfmthresh1;
-
-		if (cmd_set->usr_mfmthresh2 != -1)
-			cmd_set->gme.mfmthresh2 = cmd_set->usr_mfmthresh2;
-
-		msg(MSG_TSUMMARY, "Overriding MFM thresholds: were [%d, %d], "
-		    "now [%d, %d]\n", old_mfmthr1, old_mfmthr2,
-		    cmd_set->gme.mfmthresh1, cmd_set->gme.mfmthresh2);
-	}
-
-	return cmd_set->gwfd;
 }

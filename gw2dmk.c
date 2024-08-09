@@ -16,6 +16,7 @@
 #include "gw.h"
 #include "gwx.h"
 #include "gwhisto.h"
+#include "gwfddrv.h"
 #include "gw2dmkcmdset.h"
 #include "gwdetect.h"
 #include "gwdecode.h"
@@ -261,24 +262,24 @@ struct cmd_settings cmd_settings = {
 		"\\\\.\\COM3",
 #endif
 		NULL }, 
-	.device = NULL,
-	.gwfd = GW_DEVT_INVALID,
-	.bus = BUS_IBMPC,
-	.drive = 0,
-	.kind = -1,
-	.tracks = -1,
+	.fdd.gwfd = GW_DEVT_INVALID,
+	.fdd.device = NULL,
+	.fdd.bus = BUS_IBMPC,
+	.fdd.drive = 0,
+	.fdd.kind = -1,
+	.fdd.tracks = -1,
+	.fdd.sides = -1,
+	.fdd.steps = -1,
+	.fdd.densel = DS_NOTSET,
+	.fdd.step_ms = -1,
+	.fdd.settle_ms = -1,
 	.guess_tracks = false,
-	.sides = -1,
 	.guess_sides = false,
-	.steps = -1,
 	.guess_steps = false,
-	.step_ms = -1,
-	.settle_ms = -1,
 	.check_compat_sides = true,
 	.forcewrite = false,
 	.use_histo = true,
 	.usr_encoding = MIXED,
-	.densel = DS_NOTSET,
 	.reverse_sides = false,
 	.hole = true,
 	.alternate = 0,
@@ -293,6 +294,7 @@ struct cmd_settings cmd_settings = {
 	.menu_err_enabled = false,
 	.scrn_verbosity = MSG_TSUMMARY,
 	.file_verbosity = MSG_QUIET,
+	.dmkopt = true,
 	.usr_dmktracklen = 0,
 	.logfile = NULL,
 	.devlogfile = NULL,
@@ -347,11 +349,11 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 		" Options [settings in brackets]:\n", pgm_name);
 
 	fprintf(stderr, "  -G device       Greaseweazle device [%s]\n",
-			cmd_set->device ? cmd_set->device :
+			cmd_set->fdd.device ? cmd_set->fdd.device :
 			cmd_set->device_list[0]);
 	fprintf(stderr, "  -d drive        Drive unit {a,b,0,1,2} [%c]\n",
-			cmd_set->bus == BUS_SHUGART ?
-			cmd_set->drive + '0' : cmd_set->drive + 'a');
+			cmd_set->fdd.bus == BUS_SHUGART ?
+			cmd_set->fdd.drive + '0' : cmd_set->fdd.drive + 'a');
 	fprintf(stderr, "  -v verbosity    Amount of output [%d]\n",
 			(cmd_set->file_verbosity * 10) +
 			cmd_set->scrn_verbosity);
@@ -444,11 +446,11 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	fprintf(stderr, "  -2 threshold    MFM threshold for medium vs. "
 			"long\n");
 	fprintf(stderr, "  -T stp[,stl]    Step time");
-	if (cmd_set->step_ms != -1)
-		fprintf(stderr, " [%u]", cmd_set->step_ms);
+	if (cmd_set->fdd.step_ms != -1)
+		fprintf(stderr, " [%u]", cmd_set->fdd.step_ms);
 	fprintf(stderr, " and head settling time");
-	if (cmd_set->settle_ms != -1)
-		fprintf(stderr, " [%u]", cmd_set->settle_ms);
+	if (cmd_set->fdd.settle_ms != -1)
+		fprintf(stderr, " [%u]", cmd_set->fdd.settle_ms);
 	fprintf(stderr, " in ms\n");
 	fprintf(stderr, "  -g ign          Ignore first ign bytes of track "
 			"[%d]\n", cmd_set->ignore);
@@ -675,9 +677,9 @@ parse_args(int argc,
 			const char *name = cmd_long_args[lindex].name;
 
 			if (!strcmp(name, "hd")) {
-				cmd_set->densel = DS_HD;
+				cmd_set->fdd.densel = DS_HD;
 			} else if (!strcmp(name, "dd")) {
-				cmd_set->densel = DS_DD;
+				cmd_set->fdd.densel = DS_DD;
 			} else if (!strcmp(name, "hole")) {
 				cmd_set->hole = true;
 			} else if (!strcmp(name, "nohole")) {
@@ -722,13 +724,13 @@ parse_args(int argc,
 			case '0':
 			case '1':
 			case '2':
-				cmd_set->bus = BUS_SHUGART;
-				cmd_set->drive = loarg - '0';
+				cmd_set->fdd.bus = BUS_SHUGART;
+				cmd_set->fdd.drive = loarg - '0';
 				break;
 			case 'a':
 			case 'b':
-				cmd_set->bus = BUS_IBMPC;
-				cmd_set->drive = loarg - 'a';
+				cmd_set->fdd.bus = BUS_IBMPC;
+				cmd_set->fdd.drive = loarg - 'a';
 				break;
 			default: d_err:
 				msg_error("Option-argument to '%c' must "
@@ -763,7 +765,7 @@ parse_args(int argc,
 			const int kind = strtol_strict(optarg, 10, "'k'");
 
 			if (kind >= 1 && kind <= 4) {
-				cmd_set->kind = kind;
+				cmd_set->fdd.kind = kind;
 			} else {
 				msg_error("Option-argument to '%c' must "
 					  "be 1 or 4.\n", opt);
@@ -774,7 +776,7 @@ parse_args(int argc,
 		case 'l':;
 			const int dmktracklen =
 					strtol_strict(optarg, 10, "'l'");
-			if (dmktracklen < 0 || dmktracklen > 0x4000)
+			if (dmktracklen < 0 || dmktracklen >= 0x4000)
 				goto err_usage;
 			cmd_set->usr_dmktracklen = dmktracklen;
 			break;
@@ -783,7 +785,7 @@ parse_args(int argc,
 			const int steps = strtol_strict(optarg, 10, "'m'");
 
 			if (steps >= 1 && steps <= 2) {
-				cmd_set->steps = steps;
+				cmd_set->fdd.steps = steps;
 			} else {
 				msg_error("Option-argument to '%c' must "
 					  "be 1 or 2.\n", opt);
@@ -819,7 +821,7 @@ parse_args(int argc,
 			const int sides = strtol_strict(optarg, 10, "'s'");
 
 			if (sides >= 1 && sides <= 2) {
-				cmd_set->sides = sides;
+				cmd_set->fdd.sides = sides;
 			} else {
 				msg_error("Option-argument to '%c' must "
 					  "be 1 or 2.\n", opt);
@@ -831,7 +833,7 @@ parse_args(int argc,
 			const int tracks = strtol_strict(optarg, 10, "'t'");
 
 			if (tracks >= 0 && tracks <= GW_MAX_TRACKS) {
-				cmd_set->tracks = tracks;
+				cmd_set->fdd.tracks = tracks;
 			} else {
 				msg_error("Option-argument to '%c' must "
 					  "be between 0 and %d.\n",
@@ -905,9 +907,9 @@ parse_args(int argc,
 				msg_fatal(EXIT_FAILURE,
 					  "Cannot allocate device name.\n");
 			strcpy(ds, optarg);
-			cmd_set->device = ds;
+			cmd_set->fdd.device = ds;
 #else
-			cmd_set->device = optarg;
+			cmd_set->fdd.device = optarg;
 #endif
 			break;
 
@@ -936,11 +938,11 @@ parse_args(int argc,
 			switch (sfn) {
 			case 2:
 				if (settle_ms > 65000) goto err_usage;
-				cmd_set->settle_ms = settle_ms;
+				cmd_set->fdd.settle_ms = settle_ms;
 				/* FALLTHRU */
 			case 1:
 				if (step_ms > 65) goto err_usage;
-				cmd_set->step_ms = step_ms;
+				cmd_set->fdd.step_ms = step_ms;
 				break;
 			default:
 				goto err_usage;
@@ -1108,7 +1110,7 @@ dmkfile2fp(const char *dmkfile, bool fail_if_exists)
  * Read the track and side.
  *
  *    -2	Attempt restart.
- *    -1	Side count changed to 1 (cmd_set->sides=1).
+ *    -1	Side count changed to 1 (cmd_set->fdd.sides=1).
  *     0	Everything good, continue reading next track.
  *     1	Everything good, but done reading this disk.
  *     2+	Error.
@@ -1116,8 +1118,7 @@ dmkfile2fp(const char *dmkfile, bool fail_if_exists)
 
 // XXX Too many args.  Rethink.
 static int
-read_track(gw_devt gwfd,
-	   struct cmd_settings *cmd_set,
+read_track(struct cmd_settings *cmd_set,
 	   uint32_t sample_freq,
 	   struct dmk_file *dmkf,
 	   struct dmk_disk_stats *dds,
@@ -1139,19 +1140,19 @@ retry:
 	msg(MSG_TSUMMARY, ":");
 	msg_scrn_flush();
 
-	int headpos = track * cmd_set->steps;
+	int headpos = track * cmd_set->fdd.steps;
 
-	if (cmd_set->steps == 2) {
+	if (cmd_set->fdd.steps == 2) {
 		headpos += cmd_set->alternate & 1;
 
 		if ((retry > 0) && (cmd_set->alternate & 2))
 			headpos ^= 1;
 	}
 
-	gw_seek(gwfd, headpos);
+	gw_seek(cmd_set->fdd.gwfd, headpos);
 	// error checking
 
-	gw_head(gwfd, side ^ cmd_set->reverse_sides);
+	gw_head(cmd_set->fdd.gwfd, side ^ cmd_set->reverse_sides);
 	// error checking
 
 
@@ -1173,7 +1174,7 @@ retry:
 	flux2dmk.dtsm.accum_sectors  = cmd_set->join_sectors;
 
 	uint8_t *fbuf = 0;
-	ssize_t bytes_read = gw_read_stream(gwfd, 1, 0, &fbuf);
+	ssize_t bytes_read = gw_read_stream(cmd_set->fdd.gwfd, 1, 0, &fbuf);
 
 	if (bytes_read == -1) {
 		msg(MSG_ERRORS, "gw_read_stream() failure\n");
@@ -1240,7 +1241,7 @@ retry:
 	 */
 
 	if (cmd_set->check_compat_sides &&
-	    cmd_set->sides == 2 &&
+	    cmd_set->fdd.sides == 2 &&
 	    track == 0 &&
 	    dts.good_sectors > 0) {
 		if (side == 1 &&
@@ -1248,7 +1249,7 @@ retry:
 		    flux2dmk.fdec.secsize == 512) {
 			msg(MSG_NORMAL, "[Incompatible formats detected "
 			    "between sides; restarting single-sided]\n");
-			cmd_set->sides = 1;
+			cmd_set->fdd.sides = 1;
 			return -1;
 		}
 	}
@@ -1261,7 +1262,7 @@ retry:
 		cmd_set->guess_sides = false;
 
 		if (dts.good_sectors == 0) {
-			cmd_set->sides = 1;
+			cmd_set->fdd.sides = 1;
 			msg(MSG_NORMAL, "[apparently single-sided]\n");
 			return -1;
 		}
@@ -1275,19 +1276,19 @@ retry:
 		if (track == 3)
 			cmd_set->guess_steps = 0;
 
-		if (cmd_set->steps == 1) {
+		if (cmd_set->fdd.steps == 1) {
 			if ((track & 1) && (dts.good_sectors == 0)) {
 				msg(MSG_NORMAL,
 				    "[double-stepping apparently needed; "
 				    "restarting]\n");
 
 				cmd_set->guess_steps = 0;
-				cmd_set->steps = 2;
+				cmd_set->fdd.steps = 2;
 
 				if (cmd_set->guess_tracks) {
-					cmd_set->tracks =
+					cmd_set->fdd.tracks =
 						GUESS_TRACKS /
-							cmd_set->steps;
+							cmd_set->fdd.steps;
 				}
 
 				return -2;
@@ -1299,11 +1300,11 @@ retry:
 				    "[single-stepping apparently needed; "
 				    "restarting]\n");
 
-				cmd_set->steps = 1;
+				cmd_set->fdd.steps = 1;
 				if (cmd_set->guess_tracks) {
-					cmd_set->tracks =
+					cmd_set->fdd.tracks =
 						GUESS_TRACKS /
-							cmd_set->steps;
+							cmd_set->fdd.steps;
 				}
 
 				return -2;
@@ -1360,7 +1361,7 @@ retry:
 	    (cmd_set->menu_err_enabled &&
 	     retry >= cmd_set->retries[track][side])) {
 
-		gw_motor(cmd_set->gwfd, cmd_set->drive, 0);
+		gw_motor(cmd_set->fdd.gwfd, cmd_set->fdd.drive, 0);
 
 		msg_scrn_flush();
 		switch (menu(failing, cmd_set->retries)) {
@@ -1384,7 +1385,7 @@ retry:
 			break;
 		}
 
-		gw_motor(cmd_set->gwfd, cmd_set->drive, 1);
+		gw_motor(cmd_set->fdd.gwfd, cmd_set->fdd.drive, 1);
 
 		menu_requested = 0;
 	}
@@ -1438,8 +1439,7 @@ leave:;
 
 
 static void
-gw2dmk(gw_devt gwfd,
-       struct cmd_settings *cmd_set,
+gw2dmk(struct cmd_settings *cmd_set,
        uint32_t sample_freq,
        struct dmk_file *dmkf)
 {
@@ -1450,9 +1450,9 @@ restart:
 		msg(MSG_NORMAL,
 		    "Trying %d side%s, %d tracks/side, %s stepping, "
 		    "%s encoding\n",
-		    cmd_set->sides, plu(cmd_set->sides),
-		    cmd_set->tracks,
-		    (cmd_set->steps == 1) ? "single" : "double",
+		    cmd_set->fdd.sides, plu(cmd_set->fdd.sides),
+		    cmd_set->fdd.tracks,
+		    (cmd_set->fdd.steps == 1) ? "single" : "double",
         	    encoding_name(cmd_set->usr_encoding));
 	}
 
@@ -1461,11 +1461,11 @@ restart:
 	struct dmk_disk_stats dds;
 	dmk_disk_stats_init(&dds);
 
-	int tracks = cmd_set->tracks;
+	int tracks = cmd_set->fdd.tracks;
 	if (dmkf->header.ntracks < tracks)
 		dmkf->header.ntracks = tracks;
 
-	int sides = cmd_set->sides;
+	int sides = cmd_set->fdd.sides;
 	if (sides == 1)
 		dmkf->header.options |= DMK_SSIDE_OPT;
 
@@ -1484,7 +1484,7 @@ restart:
 	for (int h = 0; h < tracks; ++h) {
 
 		for (int s = 0; s < sides; ++s) {
-			int rtv = read_track(gwfd, cmd_set, sample_freq,
+			int rtv = read_track(cmd_set, sample_freq,
 					     dmkf, &dds, h, s);
 
 			switch (rtv) {
@@ -1492,7 +1492,7 @@ restart:
 				goto restart;
 
 			case -1:
-				sides = cmd_set->sides;
+				sides = cmd_set->fdd.sides;
 				dmkf->header.options |= DMK_SSIDE_OPT;
 				break;
 
@@ -1648,11 +1648,113 @@ main(int argc, char **argv)
 	 */
 
 	struct gw_info	gw_info;
+	const char	*sdev;
 
-	cmd_settings.gwfd = gw_detect_init_all(&cmd_settings, &gw_info);
+	cmd_settings.fdd.gwfd = gw_find_open_gw(cmd_settings.fdd.device,
+					cmd_settings.device_list, &sdev);
 
-	if (cmd_settings.gwfd == GW_DEVT_INVALID)
+	cmd_settings.fdd.gwfd = gw_init_gw(&cmd_settings.fdd, &gw_info);
+
+	if (cmd_settings.fdd.gwfd == GW_DEVT_INVALID)
 		msg_fatal(EXIT_FAILURE, "Failed to find or initialize GW.\n");
+
+	if (cmd_settings.fdd.drive == -1)
+		gw_detect_drive(&cmd_settings.fdd);
+
+	/*
+	 * Detect drive kind and characteristics.
+	 */
+
+	struct histo_analysis	ha;
+	bool			have_ha = false;
+
+	if (cmd_settings.fdd.kind == -1) {
+		gw_detect_drive_kind(&cmd_settings.fdd, &gw_info, &ha);
+		have_ha = true;
+	} else {
+		if (cmd_settings.fdd.densel == DS_NOTSET)
+			cmd_settings.fdd.densel =
+					kind2densel(cmd_settings.fdd.kind);
+
+		gw_setdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive,
+			    cmd_settings.fdd.densel);
+	}
+
+	struct gw_media_encoding	*gme = &cmd_settings.gme;
+
+	if (cmd_settings.use_histo) {
+		if (!have_ha) {
+			struct histogram	histo;
+
+			histo_init(0, 0, 1, gw_info.sample_freq,
+				   TICKS_PER_BUCKET, &histo);
+
+			gw_get_histo_analysis(cmd_settings.fdd.gwfd, &histo,
+					      &ha);
+		}
+
+		media_encoding_init_from_histo(gme, &ha,
+					       gw_info.sample_freq);
+	} else {
+		media_encoding_init(gme, gw_info.sample_freq,
+				    (double[]){ 0, 300.0/360.0, 1.0, 0.5, 0.5
+				    }[cmd_settings.fdd.kind]);
+	}
+
+	msg(MSG_TSUMMARY, "Thresholds");
+	if (cmd_settings.use_histo)
+		msg(MSG_TSUMMARY, " from histogram");
+	msg(MSG_TSUMMARY, ": FM = %d, MFM = {%d,%d}\n",
+			  gme->fmthresh,
+			  gme->mfmthresh1,
+			  gme->mfmthresh2);
+
+	if (cmd_settings.fdd.sides == -1)
+		gw_detect_sides(&cmd_settings.fdd, &gw_info);
+
+	if (cmd_settings.fdd.steps == -1) {
+		cmd_settings.fdd.steps = (cmd_settings.fdd.kind == 1) ? 2 : 1;
+		cmd_settings.guess_steps = true;
+	}
+
+	if (cmd_settings.fdd.tracks == -1) {
+		cmd_settings.fdd.tracks =
+					GW_MAX_TRACKS / cmd_settings.fdd.steps;
+		cmd_settings.guess_tracks = true;
+	}
+
+	/*
+	 * If given, override thresholds.
+	 */
+
+	if (cmd_settings.usr_fmthresh != -1) {
+		int	old_fmthr = cmd_settings.gme.fmthresh;
+
+		cmd_settings.gme.fmthresh = cmd_settings.usr_fmthresh;
+
+		msg(MSG_TSUMMARY, "Overriding FM threshold: was %d, now %d\n",
+		    old_fmthr, cmd_settings.gme.fmthresh);
+	}
+
+	if (cmd_settings.usr_mfmthresh1 != -1 ||
+	    cmd_settings.usr_mfmthresh2 != -1) {
+		int	old_mfmthr1 = cmd_settings.gme.mfmthresh1;
+		int	old_mfmthr2 = cmd_settings.gme.mfmthresh2;
+
+		if (cmd_settings.usr_mfmthresh1 != -1) {
+			cmd_settings.gme.mfmthresh1 =
+				cmd_settings.usr_mfmthresh1;
+		}
+
+		if (cmd_settings.usr_mfmthresh2 != -1) {
+			cmd_settings.gme.mfmthresh2 =
+				cmd_settings.usr_mfmthresh2;
+		}
+
+		msg(MSG_TSUMMARY, "Overriding MFM thresholds: were [%d, %d], "
+		    "now [%d, %d]\n", old_mfmthr1, old_mfmthr2,
+		    cmd_settings.gme.mfmthresh1, cmd_settings.gme.mfmthresh2);
+	}
 
 	/*
 	 * Read the disk into memory and make a DMK from it.
@@ -1664,7 +1766,7 @@ main(int argc, char **argv)
 	if (!dmkf)
 		msg_fatal(EXIT_FAILURE, "Malloc of dmkf failed.\n");
 
-	gw2dmk(cmd_settings.gwfd, &cmd_settings, gw_info.sample_freq, dmkf);
+	gw2dmk(&cmd_settings, gw_info.sample_freq, dmkf);
 
 	/*
 	 * Optimize the DMK if needed and save it.
@@ -1676,7 +1778,7 @@ main(int argc, char **argv)
 		dmkf->header.tracklen = 
 			(uint16_t[]){ 0, DMKRD_TRACKLEN_5, DMKRD_TRACKLEN_5,
 				      DMKRD_TRACKLEN_8, DMKRD_TRACKLEN_3HD
-				    }[cmd_settings.kind];
+				    }[cmd_settings.fdd.kind];
 
 		if (cmd_settings.dmkopt) {
 			uint16_t	old_tracklen = dmkf->header.tracklen;
@@ -1719,9 +1821,9 @@ main(int argc, char **argv)
 	 * Finish up and close out.
 	 */
 
-	gw_unsetdrive(cmd_settings.gwfd, cmd_settings.drive);
+	gw_unsetdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive);
 
-	if (gw_close(cmd_settings.gwfd)) {
+	if (gw_close(cmd_settings.fdd.gwfd)) {
 		msg_fatal(EXIT_FAILURE, "Failed to close GW device: %s (%d)\n",
 			  strerror(errno), errno);
 	}
