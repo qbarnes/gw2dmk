@@ -33,6 +33,7 @@ struct cmd_settings {
 	bool			guess_sides;
 	bool			guess_steps;
 	bool			check_compat_sides;
+	bool			reset_on_init;
 	bool			forcewrite;
 	bool			use_histo;
 	enum dmk_encoding_mode	usr_encoding;

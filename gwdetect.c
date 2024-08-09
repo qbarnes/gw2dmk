@@ -19,31 +19,25 @@ kind2desc(int kind)
 int
 kind2densel(int kind)
 {
-	int	r = -2;
-
 	switch (kind) {
-	case -1:
-		r = -1;
-		break;
-	case 1:
+	case 1: /* FALL THRU */
 	case 2:
-		r = DS_DD;
-		break;
-	case 3:
+		return DS_DD;
+
+	case 3: /* FALL THRU */
 	case 4:
-		r = DS_HD;
-		break;
+		return DS_HD;
 	};
 
-	return r;
+	return -1;
 }
 
 
 /*
  * Find and open a GW on the device list.
  *
- * Return device descriptor and set "device" to point to the device
- * opened, or return GW_DEVT_INVALID on failure.
+ * Return device descriptor and set "selected_dev" to point to
+ * the device opened, or returns GW_DEVT_INVALID on failure.
  */
 
 gw_devt
@@ -68,8 +62,8 @@ gw_openlist(const char **device_list, const char **selected_dev)
 /*
  * Find and open GW.
  *
- * Returns device file descriptor and sets selected_dev to device name
- * or GW_DEVT_INVALID on failure.
+ * Returns device file descriptor and sets "selected_dev" to device name
+ * or returns GW_DEVT_INVALID on failure.
  */
 
 gw_devt
@@ -77,8 +71,6 @@ gw_find_open_gw(const char *device,
 		const char **device_list,
 		const char **selected_dev)
 {
-	// XXX Check returns.
-
 	gw_devt gwfd;
 
 	if (device) {
@@ -89,7 +81,8 @@ gw_find_open_gw(const char *device,
 			return GW_DEVT_INVALID;
 		}
 
-		*selected_dev = device;
+		if (*selected_dev)
+			*selected_dev = device;
 	} else {
 		gwfd = gw_openlist(device_list, selected_dev);
 
@@ -102,6 +95,10 @@ gw_find_open_gw(const char *device,
 	return gwfd;
 }
 
+
+/*
+ * Detect drive connected to GW.
+ */
 
 int
 gw_detect_drive(struct gw_fddrv *fdd)
@@ -116,27 +113,34 @@ gw_detect_drive(struct gw_fddrv *fdd)
 
 /*
  * Initialize GW and drive.
+ *
+ * If "reset" is true, reset device upon initialization.
+ *
+ * Returns device descriptor or GW_DEVT_INVALID on failure.
  */
 
 gw_devt
-gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info)
+gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info, bool reset)
 {
-	// XXX Check returns.
-	gw_devt		gwfd = fdd->gwfd;
-
-	int init_ret = gw_init(gwfd);
+	gw_devt	gwfd     = fdd->gwfd;
+	int	init_ret = gw_init(gwfd);
 
 	if (init_ret != 0) {
 		msg_error("Failed initialize Greaseweazle (%d).\n", init_ret);
 		return GW_DEVT_INVALID;
 	}
 
-	// Get us back into a saner state if crashed on last run.
-	int cmd_ret = gw_reset(gwfd);
+	int	cmd_ret;
 
-	if (cmd_ret != ACK_OKAY) {
-		msg_error("Failed to reset Greaseweazle (%d).\n", cmd_ret);
-		return GW_DEVT_INVALID;
+	/* Put GW back to a better state if crashed on previous run. */
+	if (reset) {
+		cmd_ret = gw_reset(gwfd);
+
+		if (cmd_ret != ACK_OKAY) {
+			msg_error("Failed to reset Greaseweazle (%d).\n",
+				  cmd_ret);
+			return GW_DEVT_INVALID;
+		}
 	}
 
 	cmd_ret = gw_get_info(gwfd, gw_info);
@@ -147,17 +151,29 @@ gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info)
 		return GW_DEVT_INVALID;
 	}
 
-	gw_set_bus_type(gwfd, fdd->bus);
+	cmd_ret = gw_set_bus_type(gwfd, fdd->bus);
+
+	if (cmd_ret != ACK_OKAY) {
+		msg_error("Failed to set bus type of Greaseweazle (%d).\n",
+			  cmd_ret);
+		return GW_DEVT_INVALID;
+	}
 
 	/*
 	 * If other than default, set delays for step and settle.
-	 * XXX Is setting step and settle per drive or per GW?
 	 */
+	// XXX Is setting step and settle per drive or per GW?
 
 	if (fdd->step_ms != -1 || fdd->settle_ms != -1) {
 		struct gw_delay	gw_delay;
 
-		gw_get_params(gwfd, &gw_delay);
+		cmd_ret = gw_get_params(gwfd, &gw_delay);
+
+		if (cmd_ret != ACK_OKAY) {
+			msg_error("Failed to get parameters of Greaseweazle "
+				  "(%d).\n", cmd_ret);
+			return GW_DEVT_INVALID;
+		}
 
 		if (fdd->step_ms != -1) {
 			uint16_t	old_delay = gw_delay.step_delay;
@@ -177,7 +193,14 @@ gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info)
 			    (int)gw_delay.seek_settle);
 		}
 
-		gw_set_params(gwfd, &gw_delay);
+		cmd_ret = gw_set_params(gwfd, &gw_delay);
+
+		if (cmd_ret != ACK_OKAY) {
+			msg_error("Failed to get parameters of Greaseweazle "
+				  "(%d).\n", cmd_ret);
+			return GW_DEVT_INVALID;
+		}
+
 	}
 
 	return gwfd;
@@ -300,17 +323,9 @@ gw_detect_sides(struct gw_fddrv *fdd,
 
 	histo_init(0, 1, 1, gw_info->sample_freq, TICKS_PER_BUCKET, &histo);
 
-	int chft_ret = collect_histo_from_track(fdd->gwfd, &histo);
-
-	if (chft_ret)
-		msg_fatal(EXIT_FAILURE,
-			  "Couldn't collect histogram (%d)\n", chft_ret);
-
 	struct histo_analysis	ha;
 
-	histo_analysis_init(&ha);
-	histo_analyze(&histo, &ha);
-	histo_show(MSG_SAMPLES, &histo, &ha);
+	gw_get_histo_analysis(fdd->gwfd, &histo, &ha);
 
 	fdd->sides = (histo.data_overflow > 25) ? 1 : 2;
 

@@ -250,6 +250,18 @@ static const struct option cmd_long_args[] = {
 		NULL,
 		0
 	},
+	{
+		"reset",
+		no_argument,
+		NULL,
+		0
+	},
+	{
+		"noreset",
+		no_argument,
+		NULL,
+		0
+	},
 	{ 0, 0, 0, 0 }
 };
 
@@ -277,6 +289,7 @@ struct cmd_settings cmd_settings = {
 	.guess_sides = false,
 	.guess_steps = false,
 	.check_compat_sides = true,
+	.reset_on_init = true,
 	.forcewrite = false,
 	.use_histo = true,
 	.usr_encoding = MIXED,
@@ -396,6 +409,9 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	fprintf(stderr, "  --[no]force     Force or not to overwrite "
 			"existing DMK output file [%sforce]\n",
 			cmd_set->forcewrite ? "" : "no");
+	fprintf(stderr, "  --[no]reset     Reset GW upon initialization "
+			"[%sreset]\n",
+			cmd_set->reset_on_init ? "" : "no");
 
 	fprintf(stderr, "\n Options to manually set values that are normally "
 			"autodetected:\n");
@@ -704,6 +720,10 @@ parse_args(int argc,
 				cmd_set->forcewrite = true;
 			} else if (!strcmp(name, "noforce")) {
 				cmd_set->forcewrite = false;
+			} else if (!strcmp(name, "reset")) {
+				cmd_set->reset_on_init = true;
+			} else if (!strcmp(name, "noreset")) {
+				cmd_set->reset_on_init = false;
 			} else {
 				goto err_usage;
 			}
@@ -1653,7 +1673,8 @@ main(int argc, char **argv)
 	cmd_settings.fdd.gwfd = gw_find_open_gw(cmd_settings.fdd.device,
 					cmd_settings.device_list, &sdev);
 
-	cmd_settings.fdd.gwfd = gw_init_gw(&cmd_settings.fdd, &gw_info);
+	cmd_settings.fdd.gwfd = gw_init_gw(&cmd_settings.fdd, &gw_info,
+					   cmd_settings.reset_on_init);
 
 	if (cmd_settings.fdd.gwfd == GW_DEVT_INVALID)
 		msg_fatal(EXIT_FAILURE, "Failed to find or initialize GW.\n");
