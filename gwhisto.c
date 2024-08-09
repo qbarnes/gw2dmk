@@ -83,7 +83,7 @@ histo_analyze(const struct histogram *histo,
 		}
 	}
 
-	ha->pulse_rate_khz = histo->sample_freq / 1000.0 / 
+	ha->bit_rate_khz = histo->sample_freq / 1000.0 / 
 			     histo->ticks_per_bucket / ha->peak[0];
 
 	switch ((ha->peaks = j)) {
@@ -148,8 +148,8 @@ histo_show(int msg_level,
 			histo->total_ticks);
 
 	if (ha->peaks > 0) {
-		msg(msg_level, "Pulse rate approx:     %7.3f kHz\n",
-			ha->pulse_rate_khz);
+		msg(msg_level, "Bit rate approx:       %7.3f kHz\n",
+			ha->bit_rate_khz);
 		msg(msg_level, "%s data clock approx:%s %3.3f kHz\n",
 			ha->peaks == 2 ? "FM" : "MFM",
 			ha->peaks == 2 ? " " : "",

@@ -36,7 +36,7 @@ struct histo_analysis {
 	double		peak[HIST_MAX_PEAKS];
 	double		ps[HIST_MAX_PEAKS];
 	double		std_dev[HIST_MAX_PEAKS];
-	double		pulse_rate_khz;
+	double		bit_rate_khz;
 	double		data_clock_khz;
 	double		rpm;
 };

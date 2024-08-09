@@ -138,23 +138,23 @@ redo_kind:;
 		msg_fatal(EXIT_FAILURE, "Track 0 side 0 is unformatted.\n");
 
 	double rpm   = ha->rpm;
-	double prate = ha->pulse_rate_khz;
+	double brate = ha->bit_rate_khz;
 
 	if (rpm > 270.0 && rpm < 330.0) {
 		/* 300 RPM */
-		if (prate > 225.0 && prate < 287.5) {
-			/* Pulse rate 250 kHz */
+		if (brate > 225.0 && brate < 287.5) {
+			/* Bit rate 250 kHz */
 			kind = 2;
-		} else if (prate > 450.0 && prate < 575.5) {
-			/* Pulse rate 500 kHz */
+		} else if (brate > 450.0 && brate < 575.5) {
+			/* Bit rate 500 kHz */
 			kind = 4;
 		}
 	} else if (rpm > 330.0 && rpm < 396.0) {
 		/* 360 RPM */
-		if (prate > 270.0 && prate < 345.0) {
-			/* Pulse rate 300 kHz */
+		if (brate > 270.0 && brate < 345.0) {
+			/* Bit rate 300 kHz */
 			kind = 1;
-		} else if (prate > 450.0 && prate < 575.0) {
+		} else if (brate > 450.0 && brate < 575.0) {
 			kind = 3;
 		}
 	}
@@ -162,8 +162,8 @@ redo_kind:;
 	if (kind == -1) {
 		msg_fatal(EXIT_FAILURE,
 			  "Failed to detect media type.\n"
-			  "  Pulse rate:  %7.3f kHz\n"
-			  "  Drive speed: %7.3f RPM\n", prate, rpm);
+			  "  Bit rate:    %7.3f kHz\n"
+			  "  Drive speed: %7.3f RPM\n", brate, rpm);
 	}
 
 	if (densel == DS_NOTSET) {
@@ -178,9 +178,9 @@ redo_kind:;
 	cmd_set->densel = densel;
 
 	msg(MSG_NORMAL, "Detected %s\n", kind2desc(cmd_set->kind));
-	msg(MSG_TSUMMARY, "    (pulse rate %.1f kHz, rpm %.1f, "
+	msg(MSG_TSUMMARY, "    (bit rate %.1f kHz, rpm %.1f, "
 			  "density select %s)\n",
-			  prate, rpm,
+			  brate, rpm,
 			  cmd_set->densel == DS_HD ? "HD" : "DD");
 
 	return 0;
