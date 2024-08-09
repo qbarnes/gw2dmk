@@ -19,7 +19,7 @@ dmk_get_phys_sector(uint8_t *track, int n)
 
 	/* Filter out bogus offset.  The mininum valid sector size here
 	 * is really only avoiding very bad situations. */
-	if (off > DMK_TRACKLEN_MAX - 10)
+	if (off > DMKRD_TRACKLEN_MAX - 10)
 		return NULL;
 
 	return track + off;
@@ -49,7 +49,7 @@ dmk_get_phys_sector_len(uint8_t *track, int n, int tracklen)
 			printf("\nphysical sector misordering from %d to %d .. "
 			       "off %d off %d max %d!\n",
 			       n, n + 1, s0 - track, s1 - track,
-			       DMK_TRACKLEN_MAX);
+			       DMKRD_TRACKLEN_MAX);
 			for (int i = 0; i < 10; i++)
 				printf("%x ", ((uint16_t *) track)[i]);
 			printf("\n");
@@ -186,7 +186,7 @@ merge_sectors(struct dmk_track *trk_merged,
 				// Don't overflow the merged track.
 				if (seclen <= 0
 				    || tmp_data_p + seclen >
-				    dmk_tmp_track + DMK_TRACKLEN_MAX)
+				    dmk_tmp_track + DMKRD_TRACKLEN_MAX)
 					continue;
 
 				msg(MSG_ERRORS, "[reuse %02x] ", secnum);
@@ -222,7 +222,7 @@ merge_sectors(struct dmk_track *trk_merged,
 				overflow = 1;
 			else if (seclen < 0
 				 || tmp_data_p + seclen >
-				 dmk_tmp_track + DMK_TRACKLEN_MAX)
+				 dmk_tmp_track + DMKRD_TRACKLEN_MAX)
 				overflow = 1;
 			else {
 				*tmp_idam_p++ =

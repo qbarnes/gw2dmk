@@ -1084,7 +1084,7 @@ pulse_fn(uint32_t pulse, void *data)
 static void
 dmk_file_init(struct dmk_file *dmkf, struct cmd_settings *cmds)
 {
-	dmk_header_init(&dmkf->header, 0, DMK_TRACKLEN_MAX);
+	dmk_header_init(&dmkf->header, 0, DMKRD_TRACKLEN_MAX);
 
 	memset(dmkf->track, 0, sizeof(struct dmk_track));
 }
@@ -1674,8 +1674,8 @@ main(int argc, char **argv)
 		dmkf->header.tracklen = cmd_settings.usr_dmktracklen;
 	} else {
 		dmkf->header.tracklen = 
-			(uint16_t[]){ 0, DMK_TRACKLEN_5, DMK_TRACKLEN_5,
-				      DMK_TRACKLEN_8, DMK_TRACKLEN_3HD
+			(uint16_t[]){ 0, DMKRD_TRACKLEN_5, DMKRD_TRACKLEN_5,
+				      DMKRD_TRACKLEN_8, DMKRD_TRACKLEN_3HD
 				    }[cmd_settings.kind];
 
 		if (cmd_settings.dmkopt) {

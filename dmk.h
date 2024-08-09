@@ -50,12 +50,29 @@ extern "C" {
  * ideal track length assuming that the drive motor and the data clock
  * are both exactly at their specified speeds.
  */
-#define DMK_TRACKLEN_5SD  0x0cc0 /* DMK_TKHDR_SIZE + 3136 (nominal 3125) */
-#define DMK_TRACKLEN_5    0x1900 /* DMK_TKHDR_SIZE + 6272 (nominal 6250) */
-#define DMK_TRACKLEN_8SD  0x14e0 /* DMK_TKHDR_SIZE + 5216 (nominal 5208) */
-#define DMK_TRACKLEN_8    0x2940 /* DMK_TKHDR_SIZE + 10432 (nominal 10416) */
-#define DMK_TRACKLEN_3HD  0x3180 /* DMK_TKHDR_SIZE + 12544 (nominal 12500) */
-#define DMK_TRACKLEN_MAX  DMK_TRACKLEN_3HD
+
+#define DMKI_TRACKLEN_5SD  0x0cc0 /* DMK_TKHDR_SIZE + 3136 (nominal 3125) */
+#define DMKI_TRACKLEN_5    0x1900 /* DMK_TKHDR_SIZE + 6272 (nominal 6250) */
+#define DMKI_TRACKLEN_8SD  0x14e0 /* DMK_TKHDR_SIZE + 5216 (nominal 5208) */
+#define DMKI_TRACKLEN_8    0x2940 /* DMK_TKHDR_SIZE + 10432 (nominal 10416) */
+#define DMKI_TRACKLEN_3HD  0x3180 /* DMK_TKHDR_SIZE + 12544 (nominal 12500) */
+#define DMKI_TRACKLEN_MAX  DMKI_TRACKLEN_3HD
+
+
+/* Track lengths for reads from media.  Allows for 2% slower than nominal
+ * drive.  The values are rounded up to a multiple of 32 as the DMK
+ * values were (just for paranoia's sake, in case someone was
+ * depending on that).  The user will still have to specify a longer
+ * track explicitly to read Atari 800 disks made in a 288 RPM (4% slow) drive.
+ */
+
+#define DMKRD_TRACKLEN_5SD  0x0d00 /* DMK_TKHDR_SIZE + 3200 (nominal 3125) */
+#define DMKRD_TRACKLEN_5    0x1980 /* DMK_TKHDR_SIZE + 6400 (nominal 6250) */
+#define DMKRD_TRACKLEN_8SD  0x1560 /* DMK_TKHDR_SIZE + 5344 (nominal 5208) */
+#define DMKRD_TRACKLEN_8    0x2A40 /* DMK_TKHDR_SIZE + 10688 (nominal 10416) */
+#define DMKRD_TRACKLEN_3HD  0x3260 /* DMK_TKHDR_SIZE + 12768 (nominal 12500) */
+#define DMKRD_TRACKLEN_MAX  DMKRD_TRACKLEN_3HD
+
 
 /* Bit assignments in options */
 #define DMK_SSIDE_OPT	0x10
@@ -121,10 +138,11 @@ struct dmk_track {
 	// XXX Eventually work at eliminating use of "track".
 	union {
 		/* Worst case working size, use track_len for actual size. */
-		uint8_t		track[DMK_TRACKLEN_MAX];
+		uint8_t		track[DMKRD_TRACKLEN_MAX];
 		struct {
 			uint16_t	idam_offset[DMK_MAX_SECTORS];
-			uint8_t		data[DMK_TRACKLEN_MAX - DMK_TKHDR_SIZE];
+			uint8_t		data[DMKRD_TRACKLEN_MAX -
+						DMK_TKHDR_SIZE];
 		};
 	};
 };
