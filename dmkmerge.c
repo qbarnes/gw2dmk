@@ -11,7 +11,7 @@ dmk_get_phys_sector(uint8_t *track, int n)
 	if (n < 0 || n >= DMK_MAX_SECTORS)
 		return NULL;
 
-	uint16_t off = ((uint16_t *) track)[n] & DMK_IDAMP_BITS;
+	uint16_t off = ((uint16_t *)track)[n] & DMK_IDAMP_BITS;
 
 	/* IDAM offsets skip over IDAM offset table so can never be 0. */
 	if (off == 0)
@@ -121,7 +121,6 @@ merge_sectors(struct dmk_track *trk_merged,
 
 	uint16_t *idam_p = trk_working->idam_offset;
 	uint16_t *merged_idam_p = trk_merged->idam_offset;
-	uint8_t *dmk_sec;
 	int overflow = 0;
 	int best_errcount;
 	int best_repair;
@@ -147,22 +146,24 @@ merge_sectors(struct dmk_track *trk_merged,
 	tmp_stat = *trk_working_stats;
 	tmp_stat.reused_sectors = 0;
 
+	uint8_t *dmk_sec;
+
 	for (int cur = 0;
-	     (dmk_sec = dmk_get_phys_sector(dmk_track, cur));
-	     cur++) {
+	     (dmk_sec = dmk_get_phys_sector(dmk_track, cur)); cur++) {
 		int replaced = 0;
 		/* Bad sector?  See if we can find a replacement. */
 		if (idam_p[cur] & DMK_EXTRA_FLAG) {
-			int secnum = dmk_get_sector_num(dmk_sec), prev;
+			int secnum = dmk_get_sector_num(dmk_sec);
 			uint8_t *prev_sec;
-			for (prev = 0;
+
+			for (int prev = 0;
 			     (prev_sec =
 			      dmk_get_phys_sector(dmk_merged_track, prev));
 			     prev++) {
-				int seclen =
-				    dmk_get_phys_sector_len(dmk_merged_track,
-						    prev,
-						    trk_merged->track_len);
+				int seclen = dmk_get_phys_sector_len(
+						dmk_merged_track, prev,
+						trk_merged->track_len);
+
 				if (dmk_get_sector_num(prev_sec) != secnum)
 					continue;
 
@@ -183,6 +184,7 @@ merge_sectors(struct dmk_track *trk_merged,
 					    (&tmp_data_p, dmk_merged_track))
 						continue;
 				}
+
 				// Don't overflow the merged track.
 				if (seclen <= 0
 				    || tmp_data_p + seclen >
@@ -222,7 +224,7 @@ merge_sectors(struct dmk_track *trk_merged,
 				overflow = 1;
 			else if (seclen < 0
 				 || tmp_data_p + seclen >
-				 dmk_tmp_track + DMKRD_TRACKLEN_MAX)
+					dmk_tmp_track + DMKRD_TRACKLEN_MAX)
 				overflow = 1;
 			else {
 				*tmp_idam_p++ =

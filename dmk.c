@@ -78,7 +78,8 @@ dmk_track_fwrite(FILE *fp,
 	size_t	fwsz = 0;
 
 	for (int i = 0; i < DMK_MAX_SECTORS; ++i) {
-		uint16_t	idam_off = htole16(trk->idam_offset[i]);
+		uint16_t	idam_off = htole16(trk->idam_offset[i] &
+					~DMK_EXTRA_FLAG);
 
 		fwsz += fwrite(&idam_off, sizeof(idam_off), 1, fp);
 	}
