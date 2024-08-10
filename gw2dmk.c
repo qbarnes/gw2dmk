@@ -355,131 +355,142 @@ strtol_strict(const char *nptr, int base, const char *name)
 }
 
 
+#ifdef __GNUC__
+static int uv(const char *fmt, va_list ap) __attribute__((format(printf,1,0)));
+static int u(const char *fmt, ...)	   __attribute__((format(printf,1,2)));
+#endif
+
+static int
+uv(const char *fmt, va_list ap)
+{
+	return vfprintf(stderr, fmt, ap);
+}
+
+static int
+u(const char *fmt, ...)
+{
+	va_list	args;
+
+	va_start(args, fmt);
+	int ret = uv(fmt, args);
+	va_end(args);
+
+	return ret;
+}
+
 static void
 usage(const char *pgm_name, struct cmd_settings *cmd_set)
 {
-	fprintf(stderr, "Usage: %s [options] file.dmk\n\n"
+	u("Usage: %s [options] file.dmk\n\n"
 		" Options [settings in brackets]:\n", pgm_name);
 
-	fprintf(stderr, "  -G device       Greaseweazle device [%s]\n",
-			cmd_set->fdd.device ? cmd_set->fdd.device :
-			cmd_set->device_list[0]);
-	fprintf(stderr, "  -d drive        Drive unit {a,b,0,1,2} [%c]\n",
-			cmd_set->fdd.bus == BUS_SHUGART ?
-			cmd_set->fdd.drive + '0' : cmd_set->fdd.drive + 'a');
-	fprintf(stderr, "  -v verbosity    Amount of output [%d]\n",
-			(cmd_set->file_verbosity * 10) +
-			cmd_set->scrn_verbosity);
-  	fprintf(stderr, "                  0 = No output\n");
-  	fprintf(stderr, "                  1 = Summary of disk\n");
-  	fprintf(stderr, "                  2 = + summary of each track\n");
-  	fprintf(stderr, "                  3 = + individual errors\n");
-  	fprintf(stderr, "                  4 = + track IDs and DAMs\n");
-  	fprintf(stderr, "                  5 = + hex data and event flags\n");
-  	fprintf(stderr, "                  6 = like 4, but with raw data "
-			"too\n");
-  	fprintf(stderr, "                  7 = like 5, but with Greaseweazle "
-			"samples too\n");
-  	fprintf(stderr, "                  21 = level 2 to logfile, 1 to "
-			"screen, etc.\n");
-	fprintf(stderr, "  -u logfile      Log output to the given file [%s]"
-			"\n", cmd_set->logfile ? cmd_set->logfile : "none");
-	fprintf(stderr, "  -U gwlogfile    Greaseweazle transaction logfile "
-			"[%s]\n", cmd_set->devlogfile ? cmd_set->devlogfile :
-			"none");
-	//fprintf(stderr, "  -R logfile      Replay logfile\n");
-	fprintf(stderr, "  -M {i,e,d}      Menu control [d]\n");
-	fprintf(stderr, "                  i = Interrupt (^C) invokes "
-			"menu\n");
-	fprintf(stderr, "                  e = Errors equals retries invokes "
-			"menu\n");
-	fprintf(stderr, "                  d = Disables invoking menu\n");
-	fprintf(stderr, "  --[no]hole      Use or not index hole for track "
-			"start [%shole]\n", cmd_set->hole ? "" : "no");
-	fprintf(stderr, "  --[no]join      Join or not sectors between retries "
-			"[%sjoin]\n", cmd_set->join_sectors ? "" : "no");
-	fprintf(stderr, "  --[no]compat    Compare or not sides for "
-			"incompatible formats [%scompat]\n",
+	u("  -G device       Greaseweazle device [%s]\n",
+				cmd_set->fdd.device ? cmd_set->fdd.device :
+				cmd_set->device_list[0]);
+	u("  -d drive        Drive unit {a,b,0,1,2} [%c]\n",
+				cmd_set->fdd.bus == BUS_SHUGART ?
+				cmd_set->fdd.drive + '0' :
+				cmd_set->fdd.drive + 'a');
+	u("  -v verbosity    Amount of output [%d]\n",
+				(cmd_set->file_verbosity * 10) +
+				cmd_set->scrn_verbosity);
+	u("                  0 = No output\n");
+	u("                  1 = Summary of disk\n");
+	u("                  2 = + summary of each track\n");
+	u("                  3 = + individual errors\n");
+	u("                  4 = + track IDs and DAMs\n");
+	u("                  5 = + hex data and event flags\n");
+	u("                  6 = like 4, but with raw data too\n");
+  	u("                  7 = like 5, but with Greaseweazle samples too\n");
+  	u("                  21 = level 2 to logfile, 1 to screen, etc.\n");
+	u("  -u logfile      Log output to the given file [%s]\n",
+				cmd_set->logfile ? cmd_set->logfile : "none");
+	u("  -U gwlogfile    Greaseweazle transaction logfile [%s]\n",
+				cmd_set->devlogfile ? cmd_set->devlogfile :
+				"none");
+	//u("  -R logfile      Replay logfile\n");
+	u("  -M {i,e,d}      Menu control [d]\n");
+	u("                  i = Interrupt (^C) invokes menu\n");
+	u("                  e = Errors equals retries invokes menu\n");
+	u("                  d = Disables invoking menu\n");
+	u("  --[no]hole      Use or not index hole for track start [%shole]\n",
+				cmd_set->hole ? "" : "no");
+	u("  --[no]join      Join or not sectors between retries [%sjoin]\n",
+				cmd_set->join_sectors ? "" : "no");
+	u("  --[no]compat    Compare or not sides for incompatible formats "
+				"[%scompat]\n",
 				cmd_set->check_compat_sides ? "" : "no");
-	fprintf(stderr, "  --[no]dmkopt    Optimize or not DMK track length "
-			"[%sdmkopt]\n", cmd_set->dmkopt ? "" : "no");
-	fprintf(stderr, "  --[no]usehisto  Use histogram or not for "
-			"autotuning of thresholds [%susehisto]\n",
-			cmd_set->use_histo ? "" : "no");
-	fprintf(stderr, "  --[no]force     Force or not to overwrite "
-			"existing DMK output file [%sforce]\n",
-			cmd_set->forcewrite ? "" : "no");
-	fprintf(stderr, "  --[no]reset     Reset GW upon initialization "
-			"[%sreset]\n",
-			cmd_set->reset_on_init ? "" : "no");
+	u("  --[no]dmkopt    Optimize or not DMK track length [%sdmkopt]\n",
+				cmd_set->dmkopt ? "" : "no");
+	u("  --[no]usehisto  Use histogram or not for autotuning of thresholds "
+				"[%susehisto]\n",
+				cmd_set->use_histo ? "" : "no");
+	u("  --[no]force     Force or not to overwrite existing DMK output "
+				"file [%sforce]\n",
+				cmd_set->forcewrite ? "" : "no");
+	u("  --[no]reset     Reset GW upon initialization [%sreset]\n",
+				cmd_set->reset_on_init ? "" : "no");
 
-	fprintf(stderr, "\n Options to manually set values that are normally "
+	u("\n Options to manually set values that are normally "
 			"autodetected:\n");
-	fprintf(stderr, "  -k kind         Kind of floppy drive and media\n");
-	for (int k = 1; k <= 4; ++k)
-		fprintf(stderr, "                  %d = %s\n", k, kind2desc(k));
-	fprintf(stderr, "  -m steps        Step multiplier, 1 or 2\n");
-	fprintf(stderr, "  -t tracks       Number of tracks per side\n");
-	fprintf(stderr, "  -s sides        Number of sides, 1 or 2\n");
-	fprintf(stderr, "  -e encoding     0 = mixed, 1 = FM (SD), 2 = MFM "
-			"(DD or HD), 3 = RX02 [%d]\n", cmd_set->usr_encoding);
-	fprintf(stderr, "  --dd|--hd       Density Select, pin 2\n");
-	fprintf(stderr, "  -x max_retry    Max retries on errors [%d]\n",
-			cmd_set->retries[0][0]);
-	fprintf(stderr, "  -X min_retry    Min retries even if no errors "
-			"[%d]\n", cmd_set->min_retries[0][0]);
-	fprintf(stderr, "  -S min_sector   Min sector count [%d]\n",
-			cmd_set->min_sectors[0][0]);
+	u("  -k kind         Kind of floppy drive and media\n");
+		for (int k = 1; k <= 4; ++k)
+			u("                  %d = %s\n", k, kind2desc(k));
+	u("  -m steps        Step multiplier, 1 or 2\n");
+	u("  -t tracks       Number of tracks per side\n");
+	u("  -s sides        Number of sides, 1 or 2\n");
+	u("  -e encoding     0 = mixed, 1 = FM (SD), 2 = MFM (DD or HD), "
+				"3 = RX02 [%d]\n", cmd_set->usr_encoding);
+	u("  --dd|--hd       Density Select, pin 2\n");
+	u("  -x max_retry    Max retries on errors [%d]\n",
+				cmd_set->retries[0][0]);
+	u("  -X min_retry    Min retries even if no errors [%d]\n",
+				cmd_set->min_retries[0][0]);
+	u("  -S min_sector   Min sector count [%d]\n",
+				cmd_set->min_sectors[0][0]);
 	// XXX -z
-	fprintf(stderr, "  -r reverse      0 = normal, 1 = reverse sides "
-			"[%d]\n", cmd_set->reverse_sides);
-	fprintf(stderr, "  -q quirk        Bitmap of support for some format "
-			"quirks [0x%02x]\n", cmd_set->quirk);
-	fprintf(stderr, "                  0x01 = ID CRCs omit a1 a1 a1 "
-			"premark\n");
-	fprintf(stderr, "                  0x02 = Data CRCs omit a1 a1 a1 "
-			"premark\n");
-	fprintf(stderr, "                  0x04 = Third a1 a1 a1 premark "
-			"isn't missing clock\n");
-	fprintf(stderr, "                  0x08 = Extra bytes (data only) "
-			"after data CRC\n");
-	fprintf(stderr, "                  0x10 = Extra bytes (4 data + 2 "
-			"CRC) after data CRC\n");
-	fprintf(stderr, "                  0x20 = 4 extra data bytes before "
-			"data CRC\n");
-	fprintf(stderr, "                  0x40 = FM IAM can have either "
-			"0xd7 or 0xc7 clock\n");
-	fprintf(stderr, "                  0x80 = Extra MFM clocks may be "
-			"present\n");
-	fprintf(stderr, "  -w fmtimes      Write FM bytes 1 or 2 times "
-			"[%d]\n", cmd_set->fmtimes);
-	fprintf(stderr, "  -l bytes        DMK track length\n");
+	u("  -r reverse      0 = normal, 1 = reverse sides [%d]\n",
+				cmd_set->reverse_sides);
+	u("  -q quirk        Bitmap of support for some format quirks "
+				"[0x%02x]\n", cmd_set->quirk);
+	u("                  0x01 = ID CRCs omit a1 a1 a1 premark\n");
+	u("                  0x02 = Data CRCs omit a1 a1 a1 premark\n");
+	u("                  0x04 = Third a1 a1 a1 premark isn't missing "
+				"clock\n");
+	u("                  0x08 = Extra bytes (data only) after data CRC\n");
+	u("                  0x10 = Extra bytes (4 data + 2 CRC) after data "
+				"CRC\n");
+	u("                  0x20 = 4 extra data bytes before data CRC\n");
+	u("                  0x40 = FM IAM can have either 0xd7 or 0xc7 "
+				"clock\n");
+	u("                  0x80 = Extra MFM clocks may be present\n");
+	u("  -w fmtimes      Write FM bytes 1 or 2 times [%d]\n",
+				cmd_set->fmtimes);
+	u("  -l bytes        DMK track length\n");
 
-	fprintf(stderr, "\n Rarely used fine-tuning options:\n");
-	fprintf(stderr, "  -f threshold    FM threshold for short vs. long\n");
-	fprintf(stderr, "  -1 threshold    MFM threshold for short vs. "
-			"medium\n");
-	fprintf(stderr, "  -2 threshold    MFM threshold for medium vs. "
-			"long\n");
-	fprintf(stderr, "  -T stp[,stl]    Step time");
-	if (cmd_set->fdd.step_ms != -1)
-		fprintf(stderr, " [%u]", cmd_set->fdd.step_ms);
-	fprintf(stderr, " and head settling time");
-	if (cmd_set->fdd.settle_ms != -1)
-		fprintf(stderr, " [%u]", cmd_set->fdd.settle_ms);
-	fprintf(stderr, " in ms\n");
-	fprintf(stderr, "  -g ign          Ignore first ign bytes of track "
-			"[%d]\n", cmd_set->ignore);
-	fprintf(stderr, "  -i ipos         Force IAM to ipos from track "
-			"start; if -1, don't [%d]\n", cmd_set->iam_ipos);
-	fprintf(stderr, "  -a alternate    Alternate even/odd tracks on "
-			"retries with -m2 [%d]\n", cmd_set->alternate);
-	fprintf(stderr, "                  0 = always even\n");
-	fprintf(stderr, "                  1 = always odd\n");
-	fprintf(stderr, "                  2 = even, then odd\n");
-	fprintf(stderr, "                  3 = odd, then even\n");
+	u("\n Rarely used fine-tuning options:\n");
+	u("  -f threshold    FM threshold for short vs. long\n");
+	u("  -1 threshold    MFM threshold for short vs. medium\n");
+	u("  -2 threshold    MFM threshold for medium vs. long\n");
+	u("  -T stp[,stl]    Step time");
+		if (cmd_set->fdd.step_ms != -1)
+			u(" [%u]", cmd_set->fdd.step_ms);
+		u(" and head settling time");
+		if (cmd_set->fdd.settle_ms != -1)
+			u(" [%u]", cmd_set->fdd.settle_ms);
+		u(" in ms\n");
+	u("  -g ign          Ignore first ign bytes of track [%d]\n",
+				cmd_set->ignore);
+	u("  -i ipos         Force IAM to ipos from track start; if -1, "
+				"don't [%d]\n", cmd_set->iam_ipos);
+	u("  -a alternate    Alternate even/odd tracks on retries with -m2 "
+				"[%d]\n", cmd_set->alternate);
+	u("                  0 = always even\n");
+	u("                  1 = always odd\n");
+	u("                  2 = even, then odd\n");
+	u("                  3 = odd, then even\n");
 
-	fprintf(stderr, "\n%s version %s\n\n", pgm_name, version);
+	u("\n%s version %s\n\n", pgm_name, version);
 
 	exit(EXIT_FAILURE);
 }
