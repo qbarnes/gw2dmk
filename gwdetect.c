@@ -258,6 +258,7 @@ redo_kind:;
 
 	gw_get_histo_analysis(fdd->gwfd, &histo, ha);
 
+	// XXX Could we use ha->peaks == 0 here?
 	if (histo.data_overflow > 25)	/* 25 is arbitrary */
 		msg_fatal(EXIT_FAILURE, "Track 0 side 0 is unformatted.\n");
 
@@ -327,6 +328,7 @@ gw_detect_sides(struct gw_fddrv *fdd,
 
 	gw_get_histo_analysis(fdd->gwfd, &histo, &ha);
 
+	// XXX Could we use ha->peaks == 0 here?
 	fdd->sides = (histo.data_overflow > 25) ? 1 : 2;
 
 	return 0;
