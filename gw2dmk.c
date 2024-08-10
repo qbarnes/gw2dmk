@@ -89,12 +89,6 @@ static const struct option cmd_long_args[] = {
 		'm'
 	},
 	{
-		"reverse",
-		required_argument,
-		NULL,
-		'r'
-	},
-	{
 		"sides",
 		required_argument,
 		NULL,
@@ -262,6 +256,18 @@ static const struct option cmd_long_args[] = {
 		NULL,
 		0
 	},
+	{
+		"reverse",
+		no_argument,
+		NULL,
+		0
+	},
+	{
+		"noreverse",
+		no_argument,
+		NULL,
+		0
+	},
 	{ 0, 0, 0, 0 }
 };
 
@@ -356,12 +362,12 @@ strtol_strict(const char *nptr, int base, const char *name)
 
 
 #ifdef __GNUC__
-static int uv(const char *fmt, va_list ap) __attribute__((format(printf,1,0)));
+static int vu(const char *fmt, va_list ap) __attribute__((format(printf,1,0)));
 static int u(const char *fmt, ...)	   __attribute__((format(printf,1,2)));
 #endif
 
 static int
-uv(const char *fmt, va_list ap)
+vu(const char *fmt, va_list ap)
 {
 	return vfprintf(stderr, fmt, ap);
 }
@@ -372,7 +378,7 @@ u(const char *fmt, ...)
 	va_list	args;
 
 	va_start(args, fmt);
-	int ret = uv(fmt, args);
+	int ret = vu(fmt, args);
 	va_end(args);
 
 	return ret;
@@ -448,9 +454,9 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 				cmd_set->min_retries[0][0]);
 	u("  -S min_sector   Min sector count [%d]\n",
 				cmd_set->min_sectors[0][0]);
+	u("  --[no]reverse   Reverse sides or not [%sreverse]\n",
+				cmd_set->reverse_sides ? "" : "no");
 	// XXX -z
-	u("  -r reverse      0 = normal, 1 = reverse sides [%d]\n",
-				cmd_set->reverse_sides);
 	u("  -q quirk        Bitmap of support for some format quirks "
 				"[0x%02x]\n", cmd_set->quirk);
 	u("                  0x01 = ID CRCs omit a1 a1 a1 premark\n");
@@ -696,7 +702,7 @@ parse_args(int argc,
 	int	lindex = 0;
 
 	while ((opt = getopt_long(argc, argv,
-			"a:d:e:f:g:i:k:l:m:q:r:s:t:u:v:w:x:G:M:S:T:U:X:1:2:",
+			"a:d:e:f:g:i:k:l:m:q:s:t:u:v:w:x:G:M:S:T:U:X:1:2:",
 			cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -735,6 +741,10 @@ parse_args(int argc,
 				cmd_set->reset_on_init = true;
 			} else if (!strcmp(name, "noreset")) {
 				cmd_set->reset_on_init = false;
+			} else if (!strcmp(name, "reverse")) {
+				cmd_set->reverse_sides = true;
+			} else if (!strcmp(name, "noreverse")) {
+				cmd_set->reverse_sides = false;
 			} else {
 				goto err_usage;
 			}
@@ -835,17 +845,6 @@ parse_args(int argc,
 				QUIRK_EXTRA, QUIRK_EXTRA_CRC, QUIRK_EXTRA_DATA);
 			}
 				cmd_set->quirk = quirk;
-			break;
-
-		case 'r':;
-			const int reverse = strtol_strict(optarg, 0, "'r'");
-			if (reverse >= 0 && reverse <= 1) {
-				cmd_set->reverse_sides = reverse;
-			} else {
-				msg_error("Option-argument to '%c' must "
-					  "be 0 or 1.\n", opt);
-				goto err_usage;
-			}
 			break;
 
 		case 's':;
