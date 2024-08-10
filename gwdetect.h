@@ -33,16 +33,6 @@ extern gw_devt gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info,
 
 extern int gw_detect_drive(struct gw_fddrv *fdd);
 
-extern void gw_get_histo_analysis(gw_devt gwfd, struct histogram *histo,
-				  struct histo_analysis *ha);
-
-extern int gw_detect_drive_kind(struct gw_fddrv *fdd,
-				const struct gw_info *gw_info,
-				struct histo_analysis *ha);
-
-extern int gw_detect_sides(struct gw_fddrv *fdd,
-			   const struct gw_info *gw_info);
-
 
 #ifdef __cplusplus
 }
