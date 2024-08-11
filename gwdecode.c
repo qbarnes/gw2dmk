@@ -65,12 +65,9 @@ encoding_name(int encoding)
 
 void
 fdecoder_init(struct fdecoder *fdec,
-	      uint32_t sample_freq,
-	      int usr_encoding)
+	      uint32_t sample_freq)
 {
-	int	first_encoding = (usr_encoding == RX02) ? FM : usr_encoding;
-
-	*fdec = (struct fdecoder) {
+	*fdec = (struct fdecoder){
 		.sample_freq = sample_freq,
 		.gw_ticks = 0,
 
@@ -81,9 +78,10 @@ fdecoder_init(struct fdecoder *fdec,
 		.quirk = 0,
 		.reverse_sides = 0,
 
-		.usr_encoding = usr_encoding,
-		.first_encoding = first_encoding,
-		.cur_encoding = first_encoding,
+		.usr_encoding = MIXED,
+		.first_encoding = MIXED,
+		.cur_encoding = MIXED,
+
 		.mark_after = -1,
 		.sizecode = 0,
 		.secsize = 0,

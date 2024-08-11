@@ -1153,7 +1153,8 @@ read_track(struct cmd_settings *cmd_set,
 	   struct dmk_file *dmkf,
 	   struct dmk_disk_stats *dds,
 	   int track,
-	   int side)
+	   int side,
+	   int *first_encoding)
 {
 	struct dmk_track_stats	dts;
 	dmk_track_stats_init(&dts);
@@ -1185,13 +1186,15 @@ retry:
 	gw_head(cmd_set->fdd.gwfd, side ^ cmd_set->reverse_sides);
 	// error checking
 
+	fdecoder_init(&flux2dmk.fdec, sample_freq);
 
-	fdecoder_init(&flux2dmk.fdec, sample_freq, cmd_set->usr_encoding);
-
-	flux2dmk.fdec.use_hole      = cmd_set->hole;
-	flux2dmk.fdec.quirk         = cmd_set->quirk;
-	flux2dmk.fdec.reverse_sides = cmd_set->reverse_sides;
-	flux2dmk.fdec.awaiting_iam  = (cmd_set->iam_ipos >= 0) ? true : false;
+	flux2dmk.fdec.usr_encoding   = cmd_set->usr_encoding;
+	flux2dmk.fdec.first_encoding = *first_encoding;
+	flux2dmk.fdec.cur_encoding   = *first_encoding;
+	flux2dmk.fdec.use_hole       = cmd_set->hole;
+	flux2dmk.fdec.quirk          = cmd_set->quirk;
+	flux2dmk.fdec.reverse_sides  = cmd_set->reverse_sides;
+	flux2dmk.fdec.awaiting_iam   = (cmd_set->iam_ipos >= 0) ? true : false;
 
 	dmk_track_sm_init(&flux2dmk.dtsm,
 			  dds,
@@ -1464,6 +1467,8 @@ leave:;
 	if (flux2dmk.fdec.flippy)
 		dds->flippy = true;
 
+	*first_encoding = flux2dmk.fdec.first_encoding;
+
 	return 0;
 }
 
@@ -1511,11 +1516,15 @@ restart:
 
 	reading_floppy = true;
 
+	int first_encoding =
+		(cmd_set->usr_encoding == RX02) ? FM : cmd_set->usr_encoding;
+
 	for (int h = 0; h < tracks; ++h) {
 
 		for (int s = 0; s < sides; ++s) {
 			int rtv = read_track(cmd_set, sample_freq,
-					     dmkf, &dds, h, s);
+					     dmkf, &dds, h, s,
+					     &first_encoding);
 
 			switch (rtv) {
 			case -2:

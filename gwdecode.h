@@ -127,9 +127,7 @@ struct flux2dmk_sm {
 
 extern const char *encoding_name(int encoding);
 
-extern void fdecoder_init(struct fdecoder *fdec,
-			  uint32_t sample_freq,
-			  int usr_encoding);
+extern void fdecoder_init(struct fdecoder *fdec, uint32_t sample_freq);
 
 extern void dmk_track_sm_init(struct dmk_track_sm *dtsm,
 			      struct dmk_disk_stats *dds,
