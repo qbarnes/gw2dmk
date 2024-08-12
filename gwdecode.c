@@ -998,12 +998,19 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
  * using two fixed thresholds modified by a postcomp factor.
  */
 
-void
+int
 gwflux_decode_pulse(uint32_t pulse,
 		    struct gw_media_encoding *gme,
-		    struct flux2dmk_sm  *flux2dmk)
+		    struct flux2dmk_sm  *f2dsm)
 {
-	struct fdecoder	*fdec = &flux2dmk->fdec;
+	struct fdecoder		*fdec = &f2dsm->fdec;
+	struct dmk_track_sm	*dtsm = &f2dsm->dtsm;
+
+	// XXX For now, block decoding stream until hole seen.
+	// Change when we can abort the stream in progress without waiting
+	// for a full rotation and move on.
+	if (fdec->use_hole && !dtsm->track_hole_p)
+		return 0;
 
 	//float	postcomp = 0.5;  /* hack for now XXX */
 	int	len;
@@ -1040,8 +1047,10 @@ gwflux_decode_pulse(uint32_t pulse,
 
 	msg(MSG_SAMPLES, "%c ", "-tsml"[len]);
 
-	gwflux_decode_bit(flux2dmk, 1);
-	while (--len) gwflux_decode_bit(flux2dmk, 0);
+	gwflux_decode_bit(f2dsm, 1);
+	while (--len) gwflux_decode_bit(f2dsm, 0);
+
+	return dtsm->dmk_full ? 1 : 0;
 }
 
 
@@ -1064,11 +1073,23 @@ int
 gwflux_decode_index(uint32_t imark, struct flux2dmk_sm *f2dsm)
 {
 	struct fdecoder *fdec	  = &f2dsm->fdec;
+	struct dmk_track_sm *dtsm = &f2dsm->dtsm;
 
 	fdec->index[0] = fdec->index[1];
 	fdec->index[1] = imark;
 
-	if  (fdec->index[0] != ~0) {
+	/* First index hole encountered. */
+	if (f2dsm->fdec.index[0] == ~0) {
+		uint8_t	**track_hole_pp = &dtsm->track_hole_p;
+
+		if (*track_hole_pp == NULL)
+			*track_hole_pp = f2dsm->dtsm.track_data_p;
+
+		if (dtsm->dmk_ignore < 0) {
+			int	i = dtsm->dmk_ignore;
+			while (i++) *dtsm->track_data_p++ = 0xff;
+		}
+	} else {
 		fdec->total_ticks += fdec->index[1] - fdec->index[0];
 		++fdec->revs_seen;
 	}

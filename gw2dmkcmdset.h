@@ -41,7 +41,7 @@ struct cmd_settings {
 	bool			hole;
 	bool			alternate;
 	unsigned int		quirk;
-	int			iam_ipos;
+	int			iam_pos;
 	int			fmtimes;
 	int			usr_fmthresh;
 	int			usr_mfmthresh1;

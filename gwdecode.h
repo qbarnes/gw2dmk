@@ -139,9 +139,9 @@ extern void dmk_track_sm_init(struct dmk_track_sm *dtsm,
 			      struct dmk_track *trk_merged,
 			      struct dmk_track_stats *trk_merged_stats);
 
-extern void gwflux_decode_pulse(uint32_t pulse,
+extern int gwflux_decode_pulse(uint32_t pulse,
 				struct gw_media_encoding *gme, 
-				struct flux2dmk_sm  *fdec);
+				struct flux2dmk_sm  *f2dsm);
 
 extern void gw_decode_flush(struct flux2dmk_sm *f2dsm);
 

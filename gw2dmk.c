@@ -302,7 +302,7 @@ static struct cmd_settings cmd_settings = {
 	.reverse_sides = false,
 	.hole = true,
 	.alternate = 0,
-	.iam_ipos = -1,
+	.iam_pos = -1,
 	.fmtimes = 2,
 	.usr_fmthresh = -1,
 	.usr_mfmthresh1 = -1,
@@ -488,7 +488,7 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	u("  -g ign          Ignore first ign bytes of track [%d]\n",
 				cmd_set->ignore);
 	u("  -i ipos         Force IAM to ipos from track start; if -1, "
-				"don't [%d]\n", cmd_set->iam_ipos);
+				"don't [%d]\n", cmd_set->iam_pos);
 	u("  -a alternate    Alternate even/odd tracks on retries with -m2 "
 				"[%d]\n", cmd_set->alternate);
 	u("                  0 = always even\n");
@@ -799,7 +799,7 @@ parse_args(int argc,
 
 		case 'i':;
 			const int ipos = strtol_strict(optarg, 10, "'i'");
-			cmd_set->iam_ipos = ipos;
+			cmd_set->iam_pos = ipos;
 			break;
 
 		case 'k':;
@@ -1079,19 +1079,7 @@ pulse_fn(uint32_t pulse, void *data)
 {
 	struct pulse_data	*pdata = (struct pulse_data *)data;
 
-	uint8_t **track_hole_pp = &pdata->flux2dmk->dtsm.track_hole_p;
-
-	/* Only note the first index hole encountered. */
-	if ((*track_hole_pp == NULL) && (pdata->flux2dmk->fdec.index[1] != ~0))
-		*track_hole_pp = pdata->flux2dmk->dtsm.track_data_p;
-
-	// XXX For now, block decoding stream until hole seen.
-	// Change when we can abort the stream in progress without waiting
-	// for a full rotation and move on.
-	if (!pdata->flux2dmk->fdec.use_hole || *track_hole_pp)
-		gwflux_decode_pulse(pulse, pdata->gme, pdata->flux2dmk);
-
-	return pdata->flux2dmk->dtsm.dmk_full ? 1 : 0;
+	return gwflux_decode_pulse(pulse, pdata->gme, pdata->flux2dmk);
 }
 
 
@@ -1176,7 +1164,7 @@ retry:
 	flux2dmk.fdec.use_hole       = cmd_set->hole;
 	flux2dmk.fdec.quirk          = cmd_set->quirk;
 	flux2dmk.fdec.reverse_sides  = cmd_set->reverse_sides;
-	flux2dmk.fdec.awaiting_iam   = (cmd_set->iam_ipos >= 0) ? true : false;
+	flux2dmk.fdec.awaiting_iam   = (cmd_set->iam_pos >= 0) ? true : false;
 
 	dmk_track_sm_init(&flux2dmk.dtsm,
 			  dds,
@@ -1184,7 +1172,7 @@ retry:
 			  &dmkf->track[track][side],
 			  &dts);
 
-	flux2dmk.dtsm.dmk_iam_pos    = cmd_set->iam_ipos;
+	flux2dmk.dtsm.dmk_iam_pos    = cmd_set->iam_pos;
 	flux2dmk.dtsm.dmk_ignore     = cmd_set->ignore;
 	flux2dmk.dtsm.accum_sectors  = cmd_set->join_sectors;
 
