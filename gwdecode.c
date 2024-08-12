@@ -94,7 +94,6 @@ fdecoder_init(struct fdecoder *fdec,
 
 		.backward_am = 0,
 		.flippy = 0,
-		.index_edge = 0,
 
 		.use_hole = true,
 		.quirk = 0x00,
@@ -107,7 +106,12 @@ fdecoder_init(struct fdecoder *fdec,
 
 		.ibyte = -1,
 		.dbyte = -1,
-		.ebyte = -1
+		.ebyte = -1,
+
+		.index_edge = 0,
+		.revs_seen = 0,
+		.total_ticks = 0,
+		.index = { ~0, ~0 }
 	};
 }
 
@@ -246,7 +250,7 @@ dmk_idam(struct flux2dmk_sm *f2dsm, unsigned char byte, int encoding)
 	if (!fdec->awaiting_iam && dmk_awaiting_track_start(f2dsm)) {
 		/* In this mode, we position the first IDAM a nominal distance
 		 * from the start of the track, to make sure that (1) the whole
-		 * track will fit and (2) if dmk2cw is used to write the image
+		 * track will fit and (2) if dmk2gw is used to write the image
 		 * back to a real disk, the first IDAM won't be too close to
 		 * the index hole.  */
 #define GAP1PLUS 48
@@ -995,9 +999,9 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
  */
 
 void
-gwflux_decode(uint32_t pulse,
-	      struct gw_media_encoding *gme,
-	      struct flux2dmk_sm  *flux2dmk)
+gwflux_decode_pulse(uint32_t pulse,
+		    struct gw_media_encoding *gme,
+		    struct flux2dmk_sm  *flux2dmk)
 {
 	struct fdecoder	*fdec = &flux2dmk->fdec;
 
@@ -1053,6 +1057,28 @@ gw_decode_flush(struct flux2dmk_sm *f2dsm)
 
 	for (int i = 0; i < accum_sz_bits; ++i)
 		gwflux_decode_bit(f2dsm, !(i & 1) );
+}
+
+
+int
+gwflux_decode_index(uint32_t imark, struct flux2dmk_sm *f2dsm)
+{
+	struct fdecoder *fdec	  = &f2dsm->fdec;
+
+	fdec->index[0] = fdec->index[1];
+	fdec->index[1] = imark;
+
+	if  (fdec->index[0] != ~0) {
+		fdec->total_ticks += fdec->index[1] - fdec->index[0];
+		++fdec->revs_seen;
+	}
+
+	/* Unlike CW, GW only lets us see the rising edge. */
+	++fdec->index_edge;
+
+	msg(MSG_HEX, "{");
+
+	return 0;
 }
 
 

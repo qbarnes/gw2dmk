@@ -71,7 +71,6 @@ struct fdecoder
 
 	int		backward_am;
 	int		flippy;
-	int		index_edge;
 
 	int		use_hole;	/* From user args. */
 
@@ -84,6 +83,11 @@ struct fdecoder
 	int		ibyte;		/* Index byte count     */
 	int		dbyte;		/* Data byte count      */
 	int		ebyte;		/* Extra CRC byte count */
+
+	int		index_edge;
+	unsigned int	revs_seen;
+	uint32_t	total_ticks;
+	uint32_t	index[2];
 };
 
 
@@ -135,11 +139,13 @@ extern void dmk_track_sm_init(struct dmk_track_sm *dtsm,
 			      struct dmk_track *trk_merged,
 			      struct dmk_track_stats *trk_merged_stats);
 
-extern void gwflux_decode(uint32_t pulse,
-			  struct gw_media_encoding *gme, 
-			  struct flux2dmk_sm  *fdec);
+extern void gwflux_decode_pulse(uint32_t pulse,
+				struct gw_media_encoding *gme, 
+				struct flux2dmk_sm  *fdec);
 
 extern void gw_decode_flush(struct flux2dmk_sm *f2dsm);
+
+extern int gwflux_decode_index(uint32_t imark, struct flux2dmk_sm *f2dsm);
 
 extern void gw_post_process_track(struct flux2dmk_sm *f2dsm);
 

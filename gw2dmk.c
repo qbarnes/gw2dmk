@@ -1061,34 +1061,16 @@ err_usage:
 }
 
 
-struct imark_data {
-	uint32_t	total_ticks;	// Only count ticks between index holes
-	unsigned int	revs_seen;
-	uint32_t	index[2];
-};
-
-
 static int
 imark_fn(uint32_t imark, void *data)
 {
-	struct imark_data *idata = (struct imark_data *)data;
-
-	idata->index[0] = idata->index[1];
-	idata->index[1] = imark;
-
-	if  (idata->index[0] != ~0) {
-		idata->total_ticks += idata->index[1] - idata->index[0];
-		++idata->revs_seen;
-	}
-
-	return 0;
+	return gwflux_decode_index(imark, (struct flux2dmk_sm *)data);
 }
 
 
 struct pulse_data {
 	struct gw_media_encoding	*gme;
 	struct flux2dmk_sm		*flux2dmk;
-	struct imark_data		imd;
 };
 
 
@@ -1100,14 +1082,14 @@ pulse_fn(uint32_t pulse, void *data)
 	uint8_t **track_hole_pp = &pdata->flux2dmk->dtsm.track_hole_p;
 
 	/* Only note the first index hole encountered. */
-	if ((*track_hole_pp == NULL) && (pdata->imd.index[1] != ~0))
+	if ((*track_hole_pp == NULL) && (pdata->flux2dmk->fdec.index[1] != ~0))
 		*track_hole_pp = pdata->flux2dmk->dtsm.track_data_p;
 
 	// XXX For now, block decoding stream until hole seen.
 	// Change when we can abort the stream in progress without waiting
 	// for a full rotation and move on.
 	if (!pdata->flux2dmk->fdec.use_hole || *track_hole_pp)
-		gwflux_decode(pulse, pdata->gme, pdata->flux2dmk);
+		gwflux_decode_pulse(pulse, pdata->gme, pdata->flux2dmk);
 
 	return pdata->flux2dmk->dtsm.dmk_full ? 1 : 0;
 }
@@ -1215,10 +1197,9 @@ retry:
 		return 2;
 	}
 
-	struct pulse_data pdata = { &cmd_set->gme, &flux2dmk,
-				    { 0, 0, { ~0, ~0 } } };
+	struct pulse_data pdata = { &cmd_set->gme, &flux2dmk };
 	struct gw_decode_stream_s gwds = { 0, -1,
-					   imark_fn, &pdata.imd,
+					   imark_fn, &flux2dmk,
 					   pulse_fn, &pdata };
 
 	ssize_t dsv = gw_decode_stream(fbuf, bytes_read, &gwds);
@@ -1234,6 +1215,8 @@ retry:
 				(int)(bytes_read - dsv), (int)bytes_read,
 				gwds.status);
 	}
+
+	msg(MSG_HEX, "[end of data] ");
 
 	free(fbuf);
 
