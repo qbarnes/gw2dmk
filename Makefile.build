@@ -9,7 +9,6 @@ LDLIBS  += -static -lregex
 endif
 
 build_dir	?= build
-dmklib_dir	?= dmklib
 
 ifndef top_dir
 top_dir		:= ..
@@ -28,15 +27,12 @@ vpath %.h	$(inc_dir)
 vpath %		$(top_dir)
 
 obj_targets	= gw2dmk.o gw.o gwx.o msg.o m2.o gwhisto.o \
-		   gwhist.o gwdetect.o crc.o \
-		   $(dmklib_dir)/libdmk.o
+		   gwhist.o gwdetect.o crc.o
 
 targets		= gw2dmk$E gwhist$E m2$E
 
 #tar_files	= LICENSE README.md $(targets) $(tar_extras)
 tar_files	= LICENSE README.md gw2dmk$E gwhist$E $(tar_extras)
-
-dmklib_args	= SOURCES=libdmk.c TARGETS=libdmk.o CC=$(CC)
 
 clean_files	= $(targets) $(obj_targets)
 
@@ -44,9 +40,6 @@ clean_files	= $(targets) $(obj_targets)
 all: $(targets)
 
 release: $(TARBALLGZ)
-
-$(dmklib_dir)/libdmk.o: FORCE
-	$(MAKE) -C '$(dmklib_dir)' $(dmklib_args)
 
 msg.o: msg.c msg.h
 
