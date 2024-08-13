@@ -1102,7 +1102,7 @@ dmkfile2fp(const char *dmkfile, bool fail_if_exists)
 	if (fd == -1)
 		return NULL;
 
-	return fdopen(fd, "w");
+	return fdopen(fd, "wb");
 }
 
 
