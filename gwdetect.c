@@ -102,21 +102,6 @@ gw_find_open_gw(const char *device,
 
 
 /*
- * Detect drive connected to GW.
- */
-
-int
-gw_detect_drive(struct gw_fddrv *fdd)
-{
-	if (fdd->drive == -1)
-		msg_fatal(EXIT_FAILURE,
-			  "Must specify drive with '-d' for now.\n");
-
-	return 0;
-}
-
-
-/*
  * Initialize GW and drive.
  *
  * If "reset" is true, reset device upon initialization.
@@ -209,4 +194,19 @@ gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info, bool reset)
 	}
 
 	return gwfd;
+}
+
+
+/*
+ * Detect drive connected to GW.
+ */
+
+int
+gw_detect_drive(struct gw_fddrv *fdd)
+{
+	if (fdd->drive == -1)
+		msg_fatal(EXIT_FAILURE,
+			  "Must specify drive with '-d' for now.\n");
+
+	return 0;
 }
