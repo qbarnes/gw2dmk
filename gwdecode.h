@@ -25,18 +25,6 @@ extern "C" {
 #include "msg.h"
 
 
-/* Bit assignments in quirks byte */
-#define QUIRK_ID_CRC		0x01
-#define QUIRK_DATA_CRC		0x02
-#define QUIRK_PREMARK		0x04
-#define QUIRK_EXTRA		0x08
-#define QUIRK_EXTRA_CRC		0x10
-#define QUIRK_EXTRA_DATA	0x20
-#define QUIRK_IAM		0x40
-#define QUIRK_MFM_CLOCK		0x80
-#define QUIRK_ALL		0xff
-
-
 /*
  * Flux decoder
  *

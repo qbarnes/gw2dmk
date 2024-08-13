@@ -72,6 +72,18 @@ extern "C" {
 #define DMK_EXTRA_FLAG	0x4000  /* unused */
 #define DMK_IDAMP_BITS	0x3fff
 
+// XXX Should these get a DMK_ prefix?
+/* Bit assignments in quirks byte */
+#define QUIRK_ID_CRC		0x01
+#define QUIRK_DATA_CRC		0x02
+#define QUIRK_PREMARK		0x04
+#define QUIRK_EXTRA		0x08
+#define QUIRK_EXTRA_CRC		0x10
+#define QUIRK_EXTRA_DATA	0x20
+#define QUIRK_IAM		0x40
+#define QUIRK_MFM_CLOCK		0x80
+#define QUIRK_ALL		0xff
+
 
 enum dmk_encoding_mode {
 	MIXED  = 0,
@@ -113,7 +125,8 @@ struct dmk_header {
 	uint8_t		ntracks;
 	uint16_t	tracklen;
 	uint8_t		options;
-	uint8_t		padding[7];
+	uint8_t		quirks;
+	uint8_t		padding[6];
 	uint32_t	real_format;
 };
 
