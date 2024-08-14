@@ -30,6 +30,10 @@ dmk_header_init(struct dmk_header *dmkh,
 }
 
 
+/*
+ * Should return 7 when all seven header items read correctly.
+ */
+
 size_t
 dmk_header_fread(struct dmk_header *dmkh, FILE *fp)
 {
@@ -46,6 +50,7 @@ dmk_header_fread(struct dmk_header *dmkh, FILE *fp)
 	dmkh->tracklen = le16toh(tracklen);
 
 	frsz += fread(&dmkh->options, sizeof(dmkh->options), 1, fp);
+	frsz += fread(&dmkh->quirks, sizeof(dmkh->quirks), 1, fp);
 	frsz += fread(dmkh->padding, sizeof(dmkh->padding), 1, fp);
 
 	uint32_t format;
@@ -56,6 +61,10 @@ dmk_header_fread(struct dmk_header *dmkh, FILE *fp)
 	return frsz;
 }
 
+
+/*
+ * Should return 7 when all seven header items written correctly.
+ */
 
 size_t
 dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp)
@@ -71,6 +80,7 @@ dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp)
 
 	fwsz += fwrite(&tracklen, sizeof(tracklen), 1, fp);
 	fwsz += fwrite(&dmkh->options, sizeof(dmkh->options), 1, fp);
+	fwsz += fwrite(&dmkh->quirks, sizeof(dmkh->quirks), 1, fp);
 	fwsz += fwrite(dmkh->padding, sizeof(dmkh->padding), 1, fp);
 
 	uint32_t format = htole32(dmkh->real_format);
@@ -243,7 +253,16 @@ fp2dmk(FILE *fp, struct dmk_file *dmkf)
 
 	fseek(fp, 0, SEEK_SET);  // XXX Do this here?
 
-	dmk_header_fread(&dmkf->header, fp);
+	size_t hret = dmk_header_fread(&dmkf->header, fp);
+	if (hret != 7)
+		return -1;
+
+	/* Sanity check. */
+	if ((dmkf->header.writeprot != 0x00 &&
+	     dmkf->header.writeprot != 0xff) ||
+	    dmkf->header.real_format != 0) {
+		return -1;
+	}
 
 	int sides = 2 - !!(dmkf->header.options & DMK_SSIDE_OPT);
 
