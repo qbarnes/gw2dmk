@@ -161,19 +161,19 @@ extern void dmk_track_stats_init(struct dmk_track_stats *dts);
 extern void dmk_header_init(struct dmk_header *dmkh, uint8_t tracks,
 			    uint16_t tracklen);
 
-extern size_t dmk_header_fread(struct dmk_header *dmkh, FILE *fp);
+extern bool dmk_header_fread(struct dmk_header *dmkh, FILE *fp);
 
-extern size_t dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp);
+extern bool dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp);
 
 extern long dwk_track_file_offset(struct dmk_header *dmkh, int track, int side);
 
 int dmk_track_fseek(struct dmk_header *dmkh, int track, int side, FILE *fp);
 
-extern size_t dmk_track_fread(const struct dmk_header *dmkh,
-			      struct dmk_track *trk, FILE *fp);
+extern bool dmk_track_fread(const struct dmk_header *dmkh,
+			    struct dmk_track *trk, FILE *fp);
 
-extern size_t dmk_track_fwrite(const struct dmk_header *dmkh,
-			       const struct dmk_track *trk, FILE *fp);
+extern bool dmk_track_fwrite(const struct dmk_header *dmkh,
+			     const struct dmk_track *trk, FILE *fp);
 
 extern void dmk_data_rotate(struct dmk_track *trk, uint8_t *data_hole);
 

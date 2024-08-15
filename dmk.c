@@ -31,10 +31,10 @@ dmk_header_init(struct dmk_header *dmkh,
 
 
 /*
- * Should return 7 when all seven header items read correctly.
+ * Returns 1 when header read correctly, 0 on failure.
  */
 
-size_t
+bool
 dmk_header_fread(struct dmk_header *dmkh, FILE *fp)
 {
 	size_t	frsz = 0;
@@ -58,15 +58,15 @@ dmk_header_fread(struct dmk_header *dmkh, FILE *fp)
 
 	dmkh->real_format = le32toh(format);
 
-	return frsz;
+	return frsz == 7 ? true : false;
 }
 
 
 /*
- * Should return 7 when all seven header items written correctly.
+ * Returns 1 when header written correctly, 0 on failure.
  */
 
-size_t
+bool
 dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp)
 {
 	size_t	fwsz = 0;
@@ -87,7 +87,7 @@ dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp)
 
 	fwsz += fwrite(&format, sizeof(format), 1, fp);
 
-	return fwsz;
+	return fwsz == 7 ? true : false;
 }
 
 
@@ -109,28 +109,37 @@ dmk_track_fseek(struct dmk_header *dmkh,
 }
 
 
-size_t
+/*
+ * Returns 1 when track is read correctly, 0 on failure.
+ */
+
+bool
 dmk_track_fread(const struct dmk_header *dmkh,
 		struct dmk_track *trk,
 		FILE *fp)
 {
-	size_t	fwsz = 0;
+	size_t	frsz = 0;
 
 	for (int i = 0; i < DMK_MAX_SECTORS; ++i) {
 		uint16_t	idam_off;
 
-		// XXX error checking
-		fwsz += fread(&idam_off, sizeof(idam_off), 1, fp);
+		frsz += fread(&idam_off, sizeof(idam_off), 1, fp);
 
 		trk->idam_offset[i] = le16toh(idam_off);
 	}
 
-	return fwsz + fread(trk->track + DMK_TKHDR_SIZE,
+	frsz += fread(trk->track + DMK_TKHDR_SIZE,
 				dmkh->tracklen - DMK_TKHDR_SIZE, 1, fp);
+
+	return frsz == (DMK_MAX_SECTORS + 1) ? true : false;
 }
 
 
-size_t
+/*
+ * Returns 1 when track is written correctly, 0 on failure.
+ */
+
+bool
 dmk_track_fwrite(const struct dmk_header *dmkh,
 		 const struct dmk_track *trk,
 		 FILE *fp)
@@ -144,8 +153,10 @@ dmk_track_fwrite(const struct dmk_header *dmkh,
 		fwsz += fwrite(&idam_off, sizeof(idam_off), 1, fp);
 	}
 
-	return fwsz + fwrite(trk->track + DMK_TKHDR_SIZE,
+	fwsz += fwrite(trk->track + DMK_TKHDR_SIZE,
 				dmkh->tracklen - DMK_TKHDR_SIZE, 1, fp);
+
+	return fwsz == (DMK_MAX_SECTORS + 1) ? true : false;
 }
 
 
