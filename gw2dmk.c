@@ -877,32 +877,15 @@ parse_args(int argc,
 			break;
 
 		case 'v':;
-			const char	vstr[] = "'v'";
-			char		*p, *endptr;
 			int		optav;
 
-			if ((p = strchr(optarg, ':'))) {
-				optav = strtol(optarg, &endptr, 10);
+			optav = strtol_strict(optarg, 10, "'v'");
 
-				if ((optarg == endptr) || (endptr != p))
-					fatal_bad_number(vstr);
-
-				cmd_set->scrn_verbosity =
-						strtol_strict(p+1, 10, vstr);
-				cmd_set->file_verbosity = optav;
-
+			if (optav >= 0 && optav < 100) {
+				cmd_set->scrn_verbosity = optav % 10;
+				cmd_set->file_verbosity = optav / 10;
 			} else {
-				optav = strtol_strict(optarg, 10, vstr);
-
-				if (optav >= 100) {
-					goto err_usage;
-				} else if (optav >= 10) {
-					cmd_set->scrn_verbosity = optav % 10;
-					cmd_set->file_verbosity = optav / 10;
-				} else {
-					cmd_set->scrn_verbosity = optav;
-					cmd_set->file_verbosity = optav;
-				}
+				goto err_usage;
 			}
 
 			break;
