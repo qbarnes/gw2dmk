@@ -17,6 +17,7 @@ extern "C" {
 #include "gwmedia.h"
 #include "gwfddrv.h"
 #include "gwhisto.h"
+#include "msg_levels.h"
 
 
 extern const char *kind2desc(int kind);

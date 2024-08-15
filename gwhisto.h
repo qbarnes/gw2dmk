@@ -7,7 +7,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include "msg_levels.h"
 #include "msg.h"
 #include "gw.h"
 #include "gwx.h"

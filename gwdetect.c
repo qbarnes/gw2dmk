@@ -169,7 +169,7 @@ gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info, bool reset)
 			uint16_t	old_delay = gw_delay.step_delay;
 
 			gw_delay.step_delay = fdd->step_ms * 1000;
-			msg(MSG_TSUMMARY, "Changing step delay from %dms "
+			msg(MSG_NORMAL, "Changing step delay from %dms "
 			    "to %dms.\n", (int)old_delay / 1000,
 			    (int)gw_delay.step_delay / 1000);
 		}
@@ -178,7 +178,7 @@ gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info, bool reset)
 			uint16_t	old_settle = gw_delay.seek_settle;
 
 			gw_delay.seek_settle = fdd->settle_ms;
-			msg(MSG_TSUMMARY, "Changing settle delay from %dms "
+			msg(MSG_NORMAL, "Changing settle delay from %dms "
 			    "to %dms.\n", (int)old_settle,
 			    (int)gw_delay.seek_settle);
 		}
