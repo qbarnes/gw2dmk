@@ -265,7 +265,7 @@ fp2dmk(FILE *fp, struct dmk_file *dmkf)
 	fseek(fp, 0, SEEK_SET);  // XXX Do this here?
 
 	size_t hret = dmk_header_fread(&dmkf->header, fp);
-	if (hret != 7)
+	if (hret != 1)
 		return -1;
 
 	/* Sanity check. */
