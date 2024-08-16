@@ -84,7 +84,7 @@ extern int gw_get_params(gw_devt gwfd, struct gw_delay *gw_delay);
 
 extern int gw_motor(gw_devt gwfd, int drive, int motor);
 
-extern ssize_t gw_read_flux(gw_devt gwfd, int revs, int ticks);
+extern int gw_read_flux(gw_devt gwfd, int revs, int ticks);
 
 extern int gw_read_flux_status(gw_devt gwfd);
 

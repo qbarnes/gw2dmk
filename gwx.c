@@ -48,11 +48,13 @@ gw_get_bandwidth(gw_devt gwfd, double *min_bw, double *max_bw)
 
 
 /*
- * Return the number of bytes streamed from the GW, or -1 on error.
+ * Stream bytes from GW.
  *
- * Buffer returned via fbuf must be free()d when done.
+ * On success, returns number of bytes read.
+ * On failure, returns either the negative value of the GW error code
+ * or -99 if an internal error occurred.
  *
- * Returns bytes read or -1 on failure.
+ * Data returned via fbuf must be free()d when done.
  */
 
 ssize_t
@@ -60,10 +62,8 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 {
 	int cmd_ret = gw_read_flux(gwfd, revs, ticks);
 
-	if (cmd_ret != ACK_OKAY) {
-		// error handling
-		return -1;
-	}
+	if (cmd_ret != ACK_OKAY)
+		return cmd_ret < 0 ? -99 : -cmd_ret;
 
 	ssize_t fbuf_cnt = 0;
 
@@ -74,8 +74,6 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 
 		if (gwr == -1) {
 			fbuf_cnt = -1;
-			// error handling
-			// Goto here for CMD_GET_FLUX_STATUS cleanup?
 			goto flux_status;
 		}
 
@@ -94,8 +92,6 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 #else
 		if (ioctl(gwfd, FIONREAD, &nrd) == -1) {
 			fbuf_cnt = -1;
-			// error handling
-			// Goto here for CMD_GET_FLUX_STATUS cleanup?
 			goto flux_status;
 		}
 #endif
@@ -118,23 +114,20 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 
 		if (gwr == -1) {
 			fbuf_cnt = -1;
-			// error handling
 			goto flux_status;
 		}
 
 		*fbuf     = fbuf_new;
 		fbuf_cnt += nrd;
 
-		// 0 byte in flux at end of last read means we're done.
+		/* 0 byte in flux at end of last read means we're done. */
 	} while (fbuf_cnt == 0 || (*fbuf)[fbuf_cnt-1] != 0);
 
 flux_status:
 	cmd_ret = gw_read_flux_status(gwfd);
 
-	if (cmd_ret != ACK_OKAY) {
-		// error handling
-		return -1;
-	}
+	if (cmd_ret != ACK_OKAY)
+		return cmd_ret < 0 ? -99 : -cmd_ret;
 
 	return fbuf_cnt;
 }
@@ -243,7 +236,7 @@ gw_get_period_ns(gw_devt gwfd, int drive, nanoseconds_t clock_ns,
 
 	ssize_t bytes_read = gw_read_stream(gwfd, 1, 0, &fbuf);
 
-	if (bytes_read == -1) {
+	if (bytes_read < 0) {
 		// error handling
 		return -1;
 	}

@@ -402,9 +402,9 @@ gw_write(gw_devt gwfd, const uint8_t *wbuf, size_t wbuf_cnt)
  *
  * Return the status byte from the command, or a negative value if
  * an error occurred:
- *    -1   I/O failure writing command
- *    -2   I/O failure reading command
- *    -3   Unexpected command returned, check "cmd_ret[0]"
+ *    -1   Unexpected command returned, check "cmd_ret[0]" for command.
+ *    -2   I/O failure writing command
+ *    -3   I/O failure reading command
  */
 
 int
@@ -413,18 +413,18 @@ gw_do_command(gw_devt gwfd, struct gw_cmd *gw_cmd)
 	ssize_t wr_cnt = gw_write(gwfd, gw_cmd->cmd, gw_cmd->cmd_cnt);
 
 	if (wr_cnt == -1 || wr_cnt != gw_cmd->cmd_cnt)
-		return -1;
+		return -2;
 
 	ssize_t rd_cnt = gw_read(gwfd, gw_cmd->cmd_ret,
 		sizeof(gw_cmd->cmd_ret));
 
 	if (rd_cnt == -1 || rd_cnt != 2) {
 
-		return -2;
+		return -3;
 
 	} else if (gw_cmd->cmd_ret[0] != gw_cmd->cmd[0]) {
 
-		return -3;
+		return -1;
 
 	} else if (gw_cmd->cmd_ret[1] == ACK_OKAY && gw_cmd->rbuf_cnt) {
 
@@ -563,28 +563,28 @@ gw_motor(gw_devt gwfd, int drive, int motor)
 }
 
 
-ssize_t
+/*
+ * Read flux from GW for "revs" revolutions.
+ *
+ * Returns ACK_OKAY (0) on success, or other ACK_* on failure.
+ */
+
+int
 gw_read_flux(gw_devt gwfd, int revs, int ticks)
 {
 	uint16_t crevs  = htole16(revs ? revs+1 : 0);
 	uint32_t cticks = htole32(ticks);
 
-	int cmd_ret = gw_do_command(gwfd,
-					&(struct gw_cmd){(uint8_t[])
-					{CMD_READ_FLUX, 8,
-					cticks & 0x8,
-					(cticks >> 8) & 0xff,
-					(cticks >> 16) & 0xff,
-					(cticks >> 24) & 0xff,
-					crevs & 0xff,
-					(crevs >> 8) & 0xff},
-					8, { 0, 0 }, 0, 0, 0});
-
-	if (cmd_ret != ACK_OKAY) {
-		// error handling
-	}
-
-	return cmd_ret;
+	return gw_do_command(gwfd,
+			     &(struct gw_cmd){(uint8_t[])
+			     {CMD_READ_FLUX, 8,
+			     cticks & 0x8,
+			     (cticks >> 8) & 0xff,
+			     (cticks >> 16) & 0xff,
+			     (cticks >> 24) & 0xff,
+			     crevs & 0xff,
+			     (crevs >> 8) & 0xff},
+			     8, { 0, 0 }, 0, 0, 0});
 }
 
 
@@ -593,18 +593,18 @@ gw_write_flux(int gwfd, )
 #endif
 
 
+/*
+ * Read status of reading the flux.
+ *
+ * Returns ACK_OKAY (0) on success, or or negative value on failure.
+ * See gw_do_command().
+ */
+
 int
 gw_read_flux_status(gw_devt gwfd)
 {
-	int cmd_ret = gw_do_command(gwfd,
+	return gw_do_command(gwfd,
 		&(struct gw_cmd){(uint8_t[]){CMD_GET_FLUX_STATUS, 2}, 2});
-
-	if (cmd_ret != ACK_OKAY) {
-		// error handling
-		return -1;
-	}
-
-	return cmd_ret;
 }
 
 

@@ -136,7 +136,7 @@ test_read_track_flux(gw_devt gwfd, int drive)
 
 	free(fbuf);
 
-	if (gwr != -1)
+	if (gwr >= 0)
 		printf("flux bytes read = %lld\n", (long long int)gwr);
 	else
 		fprintf(stderr, "flux read error\n");

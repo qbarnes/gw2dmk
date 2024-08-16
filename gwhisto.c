@@ -230,6 +230,9 @@ flux2histo(const uint8_t *fbuf, size_t bytes_read, struct histogram *histo)
 /*
  * Collect histogram from track and side.
  *
+ * On success, return 0.
+ * On failure, >0 is GW status code.  <0 is error from flux2histo().
+ *
  * "histo" must be prepped prior to invocation.  "histo" is both
  * read and written by this function.
  */
@@ -245,16 +248,14 @@ collect_histo_from_track(gw_devt gwfd, struct histogram *histo)
 	gw_head(gwfd, histo->side);
 	// error checking
 
-	int rd_ret = gw_read_stream(gwfd, histo->revs, 0, &fbuf);
+	ssize_t rd_ret = gw_read_stream(gwfd, histo->revs, 0, &fbuf);
 
-	if (rd_ret == -1) {
-		// error handling
-		return rd_ret;
-	}
+	if (rd_ret < 0)
+		return -rd_ret;
 
 	int f2hret = flux2histo(fbuf, rd_ret, histo);
 
 	free(fbuf);
 
-	return f2hret ? f2hret : 0;
+	return f2hret ? -1 : 0;
 }

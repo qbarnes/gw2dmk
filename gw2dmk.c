@@ -1162,9 +1162,13 @@ retry:
 	uint8_t *fbuf = 0;
 	ssize_t bytes_read = gw_read_stream(cmd_set->fdd.gwfd, 1, 0, &fbuf);
 
-	if (bytes_read == -1) {
-		msg(MSG_ERRORS, "gw_read_stream() failure\n");
+	if (bytes_read < 0) {
+		int	gwerr = (int)-bytes_read;
+
 		free(fbuf);
+		msg(MSG_ERRORS, "gw_read_stream() failure: %s (%d)%s\n",
+		    gw_cmd_ack(gwerr), gwerr,
+		    gwerr == ACK_NO_INDEX ?  " [Is diskette in drive?]" : "");
 		return 2;
 	}
 
@@ -1542,9 +1546,15 @@ gw_get_histo_analysis(gw_devt gwfd,
 {
 	int ret = collect_histo_from_track(gwfd, histo);
 
-	if (ret)
-		msg_fatal(EXIT_FAILURE,
-			  "Couldn't collect histogram (%d)\n", ret);
+	if (ret > 0) {
+		msg_fatal(EXIT_FAILURE, "Couldn't collect histogram: "
+			  "%s (%d)%s\n", gw_cmd_ack(ret), ret,
+			  ret == ACK_NO_INDEX ?
+			  " [Is diskette in drive?]" : "");
+	} else if (ret < 0) {
+		msg_fatal(EXIT_FAILURE, "Couldn't collect histogram.  "
+		"Internal error.\n");
+	}
 	
 	histo_analysis_init(ha);
 	histo_analyze(histo, ha);
