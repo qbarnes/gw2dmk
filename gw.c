@@ -588,30 +588,32 @@ gw_read_flux(gw_devt gwfd, int revs, int ticks)
 }
 
 
-#if 0
-gw_write_flux(int gwfd, )
-#endif
+int
+gw_write_flux(gw_devt gwfd, bool cue_at_index, bool terminate_at_index)
+{
+	return gw_do_command(gwfd,
+			     &(struct gw_cmd){(uint8_t[])
+			      {CMD_READ_FLUX, 8,
+			       cue_at_index, terminate_at_index}, 4});
+}
 
 
 /*
- * Read status of reading the flux.
+ * Get flux status.
  *
  * Returns ACK_OKAY (0) on success, or or negative value on failure.
  * See gw_do_command().
  */
 
 int
-gw_read_flux_status(gw_devt gwfd)
+gw_get_flux_status(gw_devt gwfd)
 {
 	return gw_do_command(gwfd,
 		&(struct gw_cmd){(uint8_t[]){CMD_GET_FLUX_STATUS, 2}, 2});
 }
 
 
-#if 0
-gw_get_flux_status()
-gw_switch_fw_mode()
-#endif
+/* CMD_SWITCH_FW_MODE Unused */
 
 
 int
@@ -642,7 +644,8 @@ int
 gw_set_bus_type(gw_devt gwfd, int bus_type)
 {
 	return gw_do_command(gwfd,
-		&(struct gw_cmd){(uint8_t[]){CMD_SET_BUS_TYPE, 3, bus_type}, 3});
+			     &(struct gw_cmd){(uint8_t[])
+			      {CMD_SET_BUS_TYPE, 3, bus_type}, 3});
 }
 
 
@@ -662,8 +665,4 @@ gw_reset(gw_devt gwfd)
 }
 
 
-#if 0
-gw_erase_flux()
-gw_source_bytes()
-gw_sink_bytes()
-#endif
+/* CMD_ERASE_FLUX, CMD_SOURCE_BYTES, CMD_SINK_BYTES are unused. */

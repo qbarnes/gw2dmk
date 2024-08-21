@@ -86,7 +86,10 @@ extern int gw_motor(gw_devt gwfd, int drive, int motor);
 
 extern int gw_read_flux(gw_devt gwfd, int revs, int ticks);
 
-extern int gw_read_flux_status(gw_devt gwfd);
+extern int gw_write_flux(gw_devt gwfd, bool cue_at_index,
+			 bool terminate_at_index);
+
+extern int gw_get_flux_status(gw_devt gwfd);
 
 extern int gw_select(gw_devt gwfd, int drive);
 

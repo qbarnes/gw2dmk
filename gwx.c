@@ -124,7 +124,7 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 	} while (fbuf_cnt == 0 || (*fbuf)[fbuf_cnt-1] != 0);
 
 flux_status:
-	cmd_ret = gw_read_flux_status(gwfd);
+	cmd_ret = gw_get_flux_status(gwfd);
 
 	if (cmd_ret != ACK_OKAY)
 		return cmd_ret < 0 ? -99 : -cmd_ret;
