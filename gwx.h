@@ -19,6 +19,10 @@ extern "C" {
 #include "gw.h"
 
 
+/* Maximum size of a tick timing pulse encoded as an 8-bit sequence for GW. */
+#define GWCODE_MAX	11
+
+
 /*
  * Values for "status":
  *   negative: error (stop)
@@ -35,6 +39,19 @@ struct gw_decode_stream_s {
 	int		(*decoded_space)(uint32_t ticks, void *data);
 	void		*space_data;
 	int		(*decoded_pulse)(uint32_t ticks, void *data);
+	void		*pulse_data;
+};
+
+
+/*
+ * Values for return from (*encoded_pulse):
+ *   negative: error (stop)
+ *   0       : continue
+ */
+
+struct gw_encode_stream_s {
+	int		(*encoded_pulse)(uint8_t *byte, int byte_cnt,
+					 void *data);
 	void		*pulse_data;
 };
 
@@ -56,10 +73,10 @@ extern int gw_get_period_ns(gw_devt gwfd, int drive, nsec_type clock_ns,
 
 extern ssize_t gw_write_stream(gw_devt gwfd, const uint8_t *enbuf,
 			       size_t enbuf_cnt, bool cue_at_index,
-			       bool terminate_at_index);
+			       bool terminate_at_index, int retries);
 
-extern ssize_t gw_encode_stream(const uint8_t *dbuf, size_t dbuf_cnt,
-				uint32_t sample_freq, uint8_t **enbuf);
+extern int encode_ticks(uint32_t ticks, uint32_t nfa_thresh,
+			uint32_t nfa_period, uint8_t sbuf[GWCODE_MAX]);
 
 
 static inline uint32_t

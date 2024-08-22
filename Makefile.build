@@ -26,10 +26,10 @@ vpath %.c	$(src_dir)
 vpath %.h	$(inc_dir)
 vpath %		$(top_dir)
 
-obj_targets	= gw2dmk.o gw.o gwx.o msg.o m2.o gwhisto.o \
+obj_targets	= gw2dmk.o dmk2gw.o gw.o gwx.o msg.o m2.o gwhisto.o \
 		   gwhist.o gwdetect.o crc.o
 
-targets		= gw2dmk$E gwhist$E m2$E
+targets		= gw2dmk$E dmk2gw$E gwhist$E m2$E
 
 #tar_files	= LICENSE README.md $(targets) $(tar_extras)
 tar_files	= LICENSE README.md gw2dmk$E gwhist$E $(tar_extras)
@@ -50,7 +50,7 @@ gwx.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwx.c
 gwhisto.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
 	   gwhisto.h gwhisto.c
 
-gwhist.o gw2dmk.o: CFLAGS += '-DVERSION="$(VERSION)"'
+gwhist.o gw2dmk.o dmk2gw.o: CFLAGS += '-DVERSION="$(VERSION)"'
 
 gwhist.o: gw.h gwx.h gwhisto.h msg_levels.h msg.h misc.h
 
@@ -67,13 +67,21 @@ dmkmerge.o: msg.h dmk.h misc.h dmkmerge.h dmkmerge.c
 
 dmk.o: dmk.h misc.h dmk.c
 
+dmkx.o: dmk.h msg.h msg_levels.h misc.h dmkx.c
+
 secsize.o: dmk.h misc.h secsize.c
 
 gw2dmk.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
 		gw2dmkcmdset.h gwhisto.c dmk.h gw2dmk.c
 
+dmk2gw.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
+		dmk2gwcmdset.h gwhisto.c dmk.h dmk2gw.c
+
 gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwdecode.o gwmedia.o dmk.o \
 	dmkmerge.o secsize.o gw2dmk.o crc.o
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
+
+dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwmedia.o dmk.o dmkx.o secsize.o dmk2gw.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 gwhist$E: msg.o gw.o gwx.o gwhisto.o gwhist.o

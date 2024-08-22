@@ -593,7 +593,7 @@ gw_write_flux(gw_devt gwfd, bool cue_at_index, bool terminate_at_index)
 {
 	return gw_do_command(gwfd,
 			     &(struct gw_cmd){(uint8_t[])
-			      {CMD_READ_FLUX, 8,
+			      {CMD_WRITE_FLUX, 4,
 			       cue_at_index, terminate_at_index}, 4});
 }
 
