@@ -66,7 +66,7 @@ extern int gw_init(gw_devt gwfd);
 
 extern ssize_t gw_read(gw_devt gwfd, uint8_t *rbuf, size_t rbuf_cnt);
 
-extern int gw_write(gw_devt gwfd, const uint8_t *wbuf, size_t wbuf_cnt);
+extern ssize_t gw_write(gw_devt gwfd, const uint8_t *wbuf, size_t wbuf_cnt);
 
 extern int gw_do_command(gw_devt gwfd, struct gw_cmd *gw_cmd);
 

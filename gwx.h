@@ -54,14 +54,31 @@ extern ssize_t gw_decode_stream(const uint8_t *fbuf, size_t fbuf_cnt,
 extern int gw_get_period_ns(gw_devt gwfd, int drive, nanoseconds_t clock_ns,
 				nanoseconds_t *period_ns);
 
+extern ssize_t gw_write_stream(gw_devt gwfd, const uint8_t *enbuf,
+			       size_t enbuf_cnt, bool cue_at_index,
+			       bool terminate_at_index);
+
+extern ssize_t gw_encode_stream(const uint8_t *dbuf, size_t dbuf_cnt,
+				uint32_t sample_freq, uint8_t **enbuf);
+
 
 static inline uint32_t
 gw_read_28(const uint8_t *p)
 {
-	return( ((p[0] & 0xfe) >> 1) |
-		((p[1] & 0xfe) << 6) |
-		((p[2] & 0xfe) << 13) |
-		((p[3] & 0xfe) << 20) );
+	return ((p[0] & 0xfe) >>  1) |
+	       ((p[1] & 0xfe) <<  6) |
+	       ((p[2] & 0xfe) << 13) |
+	       ((p[3] & 0xfe) << 20);
+}
+
+
+static inline void
+gw_write_28(uint32_t val, uint8_t *p)
+{
+	p[0] = ((val <<  1) & 0xff) | 1;
+	p[1] = ((val >>  6) & 0xff) | 1;
+	p[2] = ((val >> 13) & 0xff) | 1;
+	p[3] = ((val >> 20) & 0xff) | 1;
 }
 
 

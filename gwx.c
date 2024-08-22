@@ -1,5 +1,8 @@
 #include "gwx.h"
 
+#include <math.h>	/* Implementation detail for round() */
+
+
 /*
  * Extended low-level routines to interface with the Greaseweazle.
  *
@@ -290,4 +293,96 @@ gw_get_period_ns(gw_devt gwfd, int drive, nanoseconds_t clock_ns,
 	*period_ns = (index[1] - index[0]) * clock_ns;
 
 	return 0;
+}
+
+
+ssize_t
+gw_write_stream(gw_devt gwfd,
+		const uint8_t *enbuf,
+		size_t enbuf_cnt,
+		bool cue_at_index,
+		bool terminate_at_index)
+{
+	int cmd_ret = gw_write_flux(gwfd, cue_at_index,
+				    terminate_at_index);
+
+	if (cmd_ret != ACK_OKAY)
+		return cmd_ret < 0 ? -99 : -cmd_ret;
+
+	ssize_t wr_cnt_total = 0;
+
+	do {
+		int wr_cnt = gw_write(gwfd, enbuf, enbuf_cnt);
+
+		if (wr_cnt == -1)
+			return -1;
+		else if (wr_cnt == 0)
+			break;
+
+		enbuf_cnt    -= wr_cnt;
+		wr_cnt_total += wr_cnt;
+
+	} while (enbuf_cnt > 0);
+
+	return wr_cnt_total;
+}
+
+
+ssize_t
+gw_encode_stream(const uint8_t *dbuf,
+		 size_t dbuf_cnt,
+		 uint32_t sample_freq,
+		 uint8_t **enbuf)
+{
+	const uint8_t	*dp = dbuf;
+	size_t 		ret = 0;
+
+	int	nfa_thresh = round(150e-6 * sample_freq);   /* 150us  */
+	int	nfa_period = round(1.25e-6 * sample_freq);  /* 1.25us */
+
+	while ((dp - dbuf) < dbuf_cnt) {
+		uint8_t	val = *dp++;
+		uint8_t	sbuf[12];
+		int	sbuf_cnt = 0;
+
+		if (val == 0)
+			continue;
+
+		if (val < 250) {
+			sbuf[sbuf_cnt++] = val;
+		} else if (val > nfa_thresh) {
+			sbuf[sbuf_cnt++] = 255;
+			sbuf[sbuf_cnt++] = FLUXOP_SPACE;
+			gw_write_28(val, sbuf);
+			sbuf_cnt += 4;
+			sbuf[sbuf_cnt++] = 255;
+			sbuf[sbuf_cnt++] = FLUXOP_ASTABLE;
+			gw_write_28(nfa_period, sbuf);
+			sbuf_cnt += 4;
+		} else {
+			int	high = (val - 250);
+
+			if (high < 5) {
+				sbuf[sbuf_cnt++] = val;
+				sbuf[sbuf_cnt++] = 1 + high % 255;
+			} else {
+				sbuf[sbuf_cnt++] = 255;
+				sbuf[sbuf_cnt++] = FLUXOP_SPACE;
+				gw_write_28(val - 249, sbuf);
+				sbuf_cnt += 4;
+				sbuf[sbuf_cnt++] = 249;
+			}
+		}
+
+		ssize_t	old_ret = ret;
+		ret += sbuf_cnt;
+
+		uint8_t	*enbuf_new = realloc(*enbuf, ret);
+		if (!*enbuf_new)
+			break;
+
+		memcpy(enbuf_new + old_ret, sbuf, sbuf_cnt);
+	}
+
+	return (ssize_t)ret;
 }

@@ -356,7 +356,7 @@ gw_read(gw_devt gwfd, uint8_t *rbuf, size_t rbuf_cnt)
  * "errno" may be checked for a cause of error.
  */
 
-int
+ssize_t
 gw_write(gw_devt gwfd, const uint8_t *wbuf, size_t wbuf_cnt)
 {
 	wr_db_dump(wbuf, wbuf_cnt);
