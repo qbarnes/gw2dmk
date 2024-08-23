@@ -16,8 +16,12 @@ int msg_verror(const char *fmt, va_list ap) __attribute__((format(printf,1,0)));
 
 int msg_error(const char *fmt, ...) __attribute__((format(printf,1,2)));
 
-void msg_fatal(int exit_code, const char *fmt, ...)
+void msg_fatal_ec(int exit_code, const char *fmt, ...)
 					__attribute__((format(printf,2,3)))
+					__attribute__((noreturn));
+
+void msg_fatal(const char *fmt, ...)
+					__attribute__((format(printf,1,2)))
 					__attribute__((noreturn));
 
 void msg(int level, const char *fmt, ...)
@@ -47,7 +51,9 @@ extern int msg_verror(const char *fmt, va_list ap);
 
 extern int msg_error(const char *fmt, ...);
 
-extern void msg_fatal(int exit_code, const char *fmt, ...);
+extern void msg_fatal_ec(int exit_code, const char *fmt, ...);
+
+extern void msg_fatal(const char *fmt, ...);
 
 extern void msg(int level, const char *fmt, ...);
 

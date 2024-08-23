@@ -89,7 +89,7 @@ static struct cmd_settings {
 static void
 fatal_bad_number(const char *name)
 {
-	msg_fatal(EXIT_FAILURE, "%s requires a numeric argument.\n", name);
+	msg_fatal("%s requires a numeric argument.\n", name);
 }
 
 
@@ -114,8 +114,7 @@ strtol_strict(const char *nptr, int base, const char *name)
 static void
 usage(const char *pgm_name)
 {
-	msg_fatal(EXIT_FAILURE,
-		  "Usage: %s [-d drive] [-g GW device] [-h high density line] "
+	msg_fatal("Usage: %s [-d drive] [-g GW device] [-h high density line] "
 		  "[-r revs] [-s side] [-t track] [-u logfile] "
 		  "[-v verbosity]\n",
 		  pgm_name);
@@ -288,8 +287,7 @@ main(int argc, char **argv)
 	gw_devt gwfd = gw_open(gwsd);
 
 	if (gwfd == GW_DEVT_INVALID)
-		msg_fatal(EXIT_FAILURE,
-			  "Failed to open Greaseweazle's serial device "
+		msg_fatal("Failed to open Greaseweazle's serial device "
 			  "'%s': %s.\n", gwsd, strerror(errno));
 
 	gw_init(gwfd);
@@ -321,8 +319,7 @@ main(int argc, char **argv)
 	int chft_ret = collect_histo_from_track(gwfd, &histo);
 
 	if (chft_ret)
-		msg_fatal(EXIT_FAILURE,
-			  "Couldn't collect histo (%d)\n", chft_ret);
+		msg_fatal("Couldn't collect histo (%d)\n", chft_ret);
 
 	struct histo_analysis	ha;
 

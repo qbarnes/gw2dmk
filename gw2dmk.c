@@ -339,7 +339,7 @@ static volatile bool reading_floppy = false;
 static void
 fatal_bad_number(const char *name)
 {
-	msg_fatal(EXIT_FAILURE, "%s requires a numeric argument.\n", name);
+	msg_fatal("%s requires a numeric argument.\n", name);
 }
 
 
@@ -840,7 +840,7 @@ parse_args(int argc,
 			if (((quirk & QUIRK_EXTRA) != 0) +
 			    ((quirk & QUIRK_EXTRA_CRC) != 0) +
 			    ((quirk & QUIRK_EXTRA_DATA) != 0) > 1) {
-				msg_fatal(1, "Quirks %#x, %#x, and %#x "
+				msg_fatal("Quirks %#x, %#x, and %#x "
 				"cannot be used together.\n",
 				QUIRK_EXTRA, QUIRK_EXTRA_CRC, QUIRK_EXTRA_DATA);
 			}
@@ -917,8 +917,7 @@ parse_args(int argc,
 				ds = malloc(gstrsz);
 			}
 			if (!ds)
-				msg_fatal(EXIT_FAILURE,
-					  "Cannot allocate device name.\n");
+				msg_fatal("Cannot allocate device name.\n");
 			strcpy(ds, optarg);
 			cmd_set->fdd.device = ds;
 #else
@@ -1007,8 +1006,7 @@ parse_args(int argc,
 
 			char *s1 = malloc(dmk_len + 5);
 			if (!s1)
-				msg_fatal(EXIT_FAILURE,
-					  "Cannot allocate log file name.\n");
+				msg_fatal("Cannot allocate log file name.\n");
 
 			sprintf(s1, "%.*s.log", (int)dmk_len, cmd_set->dmkfile);
 			cmd_set->logfile = s1;
@@ -1372,7 +1370,7 @@ retry:
 				failing = false;
 			break;
 		default:
-			msg_fatal(1, "Bad return value from menu().\n");
+			msg_fatal("Bad return value from menu().\n");
 			break;
 		}
 
@@ -1547,13 +1545,11 @@ gw_get_histo_analysis(gw_devt gwfd,
 	int ret = collect_histo_from_track(gwfd, histo);
 
 	if (ret > 0) {
-		msg_fatal(EXIT_FAILURE, "Couldn't collect histogram: "
-			  "%s (%d)%s\n", gw_cmd_ack(ret), ret,
+		msg_fatal("%s (%d)%s\n", gw_cmd_ack(ret), ret,
 			  ret == ACK_NO_INDEX ?
 			  " [Is diskette in drive?]" : "");
 	} else if (ret < 0) {
-		msg_fatal(EXIT_FAILURE, "Couldn't collect histogram.  "
-		"Internal error.\n");
+		msg_fatal("Couldn't collect histogram.  Internal error.\n");
 	}
 	
 	histo_analysis_init(ha);
@@ -1574,8 +1570,7 @@ gw_detect_drive_kind(struct gw_fddrv *fdd,
 		     struct histo_analysis *ha)
 {
 	if (fdd->drive == -1)
-		msg_fatal(EXIT_FAILURE,
-			  "Drive should have previously been set.\n");
+		msg_fatal("Drive should have previously been set.\n");
 
 	int	densel = fdd->densel;
 
@@ -1594,7 +1589,7 @@ redo_kind:;
 
 	// XXX Could we use ha->peaks == 0 here?
 	if (histo.data_overflow > 25)	/* 25 is arbitrary */
-		msg_fatal(EXIT_FAILURE, "Track 0 side 0 is unformatted.\n");
+		msg_fatal("Track 0 side 0 is unformatted.\n");
 
 	double rpm   = ha->rpm;
 	double brate = ha->bit_rate_khz;
@@ -1619,8 +1614,7 @@ redo_kind:;
 	}
 
 	if (kind == -1) {
-		msg_fatal(EXIT_FAILURE,
-			  "Failed to detect media type.\n"
+		msg_fatal("Failed to detect media type.\n"
 			  "  Bit rate:    %7.3f kHz\n"
 			  "  Drive speed: %7.3f RPM\n", brate, rpm);
 	}
@@ -1651,8 +1645,7 @@ gw_detect_sides(struct gw_fddrv *fdd,
 		const struct gw_info *gw_info)
 {
 	if (fdd->drive == -1)
-		msg_fatal(EXIT_FAILURE,
-			  "Drive should have previously been set.\n");
+		msg_fatal("Drive should have previously been set.\n");
 
 	struct histogram	histo;
 
@@ -1723,12 +1716,11 @@ main(int argc, char **argv)
 	const char *pgm   = slash ? slash + 1 : argv[0];
 
 	if (!msg_error_prefix(pgm)) {
-		msg_fatal(EXIT_FAILURE,
-			  "Failure to allocate memory for message prefix.\n");
+		msg_fatal("Failure to allocate memory for message prefix.\n");
 	}
 
 	if (atexit(cleanup))
-		msg_fatal(EXIT_FAILURE, "Can't establish atexit() call.\n");
+		msg_fatal("Can't establish atexit() call.\n");
 
 	parse_args(argc, argv, pgm, &cmd_settings);
 
@@ -1745,7 +1737,7 @@ main(int argc, char **argv)
 
 	if (!cmd_settings.forcewrite &&
 	    access(cmd_settings.dmkfile, F_OK) == 0) {
-		msg_fatal(EXIT_FAILURE, "DMK file '%s' exists.\n"
+		msg_fatal("DMK file '%s' exists.\n"
 		"    (Use the --force option if you want to ignore this "
 		"check.\n", cmd_settings.dmkfile);
 	}
@@ -1769,8 +1761,7 @@ main(int argc, char **argv)
 				(sigs[s] == SIGINT) ? &sa_int : &sa_def;	
 
 		if (sigaction(sigs[s], sa_hndlr, 0) == -1)
-			msg_fatal(EXIT_FAILURE, "sigaction failed for "
-				  "signal %d.\n", sigs[s]);
+			msg_fatal("sigaction failed for signal %d.\n", sigs[s]);
 	}
 #endif
 
@@ -1788,7 +1779,7 @@ main(int argc, char **argv)
 					   cmd_settings.reset_on_init);
 
 	if (cmd_settings.fdd.gwfd == GW_DEVT_INVALID)
-		msg_fatal(EXIT_FAILURE, "Failed to find or initialize GW.\n");
+		msg_fatal("Failed to find or initialize GW.\n");
 
 	if (cmd_settings.fdd.drive == -1)
 		gw_detect_drive(&cmd_settings.fdd);
@@ -1896,7 +1887,7 @@ main(int argc, char **argv)
 	struct dmk_file *dmkf = malloc(sizeof(struct dmk_file));
 
 	if (!dmkf)
-		msg_fatal(EXIT_FAILURE, "Malloc of dmkf failed.\n");
+		msg_fatal("Malloc of dmkf failed.\n");
 
 	gw2dmk(&cmd_settings, gw_info.sample_freq, dmkf);
 
@@ -1930,8 +1921,7 @@ main(int argc, char **argv)
 				 !cmd_settings.forcewrite);
 
 	if (!dmkfp) {
-		msg_fatal(EXIT_FAILURE, "Failed to open DMK file '%s'%s: "
-			  "%s (%d)\n",
+		msg_fatal("Failed to open DMK file '%s'%s: %s (%d)\n",
 			  cmd_settings.dmkfile,
 			  cmd_settings.forcewrite ? " " : " exclusively",
 			  strerror(errno), errno);
@@ -1940,8 +1930,7 @@ main(int argc, char **argv)
 	dmk2fp(dmkf, dmkfp);
 
 	if (fclose(dmkfp) == EOF) {
-		msg_fatal(EXIT_FAILURE, "Failed to close DMK file '%s': "
-			  "%s (%d)\n",
+		msg_fatal("Failed to close DMK file '%s': %s (%d)\n",
 			  cmd_settings.dmkfile, strerror(errno), errno);
 	}
 
@@ -1956,13 +1945,13 @@ main(int argc, char **argv)
 	gw_unsetdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive);
 
 	if (gw_close(cmd_settings.fdd.gwfd)) {
-		msg_fatal(EXIT_FAILURE, "Failed to close GW device: %s (%d)\n",
+		msg_fatal("Failed to close GW device: %s (%d)\n",
 			  strerror(errno), errno);
 	}
 
 	if (msg_fclose() == EOF) {
-		msg_fatal(EXIT_FAILURE, "Failed to close message logging: "
-			  "%s (%d)\n", strerror(errno), errno);
+		msg_fatal("Failed to close message logging: %s (%d)\n",
+			  strerror(errno), errno);
 	}
 
 	return EXIT_SUCCESS;

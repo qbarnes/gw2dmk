@@ -146,7 +146,7 @@ msg_error(const char *fmt, ...)
 
 
 void
-msg_fatal(int exit_code, const char *fmt, ...)
+msg_fatal_ec(int exit_code, const char *fmt, ...)
 {
 	va_list args;
 
@@ -155,6 +155,19 @@ msg_fatal(int exit_code, const char *fmt, ...)
 	va_end(args);
 
 	exit(exit_code);
+}
+
+
+void
+msg_fatal(const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	msg_verror(fmt, args);
+	va_end(args);
+
+	exit(EXIT_FAILURE);
 }
 
 
