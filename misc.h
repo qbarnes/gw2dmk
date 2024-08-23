@@ -44,6 +44,9 @@ extern "C" {
 #endif
 
 
+typedef double	nsec_type;
+
+
 inline const char *
 plu(int val)
 {

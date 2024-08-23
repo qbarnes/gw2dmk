@@ -230,8 +230,8 @@ done:
  */
 
 int
-gw_get_period_ns(gw_devt gwfd, int drive, nanoseconds_t clock_ns,
-			nanoseconds_t *period_ns)
+gw_get_period_ns(gw_devt gwfd, int drive, nsec_type clock_ns,
+			nsec_type *period_ns)
 {
 	uint8_t	*fbuf = NULL;
 

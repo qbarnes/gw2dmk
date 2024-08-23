@@ -36,9 +36,6 @@ struct gw_decode_stream_s {
 };
 
 
-// XXX Need to change due to POSIX violation.
-typedef double nanoseconds_t;
-
 extern int gw_setdrive(gw_devt gwfd, int drive, int densel);
 
 extern int gw_unsetdrive(gw_devt gwfd, int drive);
@@ -51,8 +48,8 @@ extern ssize_t gw_read_stream(gw_devt gwfd, int revs, int ticks,
 extern ssize_t gw_decode_stream(const uint8_t *fbuf, size_t fbuf_cnt,
 				struct gw_decode_stream_s *gwds);
 
-extern int gw_get_period_ns(gw_devt gwfd, int drive, nanoseconds_t clock_ns,
-				nanoseconds_t *period_ns);
+extern int gw_get_period_ns(gw_devt gwfd, int drive, nsec_type clock_ns,
+				nsec_type *period_ns);
 
 extern ssize_t gw_write_stream(gw_devt gwfd, const uint8_t *enbuf,
 			       size_t enbuf_cnt, bool cue_at_index,

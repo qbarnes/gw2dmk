@@ -159,8 +159,8 @@ test_get_rpm(gw_devt gwfd, int drive)
 		return -1;
 	}
 
-	nanoseconds_t clock_ns = 1000000000.0 / gw_info.sample_freq;
-	nanoseconds_t period_ns;
+	nsec_type clock_ns = 1000000000.0 / gw_info.sample_freq;
+	nsec_type period_ns;
 
 	gw_setdrive(gwfd, drive, 0);
 
