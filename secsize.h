@@ -8,7 +8,7 @@ extern "C" {
 #include "dmk.h"
 
 
-extern int secsize(int sizecode, int encoding, unsigned int quirk);
+extern int secsize(int sizecode, int encoding, int maxsize, unsigned int quirk);
 
 
 #ifdef __cplusplus

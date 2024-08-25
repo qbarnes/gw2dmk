@@ -2,9 +2,8 @@
 
 
 int
-secsize(int sizecode, int encoding, unsigned int quirk)
+secsize(int sizecode, int encoding, int maxsize, unsigned int quirk)
 {
-	int	maxsize = 3;  /* hardcode for now */
 	int	size;
 
 	switch (encoding) {
