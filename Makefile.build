@@ -52,7 +52,7 @@ gwhisto.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
 
 gwhist.o gw2dmk.o: CFLAGS += '-DVERSION="$(VERSION)"'
 
-gwhist.o: gw.h gwx.h gwhisto.h msg_levels.h msg.h
+gwhist.o: gw.h gwx.h gwhisto.h msg_levels.h msg.h misc.h
 
 gwdetect.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwmedia.h \
 		gwhisto.h gwfddrv.h gw2dmkcmdset.h gwdetect.h gwdetect.c
@@ -63,15 +63,17 @@ gwdecode.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h dmk.h \
 gwmedia.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
 		gwmedia.h gwhisto.h gwmedia.c
 
-dmkmerge.o: msg.h dmk.h dmkmerge.h dmkmerge.c
+dmkmerge.o: msg.h dmk.h misc.h dmkmerge.h dmkmerge.c
 
-dmk.o: dmk.h dmk.c
+dmk.o: dmk.h misc.h dmk.c
+
+secsize.o: dmk.h misc.h secsize.c
 
 gw2dmk.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
 		gw2dmkcmdset.h gwhisto.c dmk.h gw2dmk.c
 
 gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwdecode.o gwmedia.o dmk.o \
-	dmkmerge.o gw2dmk.o crc.o
+	dmkmerge.o secsize.o gw2dmk.o crc.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 gwhist$E: msg.o gw.o gwx.o gwhisto.o gwhist.o

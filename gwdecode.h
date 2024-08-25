@@ -20,6 +20,7 @@ extern "C" {
 #include "gw.h"
 #include "gwx.h"
 #include "gwmedia.h"
+#include "secsize.h"
 #include "dmk.h"
 #include "msg_levels.h"
 #include "msg.h"
