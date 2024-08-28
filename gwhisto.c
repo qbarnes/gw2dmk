@@ -208,8 +208,16 @@ flux2histo(const uint8_t *fbuf, size_t bytes_read, struct histogram *histo)
 	memset(histo->data, 0, sizeof(histo->data));
 
 	struct decode_imark_data idata = { 0, 0, { ~0, ~0 } };
-	struct gw_decode_stream_s gwds =
-				{ 0, -1, imark_fn, &idata, pulse_fn, histo };
+	struct gw_decode_stream_s gwds = {
+					  .ds_ticks = 0,
+					  .ds_status = -1,
+					  .decoded_imark = imark_fn,
+					  .imark_data = &idata,
+					  .decoded_space = NULL,
+					  .space_data = NULL,
+					  .decoded_pulse = pulse_fn,
+					  .pulse_data = histo
+					 };
 
 	gw_decode_stream(fbuf, bytes_read, &gwds);
 

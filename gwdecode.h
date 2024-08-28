@@ -35,7 +35,6 @@ extern "C" {
 struct fdecoder
 {
 	uint32_t	sample_freq;
-	uint32_t	gw_ticks;
 
 	uint64_t	accum;
 	uint64_t	taccum;		/* Transform accumulator for RX02 */

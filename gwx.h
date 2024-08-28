@@ -27,10 +27,13 @@ extern "C" {
  */
 
 struct gw_decode_stream_s {
-	uint32_t	ticks;
-	int		status;
+	uint32_t	ds_ticks;
+	uint32_t	ds_last_pulse;
+	int		ds_status;
 	int		(*decoded_imark)(uint32_t ticks, void *data);
 	void		*imark_data;
+	int		(*decoded_space)(uint32_t ticks, void *data);
+	void		*space_data;
 	int		(*decoded_pulse)(uint32_t ticks, void *data);
 	void		*pulse_data;
 };

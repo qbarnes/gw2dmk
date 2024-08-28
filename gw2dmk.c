@@ -1171,9 +1171,17 @@ retry:
 	}
 
 	struct pulse_data pdata = { &cmd_set->gme, &flux2dmk };
-	struct gw_decode_stream_s gwds = { 0, -1,
-					   imark_fn, &flux2dmk,
-					   pulse_fn, &pdata };
+	struct gw_decode_stream_s gwds = {
+					  .ds_ticks = 0,
+					  .ds_last_pulse = 0,
+					  .ds_status = -1,
+					  .decoded_imark = imark_fn,
+					  .imark_data = &flux2dmk,
+					  .decoded_space = NULL,
+					  .space_data = NULL,
+					  .decoded_pulse = pulse_fn,
+					  .pulse_data = &pdata
+					 };
 
 	ssize_t dsv = gw_decode_stream(fbuf, bytes_read, &gwds);
 
@@ -1186,7 +1194,7 @@ retry:
 		msg(MSG_ERRORS, "Leftover bytes in stream! "
 				"(%d out of %d bytes unparsed, status %d)\n",
 				(int)(bytes_read - dsv), (int)bytes_read,
-				gwds.status);
+				gwds.ds_status);
 	}
 
 	msg(MSG_HEX, "[end of data] ");

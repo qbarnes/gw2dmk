@@ -24,7 +24,6 @@ fdecoder_init(struct fdecoder *fdec,
 {
 	*fdec = (struct fdecoder){
 		.sample_freq = sample_freq,
-		.gw_ticks = 0,
 
 		.accum = 0,
 		.taccum = 0,

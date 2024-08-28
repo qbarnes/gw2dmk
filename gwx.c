@@ -159,13 +159,15 @@ gw_decode_stream(const uint8_t *fbuf,
 		 size_t fbuf_cnt,
 		 struct gw_decode_stream_s *gwds)
 {
-	uint32_t	gw_ticks = gwds->ticks;
+	uint32_t	gw_ticks = gwds->ds_ticks;
 	const uint8_t	*f = fbuf, *ff = fbuf;
 	const uint8_t	*const fend = fbuf + fbuf_cnt;
 	int		(*f_imark)(uint32_t ticks, void *data);
+	int		(*f_space)(uint32_t ticks, void *data);
 	int		(*f_pulse)(uint32_t ticks, void *data);
 
 	f_imark = gwds->decoded_imark ? gwds->decoded_imark : decode_stub;
+	f_space = gwds->decoded_space ? gwds->decoded_space : decode_stub;
 	f_pulse = gwds->decoded_pulse ? gwds->decoded_pulse : decode_stub;
 
 	while (f < fend) {
@@ -183,14 +185,16 @@ gw_decode_stream(const uint8_t *fbuf,
 				switch (fop) {
 				case FLUXOP_INDEX:
 					ff = f;
-					gwds->status = (*f_imark)(gw_ticks + v,
+					gwds->ds_status = (*f_imark)(
+							gw_ticks + v,
 							gwds->imark_data);
 					break;
 
 				case FLUXOP_SPACE:
 					gw_ticks += v;
 					ff = f;
-					gwds->status = 0;
+					gwds->ds_status = (*f_space)(v,
+							gwds->space_data);
 					break;
 
 				default:
@@ -202,24 +206,27 @@ gw_decode_stream(const uint8_t *fbuf,
 		} else if (c < 250) {
 			gw_ticks += c;
 			ff = f;
-			gwds->status = (*f_pulse)(c, gwds->pulse_data);
+			gwds->ds_status = (*f_pulse)(gw_ticks -
+						     gwds->ds_last_pulse,
+						     gwds->pulse_data);
+			gwds->ds_last_pulse = gw_ticks;
 		} else if (f < fend) {
-			uint32_t old_ticks = gw_ticks;
-
 			gw_ticks += 250 + (c - 250) * 255 + *f++ - 1;
 			ff = f;
-			gwds->status = (*f_pulse)(gw_ticks - old_ticks,
-					gwds->pulse_data);
+			gwds->ds_status = (*f_pulse)(gw_ticks -
+						     gwds->ds_last_pulse,
+						     gwds->pulse_data);
+			gwds->ds_last_pulse = gw_ticks;
 		} else {
 			goto done;
 		}
 
-		if (gwds->status)
+		if (gwds->ds_status)
 			break;
 	}
 
 done:
-	gwds->ticks = gw_ticks;
+	gwds->ds_ticks = gw_ticks;
 	return ff - fbuf;
 }
 
