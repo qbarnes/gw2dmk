@@ -899,6 +899,7 @@ parse_args(int argc,
 		case 'x':
 			if (parse_tracks(optarg, cmd_set->retries))
 				goto err_usage;
+			break;
 
 		case 'G':;
 #if defined(WIN32) || defined(WIN64)
@@ -1678,12 +1679,16 @@ gw_detect_sides(struct gw_fddrv *fdd,
 void
 cleanup(void)
 {
-	// XXX This doesn't work.  Need to specifically handle out of
-	// band commands to workaround commands in progress.
-	// But may not be strictly be needed any more anyway since
-	// drive times out and powers down on its own.
-	//if (cmd_settings.gwfd != GW_DEVT_INVALID)
-	//	gw_reset(cmd_settings.gwfd);
+	// XXX Need to drain the device and handle out of band
+	// commands to workaround commands in progress.  But
+	// for now, just reset several times and not check
+	// return codes.
+
+	if (cmd_settings.fdd.gwfd != GW_DEVT_INVALID) {
+		gw_reset(cmd_settings.fdd.gwfd);
+		gw_reset(cmd_settings.fdd.gwfd);
+		gw_reset(cmd_settings.fdd.gwfd);
+	}
 }
 
 
