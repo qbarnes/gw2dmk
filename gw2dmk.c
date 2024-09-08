@@ -331,9 +331,10 @@ static struct cmd_settings cmd_settings = {
 	.min_retries = {[0 ... DMK_MAX_TRACKS-1] = {[0 ... 1] = 0}}
 };
 
-static volatile bool menu_requested = false;
-static volatile bool exit_requested = false;
-static volatile bool reading_floppy = false;
+static volatile gw_devt cleanup_gwfd   = GW_DEVT_INVALID;
+static volatile bool    menu_requested = false;
+static volatile bool    exit_requested = false;
+static volatile bool    reading_floppy = false;
 
 
 static void
@@ -1684,10 +1685,10 @@ cleanup(void)
 	// for now, just reset several times and not check
 	// return codes.
 
-	if (cmd_settings.fdd.gwfd != GW_DEVT_INVALID) {
-		gw_reset(cmd_settings.fdd.gwfd);
-		gw_reset(cmd_settings.fdd.gwfd);
-		gw_reset(cmd_settings.fdd.gwfd);
+	if (cleanup_gwfd != GW_DEVT_INVALID) {
+		gw_reset(cleanup_gwfd);
+		gw_reset(cleanup_gwfd);
+		gw_reset(cleanup_gwfd);
 	}
 }
 
@@ -1793,6 +1794,8 @@ main(int argc, char **argv)
 
 	if (cmd_settings.fdd.gwfd == GW_DEVT_INVALID)
 		msg_fatal("Failed to find or initialize GW.\n");
+
+	cleanup_gwfd = cmd_settings.fdd.gwfd;
 
 	if (cmd_settings.fdd.drive == -1)
 		gw_detect_drive(&cmd_settings.fdd);
@@ -1966,6 +1969,8 @@ main(int argc, char **argv)
 		msg_fatal("Failed to close message logging: %s (%d)\n",
 			  strerror(errno), errno);
 	}
+
+	cleanup_gwfd = GW_DEVT_INVALID;
 
 	return EXIT_SUCCESS;
 }
