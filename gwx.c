@@ -311,7 +311,7 @@ gw_write_stream(gw_devt gwfd,
 {
 	int	retry_cnt = 0;
 
-retry:
+retry:;
 	int cmd_ret = gw_write_flux(gwfd, cue_at_index, terminate_at_index);
 
 	if (cmd_ret != ACK_OKAY)
