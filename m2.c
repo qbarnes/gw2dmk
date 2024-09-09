@@ -2,7 +2,9 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#if 0
 #include <sys/mman.h>
+#endif
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>

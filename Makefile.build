@@ -32,7 +32,7 @@ obj_targets	= gw2dmk.o dmk2gw.o gw.o gwx.o msg.o m2.o gwhisto.o \
 targets		= gw2dmk$E dmk2gw$E gwhist$E m2$E
 
 #tar_files	= LICENSE README.md $(targets) $(tar_extras)
-tar_files	= LICENSE README.md gw2dmk$E gwhist$E $(tar_extras)
+tar_files	= LICENSE README.md gw2dmk$E dmk2gw$E gwhist$E $(tar_extras)
 
 clean_files	= $(targets) $(obj_targets)
 
