@@ -69,8 +69,16 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 	ssize_t fbuf_cnt = 0;
 
 	do {
+		/*
+		 * Do a blocking read of 1 byte, determine the number of
+		 * bytes still waiting, and then we can read those extra
+		 * waiting bytes without blocking.
+		 *
+		 * A 0 byte in the flux data at end of last read means
+		 * we're done.  If not, loop around and get the rest.
+		 */
+
 		uint8_t	rbuf[1];
-		// Not sure what the returned number means.
 		ssize_t gwr = gw_read(gwfd, rbuf, sizeof(rbuf));
 
 		if (gwr == -1) {
@@ -97,32 +105,30 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 		}
 #endif
 
-		// Does there need to be a breakout after so much time?
-		if (nrd == 0) continue;
-
-		// +1 to make room for rbuf[0] read above and added below.
+		/* +1 to make room for rbuf[0] byte added below. */
 		uint8_t *fbuf_new = realloc(*fbuf, fbuf_cnt + 1 + nrd);
 
 		if (!fbuf_new) {
 			fbuf_cnt = -1;
-			// Goto here for CMD_GET_FLUX_STATUS cleanup?
 			goto flux_status;
 		}
 
 		fbuf_new[fbuf_cnt++] = rbuf[0];
 
-		gwr = gw_read(gwfd, fbuf_new + fbuf_cnt, nrd);
+		if (nrd > 0) {
+			gwr = gw_read(gwfd, fbuf_new + fbuf_cnt, nrd);
 
-		if (gwr == -1) {
-			fbuf_cnt = -1;
-			goto flux_status;
+			if (gwr == -1) {
+				fbuf_cnt = -1;
+				goto flux_status;
+			}
+
+			fbuf_cnt += nrd;
 		}
 
-		*fbuf     = fbuf_new;
-		fbuf_cnt += nrd;
+		*fbuf = fbuf_new;
 
-		/* 0 byte in flux at end of last read means we're done. */
-	} while (fbuf_cnt == 0 || (*fbuf)[fbuf_cnt-1] != 0);
+	} while ((*fbuf)[fbuf_cnt-1] != 0);
 
 flux_status:
 	cmd_ret = gw_get_flux_status(gwfd);
