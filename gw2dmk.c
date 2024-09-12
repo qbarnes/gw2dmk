@@ -1514,6 +1514,7 @@ restart:
 		}
 	}
 
+leave:
 	reading_floppy = false;
 
 	msg(MSG_SUMMARY, "\nTotals:\n");
@@ -1535,11 +1536,6 @@ restart:
 		msg(MSG_SUMMARY,
 		    "Possibly a flippy disk; check reverse side too\n");
 	}
-
-	return;
-
-leave:
-	reading_floppy = false;
 }
 
 
