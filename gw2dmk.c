@@ -1844,8 +1844,10 @@ main(int argc, char **argv)
 			  gme->mfmthresh1,
 			  gme->mfmthresh2);
 
-	if (cmd_settings.fdd.sides == -1)
+	if (cmd_settings.fdd.sides == -1) {
 		gw_detect_sides(&cmd_settings.fdd, &gw_info);
+		cmd_settings.guess_sides = true;
+	}
 
 	if (cmd_settings.fdd.steps == -1) {
 		cmd_settings.fdd.steps = (cmd_settings.fdd.kind == 1) ? 2 : 1;
