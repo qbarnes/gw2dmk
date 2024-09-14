@@ -1,4 +1,4 @@
 PRODUCT   = gw2dmk
-VERSION   = 0.0.1.alpha.4
+VERSION   = 0.0.1.alpha.5
 TARBALL   = $(PRODUCT)-$(VERSION).tar
 TARBALLGZ = $(TARBALL).gz
