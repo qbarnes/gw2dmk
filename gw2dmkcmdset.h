@@ -46,6 +46,7 @@ struct cmd_settings {
 	int			usr_fmthresh;
 	int			usr_mfmthresh1;
 	int			usr_mfmthresh2;
+	double			usr_postcomp;
 	int			ignore;
 	bool			join_sectors;
 	volatile bool		menu_intr_enabled;

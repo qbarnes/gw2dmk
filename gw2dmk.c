@@ -89,6 +89,12 @@ static const struct option cmd_long_args[] = {
 		'm'
 	},
 	{
+		"postcomp",
+		required_argument,
+		NULL,
+		'p'
+	},
+	{
 		"sides",
 		required_argument,
 		NULL,
@@ -159,7 +165,7 @@ static const struct option cmd_long_args[] = {
 		NULL,
 		'2'
 	},
-	/* Start of long options only that are booleans. */
+	/* Start of long options without single letter counterparts. */
 	{
 		"hd",
 		no_argument,
@@ -307,6 +313,7 @@ static struct cmd_settings cmd_settings = {
 	.usr_fmthresh = -1,
 	.usr_mfmthresh1 = -1,
 	.usr_mfmthresh2 = -1,
+	.usr_postcomp = 0.5,
 	.ignore = 0,
 	.join_sectors = true,
 	.menu_intr_enabled = false,
@@ -479,6 +486,8 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	u("  -f threshold    FM threshold for short vs. long\n");
 	u("  -1 threshold    MFM threshold for short vs. medium\n");
 	u("  -2 threshold    MFM threshold for medium vs. long\n");
+	u("  -p postcomp     Amount of read-postcompensation (0.0-1.0) "
+				"[%.2f]\n", cmd_set->usr_postcomp);
 	u("  -T stp[,stl]    Step time");
 		if (cmd_set->fdd.step_ms != -1)
 			u(" [%u]", cmd_set->fdd.step_ms);
@@ -703,7 +712,7 @@ parse_args(int argc,
 	int	lindex = 0;
 
 	while ((opt = getopt_long(argc, argv,
-			"a:d:e:f:g:i:k:l:m:q:s:t:u:v:w:x:G:M:S:T:U:X:1:2:",
+			"a:d:e:f:g:i:k:l:m:p:q:s:t:u:v:w:x:G:M:S:T:U:X:1:2:",
 			cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -794,7 +803,7 @@ parse_args(int argc,
 			break;
 
 		case 'g':;
-			const int ign = strtol_strict(optarg, 10, "'i'");
+			const int ign = strtol_strict(optarg, 10, "'g'");
 			cmd_set->ignore = ign;
 			break;
 
@@ -833,6 +842,15 @@ parse_args(int argc,
 					  "be 1 or 2.\n", opt);
 				goto err_usage;
 			}
+			break;
+
+		case 'p':;
+			double postcomp;
+			const int pret = sscanf(optarg, "%lf", &postcomp);
+
+			if (pret != 1 || postcomp < 0.0 || postcomp > 1.0)
+				goto err_usage;
+			cmd_set->usr_postcomp = postcomp;
 			break;
 
 		case 'q':;
@@ -1832,9 +1850,11 @@ main(int argc, char **argv)
 					       gw_info.sample_freq);
 	} else {
 		media_encoding_init(gme, gw_info.sample_freq,
-				    (double[]){ 0, 300.0/360.0, 1.0, 0.5, 0.5
-				    }[cmd_settings.fdd.kind]);
+				    (double[]){ 300.0/360.0, 1.0, 0.5, 0.5
+				    }[cmd_settings.fdd.kind-1]);
 	}
+
+	gme->postcomp = cmd_settings.usr_postcomp;
 
 	msg(MSG_TSUMMARY, "Thresholds");
 	if (cmd_settings.use_histo)

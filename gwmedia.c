@@ -20,8 +20,9 @@ media_encoding_init(struct gw_media_encoding *gme, uint32_t sample_freq,
 		.fmthresh   = (int)round((p4us + p8us) / 2.0),
 		.mfmthresh1 = (int)round((p4us + p6us) / 2.0),
 		.mfmthresh2 = (int)round((p6us + p8us) / 2.0),
-		.mfmshort   = 0.0,
-		.thresh_adj = 0.0
+		.mfmshort   = (p4us + p6us) / 5.0,
+		.thresh_adj = 0.0,
+		.postcomp   = 0.5
 	};
 }
 
@@ -52,6 +53,8 @@ media_encoding_init_from_histo(struct gw_media_encoding *gme,
 
 		gme->mfmthresh2 = (int)round((p6g + ha->peak[1]) *
 						TICKS_PER_BUCKET / 2.0);
+
+		gme->mfmshort   = (ha->peak[0] + p6g) * TICKS_PER_BUCKET / 5.0;
 	} else {
 		gme->fmthresh   = (int)round((ha->peak[0] + ha->peak[2]) *
 						TICKS_PER_BUCKET / 2.0);
@@ -61,5 +64,8 @@ media_encoding_init_from_histo(struct gw_media_encoding *gme,
 
 		gme->mfmthresh2 = (int)round((ha->peak[1] + ha->peak[2]) *
 						TICKS_PER_BUCKET / 2.0);
+
+		gme->mfmshort   = (ha->peak[0] + ha->peak[1]) *
+						TICKS_PER_BUCKET / 5.0;
 	}
 }

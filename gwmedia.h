@@ -16,6 +16,7 @@ struct gw_media_encoding {
 	int	mfmthresh2;
 	double	mfmshort;
 	double	thresh_adj;
+	double	postcomp;
 };
 
 

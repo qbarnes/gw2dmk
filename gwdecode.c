@@ -967,7 +967,6 @@ gwflux_decode_pulse(uint32_t pulse,
 	if (fdec->use_hole && !dtsm->track_hole_p)
 		return 0;
 
-	//float	postcomp = 0.5;  /* hack for now XXX */
 	int	len;
 
 	msg(MSG_SAMPLES, "%d", pulse);
@@ -998,7 +997,8 @@ gwflux_decode_pulse(uint32_t pulse,
 
 	}
 
-	//gme->thresh_adj = (pulse - (len/2.0 * gme->mfmshort * cwclock)) * postcomp;
+	gme->thresh_adj = (pulse - (len/2.0 * gme->mfmshort * 2.0))
+			  * gme->postcomp;
 
 	msg(MSG_SAMPLES, "%c ", "-tsml"[len]);
 
