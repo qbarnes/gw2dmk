@@ -12,6 +12,7 @@ struct gw_media_encoding {
 	double	data_clock;	// XXX Needed?  Right place?
 	double	bit_rate;	// XXX Needed?  Right place?
 	int	fmthresh;
+	int	mfmthresh0;
 	int	mfmthresh1;
 	int	mfmthresh2;
 	double	mfmshort;
@@ -21,7 +22,7 @@ struct gw_media_encoding {
 
 
 extern void media_encoding_init(struct gw_media_encoding *gme,
-				uint32_t sample_freq, double mult);
+				uint32_t sample_freq, double fm_bitcell_us);
 
 extern void media_encoding_init_from_histo(struct gw_media_encoding *gme,
 					   const struct histo_analysis *histo,

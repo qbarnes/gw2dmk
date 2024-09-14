@@ -1850,8 +1850,8 @@ main(int argc, char **argv)
 					       gw_info.sample_freq);
 	} else {
 		media_encoding_init(gme, gw_info.sample_freq,
-				    (double[]){ 300.0/360.0, 1.0, 0.5, 0.5
-				    }[cmd_settings.fdd.kind-1]);
+				    (double[]){ 4.0 * 300.0/360.0, 4.0,
+				    2.0, 2.0 }[cmd_settings.fdd.kind-1]);
 	}
 
 	gme->postcomp = cmd_settings.usr_postcomp;

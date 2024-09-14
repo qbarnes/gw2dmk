@@ -1,29 +1,38 @@
 #include "gwmedia.h"
 
 
-void
-media_encoding_init(struct gw_media_encoding *gme, uint32_t sample_freq,
-		    double mult)
+static void
+media_encoding_init_base(struct gw_media_encoding *gme)
 {
-	/*
-	 * Assume FM is 4us and 8us and MFM is 4us, 6us, and 8us.
-	 */
-
-	double p4us = sample_freq * 4000.0 / 1e9 * mult;
-	double p6us = sample_freq * 6000.0 / 1e9 * mult;
-	double p8us = sample_freq * 8000.0 / 1e9 * mult;
-
 	*gme = (struct gw_media_encoding){
 		.rpm	    = 0.0,
 		.data_clock = 0.0,
 		.bit_rate   = 0.0,
-		.fmthresh   = (int)round((p4us + p8us) / 2.0),
-		.mfmthresh1 = (int)round((p4us + p6us) / 2.0),
-		.mfmthresh2 = (int)round((p6us + p8us) / 2.0),
-		.mfmshort   = (p4us + p6us) / 5.0,
+		.fmthresh   = 0.0,
+		.mfmthresh0 = 0.0,
+		.mfmthresh1 = 0.0,
+		.mfmthresh2 = 0.0,
+		.mfmshort   = 0.0,
 		.thresh_adj = 0.0,
 		.postcomp   = 0.5
 	};
+}
+
+
+void
+media_encoding_init(struct gw_media_encoding *gme, uint32_t sample_freq,
+		    double fm_bitcell_us)
+{
+	media_encoding_init_base(gme);
+
+	double fm_bitcell_clks  = fm_bitcell_us * sample_freq / 1e6;
+	double mfm_bitcell_clks = fm_bitcell_clks / 2.0;
+
+	gme->fmthresh   = (int)round(fm_bitcell_clks * 1.5);
+	gme->mfmthresh0 = (int)round(mfm_bitcell_clks * 1.5);
+	gme->mfmthresh1 = (int)round(mfm_bitcell_clks * 2.5);
+	gme->mfmthresh2 = (int)round(mfm_bitcell_clks * 3.5);
+	gme->mfmshort   = (int)round(mfm_bitcell_clks);
 }
 
 
@@ -37,7 +46,7 @@ media_encoding_init_from_histo(struct gw_media_encoding *gme,
 			       uint32_t sample_freq)
 {
 
-	media_encoding_init(gme, sample_freq, 1.0);
+	media_encoding_init_base(gme);
 
 	gme->rpm	= ha->rpm;
 	gme->data_clock = ha->data_clock_khz;
@@ -68,4 +77,6 @@ media_encoding_init_from_histo(struct gw_media_encoding *gme,
 		gme->mfmshort   = (ha->peak[0] + ha->peak[1]) *
 						TICKS_PER_BUCKET / 5.0;
 	}
+
+	gme->mfmthresh0 = (int)round(gme->mfmthresh1 * 0.6);
 }

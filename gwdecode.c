@@ -981,7 +981,7 @@ gwflux_decode_pulse(uint32_t pulse,
 		}
 	} else {
 		if ((fdec->quirk & QUIRK_MFM_CLOCK) &&
-			pulse + gme->thresh_adj <= gme->mfmthresh1 * 0.6) {
+			pulse + gme->thresh_adj <= gme->mfmthresh0) {
 			/* Tiny: output 1 */
 			len = 1;
 		} else if (pulse + gme->thresh_adj <= gme->mfmthresh1) {
