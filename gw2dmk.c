@@ -34,246 +34,47 @@
 const char version[] = VERSION;
 
 static const struct option cmd_long_args[] = {
-	{
-		"alternate",
-		required_argument,
-		NULL,
-		'a'
-	},
-	{
-		"drive",
-		required_argument,
-		NULL,
-		'd'
-	},
-	{
-		"encoding",
-		required_argument,
-		NULL,
-		'e'
-	},
-	{
-		"fmthresh",
-		required_argument,
-		NULL,
-		'f'
-	},
-	{
-		"ignore",
-		required_argument,
-		NULL,
-		'g'
-	},
-	{
-		"ipos",
-		required_argument,
-		NULL,
-		'i'
-	},
-	{
-		"kind",
-		required_argument,
-		NULL,
-		'k'
-	},
-	{
-		"dmktracklen",
-		required_argument,
-		NULL,
-		'l'
-	},
-	{
-		"steps",
-		required_argument,
-		NULL,
-		'm'
-	},
-	{
-		"postcomp",
-		required_argument,
-		NULL,
-		'p'
-	},
-	{
-		"sides",
-		required_argument,
-		NULL,
-		's'
-	},
-	{	"tracks",
-		required_argument,
-		NULL,
-		't'
-	},
-	{
-		"logfile",
-		required_argument,
-		NULL,
-		'u'
-	},
-	{
-		"verbosity",
-		required_argument,
-		NULL,
-		'v'
-	},
-	{
-		"fmtimes",
-		required_argument,
-		NULL,
-		'w'
-	},
-	{
-		"maxtries",
-		required_argument,
-		NULL,
-		'x'
-	},
-	{
-		"device",
-		required_argument,
-		NULL,
-		'G'
-	},
-	{
-		"menu",
-		required_argument,
-		NULL,
-		'M'
-	},
-	{
-		"stepdelay",
-		required_argument,
-		NULL,
-		'T'
-	},
-	{
-		"gwlogfile",
-		required_argument,
-		NULL,
-		'U'
-	},
-	{
-		"mfmthresh1",
-		required_argument,
-		NULL,
-		'1'
-	},
-	{
-		"mfmthresh2",
-		required_argument,
-		NULL,
-		'2'
-	},
-	/* Start of long options without single letter counterparts. */
-	{
-		"hd",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"dd",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"hole",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"nohole",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"join",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"nojoin",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"compat",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"nocompat",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"dmkopt",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"nodmkopt",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"usehisto",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"nousehisto",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"force",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"noforce",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"reset",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"noreset",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"reverse",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"noreverse",
-		no_argument,
-		NULL,
-		0
-	},
+	{ "alternate",	 required_argument, NULL, 'a' },
+	{ "drive",	 required_argument, NULL, 'd' },
+	{ "encoding",	 required_argument, NULL, 'e' },
+	{ "fmthresh",	 required_argument, NULL, 'f' },
+	{ "ignore",	 required_argument, NULL, 'g' },
+	{ "ipos",	 required_argument, NULL, 'i' },
+	{ "kind",	 required_argument, NULL, 'k' },
+	{ "dmktracklen", required_argument, NULL, 'l' },
+	{ "steps",	 required_argument, NULL, 'm' },
+	{ "postcomp",	 required_argument, NULL, 'p' },
+	{ "sides",	 required_argument, NULL, 's' },
+	{ "tracks",	 required_argument, NULL, 't' },
+	{ "logfile",	 required_argument, NULL, 'u' },
+	{ "verbosity",	 required_argument, NULL, 'v' },
+	{ "fmtimes",	 required_argument, NULL, 'w' },
+	{ "maxtries",	 required_argument, NULL, 'x' },
+	{ "device",	 required_argument, NULL, 'G' },
+	{ "menu",	 required_argument, NULL, 'M' },
+	{ "stepdelay",	 required_argument, NULL, 'T' },
+	{ "gwlogfile",	 required_argument, NULL, 'U' },
+	{ "mfmthresh1",	 required_argument, NULL, '1' },
+	{ "mfmthresh2",	 required_argument, NULL, '2' },
+	/* Start of binary long options without single letter counterparts. */
+	{ "hd",		 no_argument, NULL, 0 },
+	{ "dd",		 no_argument, NULL, 0 },
+	{ "hole",	 no_argument, NULL, 0 },
+	{ "nohole",	 no_argument, NULL, 0 },
+	{ "join",	 no_argument, NULL, 0 },
+	{ "nojoin",	 no_argument, NULL, 0 },
+	{ "compat",	 no_argument, NULL, 0 },
+	{ "nocompat",	 no_argument, NULL, 0 },
+	{ "dmkopt",	 no_argument, NULL, 0 },
+	{ "nodmkopt",	 no_argument, NULL, 0 },
+	{ "usehisto",	 no_argument, NULL, 0 },
+	{ "nousehisto",	 no_argument, NULL, 0 },
+	{ "force",	 no_argument, NULL, 0 },
+	{ "noforce",	 no_argument, NULL, 0 },
+	{ "reset",	 no_argument, NULL, 0 },
+	{ "noreset",	 no_argument, NULL, 0 },
+	{ "reverse",	 no_argument, NULL, 0 },
+	{ "noreverse",	 no_argument, NULL, 0 },
 	{ 0, 0, 0, 0 }
 };
 
