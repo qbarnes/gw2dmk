@@ -104,7 +104,7 @@ static struct cmd_settings cmd_settings = {
 	.check_compat_sides = true,
 	.reset_on_init = true,
 	.forcewrite = false,
-	.use_histo = true,
+	.use_histo = false,
 	.usr_encoding = MIXED,
 	.reverse_sides = false,
 	.hole = true,
@@ -1649,6 +1649,9 @@ main(int argc, char **argv)
 
 		media_encoding_init_from_histo(gme, &ha,
 					       gw_info.sample_freq);
+
+		if (gme->fmthresh == 0)
+			msg_fatal("No data collected for histogram.\n");
 	} else {
 		media_encoding_init(gme, gw_info.sample_freq,
 				    (double[]){ 4.0 * 300.0/360.0, 4.0,
