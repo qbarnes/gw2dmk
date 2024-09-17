@@ -318,7 +318,7 @@ enum menu_action {
 	MENU_QUIT,
 	MENU_NORETRY,
 	MENU_NEWRETRIES
-	};
+};
 
 
 static enum menu_action
@@ -339,15 +339,9 @@ menu(int failing, int retries[GW_MAX_TRACKS][2])
 		if (ret != 1)
 			continue;
 		switch (inc) {
-		case 'c':
-			return MENU_NOCHANGE;
-
-		case 'q':
-			return MENU_QUIT;
-
-		case 'g':
-			return MENU_NORETRY;
-
+		case 'c': return MENU_NOCHANGE;
+		case 'q': return MENU_QUIT;
+		case 'g': return MENU_NORETRY;
 		case 'r':
 			do {
 				printf("New retry limit? ");
@@ -385,6 +379,7 @@ menu(int failing, int retries[GW_MAX_TRACKS][2])
 
 /*
  * Parse a list of track ranges.
+ *
  * Returns:
  *   0 - Success
  *   1 - regcomp failure (internal error)
@@ -568,7 +563,7 @@ parse_args(int argc,
 			break;
 
 		case 'd':
-			if (optarg[1]) goto d_err;
+			if (optarg[0] && optarg[1]) goto d_err;
 
 			const int loarg = tolower(optarg[0]);
 
@@ -657,6 +652,7 @@ parse_args(int argc,
 		case 'q':;
 			const int quirk = strtol_strict(optarg, 0, "'q'");
 			if (quirk & ~QUIRK_ALL) goto err_usage;
+
 			if (((quirk & QUIRK_EXTRA) != 0) +
 			    ((quirk & QUIRK_EXTRA_CRC) != 0) +
 			    ((quirk & QUIRK_EXTRA_DATA) != 0) > 1) {
@@ -664,32 +660,30 @@ parse_args(int argc,
 				"cannot be used together.\n",
 				QUIRK_EXTRA, QUIRK_EXTRA_CRC, QUIRK_EXTRA_DATA);
 			}
-				cmd_set->quirk = quirk;
+			cmd_set->quirk = quirk;
 			break;
 
 		case 's':;
 			const int sides = strtol_strict(optarg, 10, "'s'");
 
-			if (sides >= 1 && sides <= 2) {
-				cmd_set->fdd.sides = sides;
-			} else {
+			if (sides < 1 || sides > 2) {
 				msg_error("Option-argument to '%c' must "
 					  "be 1 or 2.\n", opt);
 				goto err_usage;
 			}
+			cmd_set->fdd.sides = sides;
 			break;
 
 		case 't':;
 			const int tracks = strtol_strict(optarg, 10, "'t'");
 
-			if (tracks >= 0 && tracks <= GW_MAX_TRACKS) {
-				cmd_set->fdd.tracks = tracks;
-			} else {
+			if (tracks < 0 || tracks > GW_MAX_TRACKS) {
 				msg_error("Option-argument to '%c' must "
 					  "be between 0 and %d.\n",
 					  opt, GW_MAX_TRACKS);
 				goto err_usage;
 			}
+			cmd_set->fdd.tracks = tracks;
 			break;
 
 		case 'u':
@@ -697,17 +691,10 @@ parse_args(int argc,
 			break;
 
 		case 'v':;
-			int		optav;
-
-			optav = strtol_strict(optarg, 10, "'v'");
-
-			if (optav >= 0 && optav < 100) {
-				cmd_set->scrn_verbosity = optav % 10;
-				cmd_set->file_verbosity = optav / 10;
-			} else {
-				goto err_usage;
-			}
-
+			const int optav = strtol_strict(optarg, 10, "'v'");
+			if (optav < 0 || optav > 99) goto err_usage;
+			cmd_set->scrn_verbosity = optav % 10;
+			cmd_set->file_verbosity = optav / 10;
 			break;
 
 		case 'w':;
@@ -886,7 +873,7 @@ pulse_fn(uint32_t pulse, void *data)
 
 
 static void
-dmk_file_init(struct dmk_file *dmkf, struct cmd_settings *cmds)
+dmk_file_init(struct dmk_file *dmkf)
 {
 	dmk_header_init(&dmkf->header, 0, DMKRD_TRACKLEN_MAX);
 
@@ -894,12 +881,18 @@ dmk_file_init(struct dmk_file *dmkf, struct cmd_settings *cmds)
 }
 
 
+/*
+ * Open a file for writing and return a file pointer.
+ *
+ * If fail_if_exists is true, ensure file does not exist prior to open.
+ */
+
 static FILE *
-dmkfile2fp(const char *dmkfile, bool fail_if_exists)
+fopenwx(const char *file, bool fail_if_exists)
 {
 	int oflags = O_RDWR | O_CREAT | O_TRUNC | (fail_if_exists ? O_EXCL : 0);
 
-	int fd = open(dmkfile, oflags, 0644);
+	int fd = open(file, oflags, 0644);
 
 	if (fd == -1)
 		return NULL;
@@ -1276,7 +1269,7 @@ restart:
         	    encoding_name(cmd_set->usr_encoding));
 	}
 
-	dmk_file_init(dmkf, cmd_set);
+	dmk_file_init(dmkf);
 
 	struct dmk_disk_stats dds;
 	dmk_disk_stats_init(&dds);
@@ -1755,8 +1748,7 @@ main(int argc, char **argv)
 	msg(MSG_NORMAL, "Writing DMK...");
 	msg_scrn_flush();
 
-	FILE *dmkfp = dmkfile2fp(cmd_settings.dmkfile,
-				 !cmd_settings.forcewrite);
+	FILE *dmkfp = fopenwx(cmd_settings.dmkfile, !cmd_settings.forcewrite);
 
 	if (!dmkfp) {
 		msg_fatal("Failed to open DMK file '%s'%s: %s (%d)\n",

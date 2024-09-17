@@ -29,139 +29,29 @@
 const char version[] = VERSION;
 
 static const struct option cmd_long_args[] = {
-	{
-		"rateadj",
-		required_argument,
-		NULL,
-		'a'
-	},
-	{
-		"drive",
-		required_argument,
-		NULL,
-		'd'
-	},
-	{
-		"fill",
-		required_argument,
-		NULL,
-		'f'
-	},
-	{
-		"ignore",
-		required_argument,
-		NULL,
-		'g'
-	},
-	{
-		"hd",
-		required_argument,
-		NULL,
-		'h'
-	},
-	{
-		"ipos",
-		required_argument,
-		NULL,
-		'i'
-	},
-	{
-		"kind",
-		required_argument,
-		NULL,
-		'k'
-	},
-	{
-		"len",
-		required_argument,
-		NULL,
-		'l'
-	},
-	{
-		"steps",
-		required_argument,
-		NULL,
-		'm'
-	},
-	{
-		"precomp",
-		required_argument,
-		NULL,
-		'p'
-	},
-	{
-		"maxsides",
-		required_argument,
-		NULL,
-		's'
-	},
-	{
-		"logfile",
-		required_argument,
-		NULL,
-		'u'
-	},
-	{
-		"verbosity",
-		required_argument,
-		NULL,
-		'v'
-	},
-	{
-		"device",
-		required_argument,
-		NULL,
-		'G'
-	},
-	{
-		"stepdelay",
-		required_argument,
-		NULL,
-		'T'
-	},
-	{
-		"gwlogfile",
-		required_argument,
-		NULL,
-		'U'
-	},
-	/* Start of long options only that are booleans. */
-	{
-		"gwdebug",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"nogwdebug",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"reset",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"noreset",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"reverse",
-		no_argument,
-		NULL,
-		0
-	},
-	{
-		"noreverse",
-		no_argument,
-		NULL,
-		0
-	},
+	{ "rateadj",	required_argument, NULL, 'a' },
+	{ "drive",	required_argument, NULL, 'd' },
+	{ "fill",	required_argument, NULL, 'f' },
+	{ "ignore",	required_argument, NULL, 'g' },
+	{ "hd",		required_argument, NULL, 'h' },
+	{ "ipos",	required_argument, NULL, 'i' },
+	{ "kind",	required_argument, NULL, 'k' },
+	{ "len",	required_argument, NULL, 'l' },
+	{ "steps",	required_argument, NULL, 'm' },
+	{ "precomp",	required_argument, NULL, 'p' },
+	{ "maxsides",	required_argument, NULL, 's' },
+	{ "logfile",	required_argument, NULL, 'u' },
+	{ "verbosity",	required_argument, NULL, 'v' },
+	{ "device",	required_argument, NULL, 'G' },
+	{ "stepdelay",	required_argument, NULL, 'T' },
+	{ "gwlogfile",	required_argument, NULL, 'U' },
+	/* Start of binary long options without single letter counterparts. */
+	{ "gwdebug",	no_argument, NULL, 0 },
+	{ "nogwdebug",	no_argument, NULL, 0 },
+	{ "reset",	no_argument, NULL, 0 },
+	{ "noreset",	no_argument, NULL, 0 },
+	{ "reverse",	no_argument, NULL, 0 },
+	{ "noreverse",	no_argument, NULL, 0 },
 	{ 0, 0, 0, 0 }
 };
 
@@ -382,7 +272,7 @@ parse_args(int argc,
 			break;
 
 		case 'd':
-			if (optarg[1]) goto d_err;
+			if (optarg[0] && optarg[1]) goto d_err;
 
 			const int loarg = tolower(optarg[0]);
 
@@ -412,7 +302,7 @@ parse_args(int argc,
 			break;
 
 		case 'g':;
-			const int ign = strtol_strict(optarg, 10, "'i'");
+			const int ign = strtol_strict(optarg, 10, "'g'");
 			cmd_set->ignore = ign;
 			break;
 
@@ -469,13 +359,12 @@ parse_args(int argc,
 		case 's':;
 			const int maxsides = strtol_strict(optarg, 10, "'s'");
 
-			if (maxsides >= 1 && maxsides <= 2) {
-				cmd_set->max_sides = maxsides;
-			} else {
+			if (maxsides < 1 || maxsides > 2) {
 				msg_error("Option-argument to '%c' must "
 					  "be 1 or 2.\n", opt);
 				goto err_usage;
 			}
+			cmd_set->max_sides = maxsides;
 			break;
 
 		case 'u':
@@ -483,17 +372,11 @@ parse_args(int argc,
 			break;
 
 		case 'v':;
-			int		optav;
+			const int optav = strtol_strict(optarg, 10, "'v'");
 
-			optav = strtol_strict(optarg, 10, "'v'");
-
-			if (optav >= 0 && optav < 100) {
-				cmd_set->scrn_verbosity = optav % 10;
-				cmd_set->file_verbosity = optav / 10;
-			} else {
-				goto err_usage;
-			}
-
+			if (optav < 0 || optav > 99) goto err_usage;
+			cmd_set->scrn_verbosity = optav % 10;
+			cmd_set->file_verbosity = optav / 10;
 			break;
 
 		case 'G':;
@@ -829,6 +712,7 @@ dmk2gw(struct cmd_settings *cmd_set,
 	};
 
 #if 0
+	// XXX Need to finish this.
 	mult = (kd->mfmshort / 2.0) * cwclock / rate_adj;
 	if (hd == 4) {
 		hd = kd->hd;
@@ -1039,11 +923,10 @@ main(int argc, char **argv)
 			}
 		}
 
-		if (kind == 0) {
+		if (kind == 0)
 			msg_fatal("Failed to guess drive kind; use -k.\n");
-		} else {
-			msg(MSG_NORMAL, "Guessing %s\n", kind2desc(kind));
-		}
+
+		msg(MSG_NORMAL, "Guessing %s\n", kind2desc(kind));
 	}
 
 	cmd_settings.fdd.kind = kind;
