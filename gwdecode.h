@@ -50,6 +50,7 @@ struct fdecoder
 	int		sizecode;
 	int		secsize;
 	int		prev_secsize;
+	int		maxsecsize;
 
 	bool		awaiting_iam;
 	bool		awaiting_dam;

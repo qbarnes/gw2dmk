@@ -40,6 +40,7 @@ fdecoder_init(struct fdecoder *fdec,
 		.sizecode = 0,
 		.secsize = 0,
 		.prev_secsize = 0,
+		.maxsecsize = 3,
 
 		.awaiting_iam = false,
 		.awaiting_dam = false,
@@ -773,9 +774,9 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 					(fdec->quirk & QUIRK_DATA_CRC) == 0) ?
 						0xcdb4 : 0xffff, val);
 			fdec->ibyte = -1;
-			// XXX fix hardcode of "3" when -z is added.
 			fdec->dbyte = secsize(fdec->sizecode,
-					      fdec->cur_encoding, 3,
+					      fdec->cur_encoding,
+					      fdec->maxsecsize,
 					      fdec->quirk) + 2;
 			fdec->ebyte = -1;
 

@@ -50,6 +50,7 @@ static const struct option cmd_long_args[] = {
 	{ "verbosity",	 required_argument, NULL, 'v' },
 	{ "fmtimes",	 required_argument, NULL, 'w' },
 	{ "maxtries",	 required_argument, NULL, 'x' },
+	{ "maxsize",	 required_argument, NULL, 'z' },
 	{ "device",	 required_argument, NULL, 'G' },
 	{ "menu",	 required_argument, NULL, 'M' },
 	{ "stepdelay",	 required_argument, NULL, 'T' },
@@ -116,6 +117,7 @@ static struct cmd_settings cmd_settings = {
 	.usr_mfmthresh2 = -1,
 	.usr_postcomp = 0.5,
 	.ignore = 0,
+	.maxsecsize = 3,
 	.join_sectors = true,
 	.menu_intr_enabled = false,
 	.menu_err_enabled = false,
@@ -300,6 +302,8 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 				cmd_set->ignore);
 	u("  -i ipos         Force IAM to ipos from track start; if -1, "
 				"don't [%d]\n", cmd_set->iam_pos);
+	u("  -z maxsize      Allow sector sizes up to 128<<maxsize [%d]\n",
+				cmd_set->maxsecsize);
 	u("  -a alternate    Alternate even/odd tracks on retries with -m2 "
 				"[%d]\n", cmd_set->alternate);
 	u("                  0 = always even\n");
@@ -508,7 +512,7 @@ parse_args(int argc,
 	int	lindex = 0;
 
 	while ((opt = getopt_long(argc, argv,
-			"a:d:e:f:g:i:k:l:m:p:q:s:t:u:v:w:x:G:M:S:T:U:X:1:2:",
+			"a:d:e:f:g:i:k:l:m:p:q:s:t:u:v:w:x:z:G:M:S:T:U:X:1:2:",
 			cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -706,6 +710,18 @@ parse_args(int argc,
 		case 'x':
 			if (parse_tracks(optarg, cmd_set->retries))
 				goto err_usage;
+			break;
+
+		case 'z':
+			const int maxsize = strtol_strict(optarg, 10, "'z'");
+
+			if (maxsize < 0 || maxsize > 255) {
+				msg_error("Option-argument to '%c' must "
+					  "be >= and <= 255.\n", opt);
+				goto err_usage;
+			}
+
+			cmd_set->maxsecsize = maxsize;
 			break;
 
 		case 'G':;
@@ -956,6 +972,7 @@ retry:
 	flux2dmk.fdec.usr_encoding   = cmd_set->usr_encoding;
 	flux2dmk.fdec.first_encoding = *first_encoding;
 	flux2dmk.fdec.cur_encoding   = *first_encoding;
+	flux2dmk.fdec.maxsecsize     = cmd_set->maxsecsize;
 	flux2dmk.fdec.use_hole       = cmd_set->hole;
 	flux2dmk.fdec.quirk          = cmd_set->quirk;
 	flux2dmk.fdec.reverse_sides  = cmd_set->reverse_sides;

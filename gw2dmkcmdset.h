@@ -48,6 +48,7 @@ struct cmd_settings {
 	int			usr_mfmthresh2;
 	double			usr_postcomp;
 	int			ignore;
+	int			maxsecsize;
 	bool			join_sectors;
 	volatile bool		menu_intr_enabled;
 	bool			menu_err_enabled;
