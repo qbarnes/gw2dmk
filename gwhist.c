@@ -15,53 +15,15 @@
 
 
 static const struct option cmd_long_args[] = {
-	{
-		"drive",
-		required_argument,
-		NULL,
-		'd'
-	},
-	{
-		"device",
-		required_argument,
-		NULL,
-		'G'
-	},
-	{
-		"high-density",
-		required_argument,
-		NULL,
-		'H'
-	},
-	{
-		"revs",
-		required_argument,
-		NULL,
-		'r'
-	},
-	{
-		"side",
-		required_argument,
-		NULL,
-		's'
-	},
-	{	"track",
-		required_argument,
-		NULL,
-		't'
-	},
-	{
-		"logfile",
-		required_argument,
-		NULL,
-		'u'
-	},
-	{
-		"verbosity",
-		required_argument,
-		NULL,
-		'v'
-	},
+	{ "drive",	  required_argument, NULL, 'd' },
+	{ "device",	  required_argument, NULL, 'G' },
+	{ "high-density", required_argument, NULL, 'H' },
+	{ "revs",	  required_argument, NULL, 'r' },
+	{ "side",	  required_argument, NULL, 's' },
+	{ "track",	  required_argument, NULL, 't' },
+	{ "logfile",	  required_argument, NULL, 'u' },
+	{ "gwlogfile",	  required_argument, NULL, 'U' },
+	{ "verbosity",	  required_argument, NULL, 'v' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -82,8 +44,9 @@ static struct cmd_settings {
 	int		scrn_verbosity;
 	int		file_verbosity;
 	const char	*logfile;
+	const char	*devlogfile;
 } cmd_settings = { gwsd_def, BUS_IBMPC, 0, 0, 0, 1, 1,
-			MSG_NORMAL, MSG_QUIET, "gw.log" };
+			MSG_NORMAL, MSG_QUIET, "gw.log", NULL };
 
 
 static void
@@ -115,7 +78,7 @@ static void
 usage(const char *pgm_name)
 {
 	msg_fatal("Usage: %s [-d drive] [-g GW device] [-h high density line] "
-		  "[-r revs] [-s side] [-t track] [-u logfile] "
+		  "[-r revs] [-s side] [-t track] [-u logfile] [-U gwlogfile]"
 		  "[-v verbosity]\n",
 		  pgm_name);
 }
@@ -128,7 +91,7 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 	int	opt;
 	int	lindex = 0;
 
-	while ((opt = getopt_long(argc, argv, "d:G:H:r:s:t:u:v:",
+	while ((opt = getopt_long(argc, argv, "d:G:H:r:s:t:u:v:U:",
 		cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -242,6 +205,10 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 
 			break;
 
+		case 'U':
+			cmd_set->devlogfile = optarg;
+			break;
+
 		default:  /* '?' */
 			goto err_usage;
 			break;
@@ -258,6 +225,22 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 		if (!msg_fopen(cmd_set->logfile)) {
 			msg_error("Failed to open log file '%s': %s\n",
 				  cmd_set->logfile, strerror(errno));
+			goto err_usage;
+		}
+	}
+
+	if (cmd_set->devlogfile) {
+		FILE *dlfp = fopen(cmd_set->devlogfile, "w");
+
+		if (!dlfp) {
+			msg_error("Failed to open device log file '%s': %s\n",
+				  cmd_set->devlogfile, strerror(errno));
+			goto err_usage;
+		}
+
+		if (!gw_set_logfp(dlfp)) {
+			msg_error("Failed to set device log file '%s': %s\n",
+				  cmd_set->devlogfile, strerror(errno));
 			goto err_usage;
 		}
 	}
@@ -295,10 +278,6 @@ main(int argc, char **argv)
 	// Get us back into a saner state if crashed on last run.
 	gw_reset(gwfd);
 
-	gw_set_bus_type(gwfd, cmd_settings.bus);
-
-	gw_setdrive(gwfd, cmd_settings.drive, cmd_settings.densel);
-
 	struct gw_info	gw_info;
 
 	int cmd_ret = gw_get_info(gwfd, &gw_info);
@@ -307,6 +286,10 @@ main(int argc, char **argv)
 		// error handling
 		return EXIT_FAILURE;
 	}
+
+	gw_set_bus_type(gwfd, cmd_settings.bus);
+
+	gw_setdrive(gwfd, cmd_settings.drive, cmd_settings.densel);
 
 	msg(MSG_NORMAL, "Reading track %d, side %d...\n",
 		cmd_settings.track, cmd_settings.side);
@@ -318,8 +301,13 @@ main(int argc, char **argv)
 
 	int chft_ret = collect_histo_from_track(gwfd, &histo);
 
-	if (chft_ret)
-		msg_fatal("Couldn't collect histo (%d)\n", chft_ret);
+	if (chft_ret > 0) {
+		msg_fatal("%s (%d)%s\n", gw_cmd_ack(chft_ret), chft_ret,
+			  chft_ret == ACK_NO_INDEX ?
+			  " [Is diskette in drive?]" : "");
+	} else if (chft_ret < 0) {
+		msg_fatal("Couldn't collect histogram.  Internal error.\n");
+	}
 
 	struct histo_analysis	ha;
 

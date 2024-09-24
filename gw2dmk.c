@@ -712,7 +712,7 @@ parse_args(int argc,
 				goto err_usage;
 			break;
 
-		case 'z':
+		case 'z':;
 			const int maxsize = strtol_strict(optarg, 10, "'z'");
 
 			if (maxsize < 0 || maxsize > 255) {
@@ -1386,7 +1386,7 @@ gw_get_histo_analysis(gw_devt gwfd,
 	} else if (ret < 0) {
 		msg_fatal("Couldn't collect histogram.  Internal error.\n");
 	}
-	
+
 	histo_analysis_init(ha);
 	histo_analyze(histo, ha);
 	histo_show(MSG_SAMPLES, histo, ha);
@@ -1755,7 +1755,7 @@ main(int argc, char **argv)
 			uint16_t	old_tracklen = dmkf->header.tracklen;
 
 			dmkf->header.tracklen = dmk_track_length_optimal(dmkf);
-		
+
 			msg(MSG_ERRORS, "DMK track length optimized from %d "
 					"to %d.\n", old_tracklen,
 					dmkf->header.tracklen);

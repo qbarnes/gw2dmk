@@ -888,7 +888,7 @@ main(int argc, char **argv)
 		    //(int[]){DS_DD, DS_HD, DS_DD, DS_HD, XX}[cmd_settings.hd];
 
 	// XXX Write protected drive check here?
-	
+
 	int	kind = cmd_settings.fdd.kind;
 
 	if (kind == 0) {
