@@ -898,7 +898,7 @@ dmk_file_init(struct dmk_file *dmkf)
 
 
 /*
- * Open a file for writing and return a file pointer.
+ * Open a binary file for writing and return a file pointer.
  *
  * If fail_if_exists is true, ensure file does not exist prior to open.
  */
@@ -907,6 +907,9 @@ static FILE *
 fopenwx(const char *file, bool fail_if_exists)
 {
 	int oflags = O_RDWR | O_CREAT | O_TRUNC | (fail_if_exists ? O_EXCL : 0);
+#if defined(WIN64) || defined(WIN32)
+	oflags += O_BINARY;
+#endif
 
 	int fd = open(file, oflags, 0644);
 
