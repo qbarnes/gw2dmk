@@ -92,7 +92,8 @@ gw_find_open_gw(const char *device,
 		gwfd = gw_openlist(device_list, selected_dev);
 
 		if (gwfd == GW_DEVT_INVALID) {
-			msg_error("Failed find Greaseweazle.  Use '-G'.\n");
+			msg_error("Failed find Greaseweazle.  Use "
+				  "'-G <devname>'.\n");
 			return GW_DEVT_INVALID;
 		}
 	}
