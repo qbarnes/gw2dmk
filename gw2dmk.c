@@ -938,7 +938,8 @@ read_track(struct cmd_settings *cmd_set,
 	   struct dmk_disk_stats *dds,
 	   int track,
 	   int side,
-	   int *first_encoding)
+	   int *first_encoding,
+	   int *prev_cyl)
 {
 	struct dmk_track_stats	dts;
 	dmk_track_stats_init(&dts);
@@ -980,6 +981,7 @@ retry:
 	flux2dmk.fdec.quirk          = cmd_set->quirk;
 	flux2dmk.fdec.reverse_sides  = cmd_set->reverse_sides;
 	flux2dmk.fdec.awaiting_iam   = (cmd_set->iam_pos >= 0) ? true : false;
+	flux2dmk.fdec.cyl_prev_seen  = *prev_cyl;
 
 	dmk_track_sm_init(&flux2dmk.dtsm,
 			  dds,
@@ -1265,7 +1267,8 @@ leave:;
 	if (flux2dmk.fdec.flippy)
 		dds->flippy = true;
 
-	*first_encoding = flux2dmk.fdec.first_encoding;
+	*first_encoding	= flux2dmk.fdec.first_encoding;
+	*prev_cyl	= flux2dmk.fdec.cyl_seen;
 
 	return 0;
 }
@@ -1316,13 +1319,14 @@ restart:
 
 	int first_encoding =
 		(cmd_set->usr_encoding == RX02) ? FM : cmd_set->usr_encoding;
+	int prev_cyl = -1;
 
 	for (int h = 0; h < tracks; ++h) {
 
 		for (int s = 0; s < sides; ++s) {
 			int rtv = read_track(cmd_set, sample_freq,
 					     dmkf, &dds, h, s,
-					     &first_encoding);
+					     &first_encoding, &prev_cyl);
 
 			switch (rtv) {
 			case -2:

@@ -55,7 +55,7 @@ fdecoder_init(struct fdecoder *fdec,
 
 		.curcyl = 0,
 		.cyl_seen = -1,
-		.cyl_prev_seen = 0,
+		.cyl_prev_seen = -1,
 
 		.crc = 0,
 
