@@ -1166,7 +1166,7 @@ retry:
 	 */
 
 	bool failing =
-		((dts.errcount > 0) ||
+		((flux2dmk.dtsm.trk_merged_stats->errcount > 0) ||
 		(retry < cmd_set->min_retries[track][side]) ||
 		(dts.good_sectors < cmd_set->min_sectors[track][side])) &&
 		(retry < cmd_set->retries[track][side]);
@@ -1233,6 +1233,8 @@ leave:;
 
 	int	min_sector_cnt = cmd_set->min_sectors[track][side];
 	int	reused_sectors = flux2dmk.dtsm.trk_merged_stats->reused_sectors;
+
+	dts.good_sectors += reused_sectors;
 
 	if (min_sector_cnt && (dts.good_sectors != min_sector_cnt))
 		msg(MSG_TSUMMARY, " %d/%d", dts.good_sectors, min_sector_cnt);
