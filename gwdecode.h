@@ -48,8 +48,7 @@ struct fdecoder
 	int		cur_encoding;
 	int		mark_after;
 	int		sizecode;
-	int		secsize;
-	int		prev_secsize;
+	int		t0s0ss;
 	int		maxsecsize;
 
 	bool		awaiting_iam;

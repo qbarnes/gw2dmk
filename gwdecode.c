@@ -38,8 +38,7 @@ fdecoder_init(struct fdecoder *fdec,
 
 		.mark_after = -1,
 		.sizecode = 0,
-		.secsize = 0,
-		.prev_secsize = 0,
+		.t0s0ss = -1,
 		.maxsecsize = 3,
 
 		.awaiting_iam = false,
@@ -779,9 +778,6 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 					      fdec->maxsecsize,
 					      fdec->quirk) + 2;
 			fdec->ebyte = -1;
-
-			fdec->prev_secsize = fdec->secsize;
-			fdec->secsize = fdec->dbyte;
 			return;
 
 		case 0x80: /* MFM DAM or IDAM premark read backward */

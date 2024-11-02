@@ -1077,9 +1077,16 @@ retry:
 	    cmd_set->fdd.sides == 2 &&
 	    track == 0 &&
 	    dts.good_sectors > 0) {
-		if (side == 1 &&
-		    flux2dmk.fdec.prev_secsize != 512 &&
-		    flux2dmk.fdec.secsize == 512) {
+		if (side == 0) {
+			flux2dmk.fdec.t0s0ss = secsize(flux2dmk.fdec.sizecode,
+						flux2dmk.fdec.cur_encoding,
+						flux2dmk.fdec.maxsecsize,
+						flux2dmk.fdec.quirk);
+		} else if (flux2dmk.fdec.t0s0ss != 512 &&
+			   secsize(flux2dmk.fdec.sizecode,
+				   flux2dmk.fdec.cur_encoding,
+				   flux2dmk.fdec.maxsecsize,
+				   flux2dmk.fdec.quirk) == 512) {
 			msg(MSG_NORMAL, "[Incompatible formats detected "
 			    "between sides; restarting single-sided]\n");
 			cmd_set->fdd.sides = 1;
