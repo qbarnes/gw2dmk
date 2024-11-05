@@ -366,7 +366,6 @@ dmk_check_wraparound(struct flux2dmk_sm *f2dsm)
 	struct fdecoder *fdec	  = &f2dsm->fdec;
 	struct dmk_track_sm *dtsm = &f2dsm->dtsm;
 
-#if 0 // XXX
 	/* Once we've read 95% of the track, if we see a sector ID that's
 	 * identical to the first one we saw on the track, conclude that we
 	 * wrapped around and are seeing the first one again, and
@@ -374,9 +373,9 @@ dmk_check_wraparound(struct flux2dmk_sm *f2dsm)
 	 */
 
 	if (dtsm->track_data_p - dtsm->trk_working.track - DMK_TKHDR_SIZE <
-	    (dtsm->trk_working.track_len - DMK_TKHDR_SIZE) * 95 / 100)
+	    (DMKRD_TRACKLEN_MIN - DMK_TKHDR_SIZE) * 95 / 100)
 		return 0;
-#endif
+
 	uint16_t first_idamp = *dtsm->trk_working.idam_offset;
 	uint16_t last_idamp  = *(dtsm->idam_p - 1);
 
@@ -948,6 +947,9 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
  * Clean up and re-encode a data/clock pulse window.  Pass the pulse
  * train to gwflux_decode_bit for further decoding.  Ad hoc method
  * using two fixed thresholds modified by a postcomp factor.
+ *
+ * Return 0 to continue processing stream, or 1 when dmk_full to stop
+ * further processing.
  */
 
 int

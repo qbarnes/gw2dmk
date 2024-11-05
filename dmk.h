@@ -43,7 +43,6 @@ extern "C" {
 #define DMKI_TRACKLEN_8SD  0x14e0 /* DMK_TKHDR_SIZE + 5216 (nominal 5208) */
 #define DMKI_TRACKLEN_8    0x2940 /* DMK_TKHDR_SIZE + 10432 (nominal 10416) */
 #define DMKI_TRACKLEN_3HD  0x3180 /* DMK_TKHDR_SIZE + 12544 (nominal 12500) */
-#define DMKI_TRACKLEN_MAX  DMKI_TRACKLEN_3HD
 
 
 /* Track lengths for reads from media.  Allows for 2% slower than nominal
@@ -58,6 +57,7 @@ extern "C" {
 #define DMKRD_TRACKLEN_8SD  0x1560 /* DMK_TKHDR_SIZE + 5344 (nominal 5208) */
 #define DMKRD_TRACKLEN_8    0x2A40 /* DMK_TKHDR_SIZE + 10688 (nominal 10416) */
 #define DMKRD_TRACKLEN_3HD  0x3260 /* DMK_TKHDR_SIZE + 12768 (nominal 12500) */
+#define DMKRD_TRACKLEN_MIN  DMKRD_TRACKLEN_5SD
 #define DMKRD_TRACKLEN_MAX  DMKRD_TRACKLEN_3HD
 
 

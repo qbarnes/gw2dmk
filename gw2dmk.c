@@ -1021,12 +1021,18 @@ retry:
 
 	ssize_t dsv = gw_decode_stream(fbuf, bytes_read, &gwds);
 
+	/*
+	 * Check for stream processing errors.
+	 * If no errors and bytes processed is less than bytes read,
+	 * not all the stream was processed.  If ds_status > 1,
+	 * report the underprocessing.
+	 */
+
 	if (dsv == -1) {
 		msg(MSG_ERRORS, "Decode error from stream\n");
 		free(fbuf);
 		return 3;
-	} else if (dsv < bytes_read) {
-		// XXX Just not handling this at present, but warn.
+	} else if (dsv < bytes_read && gwds.ds_status > 1) {
 		msg(MSG_ERRORS, "Leftover bytes in stream! "
 				"(%d out of %d bytes unparsed, status %d)\n",
 				(int)(bytes_read - dsv), (int)bytes_read,
