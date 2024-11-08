@@ -293,7 +293,6 @@ dmk2pulses(struct dmk_track *dmkt,
 	 * First IDAM pointer has some special uses; need to get it here.
 	 */
 
-	int	datap;
 	int	first_idamp;
 	int	next_idamp = le16toh(dmkt->idam_offset[idampp++]);
 	int	next_encoding;
@@ -329,6 +328,8 @@ dmk2pulses(struct dmk_track *dmkt,
 	/*
 	 * Loop through data bytes.
 	 */
+
+	int	datap;
 
 	for (datap = DMK_TKHDR_SIZE; datap < eti->track_len; ++datap) {
 		if (datap >= next_idamp) {

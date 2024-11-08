@@ -16,14 +16,14 @@
 
 static const struct option cmd_long_args[] = {
 	{ "drive",	  required_argument, NULL, 'd' },
-	{ "device",	  required_argument, NULL, 'G' },
-	{ "high-density", required_argument, NULL, 'H' },
 	{ "revs",	  required_argument, NULL, 'r' },
 	{ "side",	  required_argument, NULL, 's' },
 	{ "track",	  required_argument, NULL, 't' },
 	{ "logfile",	  required_argument, NULL, 'u' },
-	{ "gwlogfile",	  required_argument, NULL, 'U' },
 	{ "verbosity",	  required_argument, NULL, 'v' },
+	{ "device",	  required_argument, NULL, 'G' },
+	{ "high-density", required_argument, NULL, 'H' },
+	{ "gwlogfile",	  required_argument, NULL, 'U' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -77,8 +77,8 @@ strtol_strict(const char *nptr, int base, const char *name)
 static void
 usage(const char *pgm_name)
 {
-	msg_fatal("Usage: %s [-d drive] [-g GW device] [-h high density line] "
-		  "[-r revs] [-s side] [-t track] [-u logfile] [-U gwlogfile]"
+	msg_fatal("Usage: %s [-G GW device] [-d drive] [-H high density line] "
+		  "[-r revs] [-t track] [-s side] [-u logfile] [-U gwlogfile]"
 		  "[-v verbosity]\n",
 		  pgm_name);
 }
@@ -91,7 +91,7 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 	int	opt;
 	int	lindex = 0;
 
-	while ((opt = getopt_long(argc, argv, "d:G:H:r:s:t:u:v:U:",
+	while ((opt = getopt_long(argc, argv, "d:r:s:t:u:v:G:H:U:",
 		cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -115,22 +115,6 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 			default: d_err:
 				msg_error("Option-argument to '%c' must "
 					  "be 0, 1, 2, a, or b.\n", opt);
-				goto err_usage;
-			}
-			break;
-
-		case 'G':
-			cmd_set->device = optarg;
-			break;
-
-		case 'H':;
-			const int densel = strtol_strict(optarg, 10, "'H'");
-
-			if (densel >= 0 && densel <= 1) {
-				cmd_set->densel = densel;
-			} else {
-				msg_error("Option-argument to '%c' must "
-					  "be 0 or 1.\n", opt);
 				goto err_usage;
 			}
 			break;
@@ -203,6 +187,22 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 				}
 			}
 
+			break;
+
+		case 'G':
+			cmd_set->device = optarg;
+			break;
+
+		case 'H':;
+			const int densel = strtol_strict(optarg, 10, "'H'");
+
+			if (densel >= 0 && densel <= 1) {
+				cmd_set->densel = densel;
+			} else {
+				msg_error("Option-argument to '%c' must "
+					  "be 0 or 1.\n", opt);
+				goto err_usage;
+			}
 			break;
 
 		case 'U':
