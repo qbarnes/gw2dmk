@@ -889,13 +889,23 @@ main(int argc, char **argv)
 
 	// XXX Write protected drive check here?
 
+	/*
+	 * Always test the RPM even if we "know" what it is.
+	 * That way if a drive without media is selected, it will
+	 * fault here instead of hanging on a write later.
+	 */
+
+	double rpm = get_rpm(cmd_settings.fdd.gwfd,
+			     cmd_settings.fdd.drive,
+			     gw_info.sample_freq);
+
+	if (rpm == -1.0)
+		msg_fatal("Cannot determine drive RPM.  Incorrect drive "
+			  "or media not in drive?\n");
+
 	int	kind = cmd_settings.fdd.kind;
 
 	if (kind == 0) {
-		double rpm = get_rpm(cmd_settings.fdd.gwfd,
-				     cmd_settings.fdd.drive,
-				     gw_info.sample_freq);
-
 		if (rpm < 0.0)
 			msg_fatal("Cannot determine drive RPM.\n");
 
