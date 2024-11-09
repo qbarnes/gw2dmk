@@ -1540,10 +1540,34 @@ cleanup(void)
 }
 
 
+#if defined(WIN64) || defined(WIN32)
+
+BOOL WINAPI
+handler(DWORD fdwCtrlType)
+{
+	if (fdwCtrlType == CTRL_C_EVENT &&
+	    cmd_settings.menu_intr_enabled &&
+	    reading_floppy && !menu_requested) {
+		menu_requested = true;
+		return TRUE;
+	}
+
+	if (reading_floppy && !exit_requested) {
+		exit_requested = true;
+		return TRUE;
+	}
+
+	cleanup();
+	return FALSE;
+}
+
+#else
+
 void
 handler(int sig)
 {
-	if (sig == SIGINT && cmd_settings.menu_intr_enabled &&
+	if (sig == SIGINT &&
+	    cmd_settings.menu_intr_enabled &&
 	    reading_floppy && !menu_requested) {
 		menu_requested = true;
 		return;
@@ -1554,16 +1578,14 @@ handler(int sig)
 		return;
 	}
 
-#if defined(WIN64) || defined(WIN32)
-	signal(sig, SIG_DFL);
-#else
 	struct sigaction sa_dfl = { .sa_handler = SIG_DFL };
 	sigaction(sig, &sa_dfl, NULL);
-#endif
 
 	cleanup();
 	raise(sig);
 }
+
+#endif
 
 
 int
@@ -1609,8 +1631,8 @@ main(int argc, char **argv)
 	 */
 
 #if defined(WIN64) || defined(WIN32)
-	signal(SIGINT, handler);
-	signal(SIGTERM, handler);
+	if (!SetConsoleCtrlHandler(handler, TRUE))
+		msg_fatal("SetConsoleCtrlHandler() failed.\n");
 #else
 	int sigs[] = { SIGHUP, SIGINT, SIGQUIT, SIGPIPE, SIGTERM };
 	struct sigaction sa_def = { .sa_handler = handler,
