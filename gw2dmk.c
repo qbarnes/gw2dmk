@@ -1725,6 +1725,8 @@ main(int argc, char **argv)
 	if (cmd_settings.fdd.sides == -1) {
 		gw_detect_sides(&cmd_settings.fdd, &gw_info);
 		cmd_settings.guess_sides = true;
+		msg(MSG_NORMAL, "Detected side 1 %sformatted\n",
+			cmd_settings.fdd.sides == 1 ? "not " : "");
 	}
 
 	if (cmd_settings.fdd.steps == -1) {
