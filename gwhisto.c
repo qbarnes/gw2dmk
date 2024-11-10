@@ -48,7 +48,7 @@ histo_analyze(const struct histogram *histo,
 		data_total_cnt += histo->data[i];
 
 	unsigned int min_threshold =
-		(int)(0.06 * data_total_cnt / COUNT_OF(histo->data));
+		(int)(0.50 * data_total_cnt / COUNT_OF(histo->data));
 
 	int max_width = (int)(COUNT_OF(histo->data) / 5.3);
 
