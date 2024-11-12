@@ -1050,7 +1050,7 @@ retry:
 				flux2dmk.dtsm.track_hole_p);
 	}
 
-	if (flux2dmk.dtsm.accum_sectors) {
+	if ((retry > 0) && flux2dmk.dtsm.accum_sectors) {
 		merge_sectors(flux2dmk.dtsm.trk_merged,
 			      flux2dmk.dtsm.trk_merged_stats,
 			      &flux2dmk.dtsm.trk_working,
