@@ -48,9 +48,7 @@ jobs:
       package_name: ${{ steps.package_and_version.outputs.package_name }}
       package_version: ${{ steps.package_and_version.outputs.package_version }}
     steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
+      - uses: actions/checkout@v4
 
       - id: package_and_version
         run: |
@@ -97,9 +95,7 @@ jobs:
     container:
       image: ${{ matrix.container }}
     steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
+      - uses: actions/checkout@v4
 
       - name: Build target
         id: build_target
@@ -109,7 +105,7 @@ jobs:
           echo "build_artifacts_name=${package}-${version}-${target_platform_full_name}-build-artifacts" >> $GITHUB_OUTPUT
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.build_target.outputs.build_artifacts_name }}
           path: build.${{ env.target_platform_full_name }}/${{ env.package }}-${{ env.version }}-${{ env.target_platform_full_name }}.tar.gz
