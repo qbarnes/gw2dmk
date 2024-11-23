@@ -189,8 +189,33 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 
 			break;
 
-		case 'G':
+		case 'G':;
+#if defined(WIN32) || defined(WIN64)
+			/* If the user specified a 2 digit COM device
+			 * without the '\\\\.\\' prefix, prefix their string
+			 * with it.  Always malloc the string on MSW so we
+			 * always know we can free() if it needed on this OS.
+			 */
+
+			char *ds;
+			if (strncasecmp("COM", optarg, 3) == 0 &&
+			    isdigit(optarg[3]) &&
+			    isdigit(optarg[4]) &&
+			    !optarg[5]) {
+				ds = malloc(4 + 5 + 1);
+				if (ds) {
+					strcpy(ds, "\\\\.\\");
+					strcpy(ds + 4, optarg);
+				}
+			} else {
+				ds = strdup(optarg);
+			}
+			if (!ds)
+				msg_fatal("Cannot allocate device name.\n");
+			cmd_set->device = ds;
+#else
 			cmd_set->device = optarg;
+#endif
 			break;
 
 		case 'H':;
