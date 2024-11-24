@@ -206,7 +206,7 @@ int
 gw_detect_drive(struct gw_fddrv *fdd)
 {
 	if (fdd->drive == -1)
-		msg_fatal("Must specify drive with '-d' for now.\n");
+		msg_fatal("Must specify drive with '-d <drive>' for now.\n");
 
 	return 0;
 }

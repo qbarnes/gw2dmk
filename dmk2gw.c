@@ -747,21 +747,40 @@ dmk2gw(struct cmd_settings *cmd_set,
 	// XXX Need better cases here and documentation here.
 	// Maybe use and better flesh out gw_media_encoding struct.
 	// Hardcode for now.
+	// Maybe used drive's actual RPM to better adjust stream rate?
 
 	double ticks_per_us = sample_freq / 1000000.0;
 	double rpm_adj, mult;
 	switch (cmd_set->fdd.kind) {
 	case 1:
+		/* 5.25-inch SD/DD disk in 1.2MB drive */
+		/* 360 RPM, MFM data 300 kHz */
 		// 2us because I think len == 2 in encode_bit(), so 4us.
 		mult = 2 * ticks_per_us;
 		rpm_adj = 300.0 / 360.0;
 		break;
+
 	case 2:
+		/* 5.25-inch SD/DD disk in 360KB/720KB drive, or
+		 * 3.5-inch SD/DD disk */
+		/* 300 RPM, MFM data 250 kHz */
+		mult = 2 * ticks_per_us;
+		rpm_adj = 1.0;
+		break;
+
 	case 3:
+		/* 5.25-inch HD disk or 8-inch SD/DD disk */
+		/* 360 RPM, MFM data 500 kHz */
+		/* FALLTHRU */
 	case 4:
+		/* 3.5-inch HD disk */
+		/* 300 RPM, MFM data 500 kHz */
+		mult = ticks_per_us;
+		rpm_adj = 1.0;
+		break;
+
 	default:
-		// XXX
-		msg_fatal("Finish the code here.\n");
+		msg_fatal("Expected value for kind of drive.\n");
 	};
 
 	struct encode_bit ebs;
