@@ -691,7 +691,9 @@ parse_args(int argc,
 			break;
 
 		case 'u':
-			cmd_set->logfile = optarg;
+			cmd_set->logfile = strdup(optarg);
+			if (!cmd_set->logfile)
+				msg_fatal("Cannot allocate logfile name.\n");
 			break;
 
 		case 'v':;
@@ -1846,12 +1848,18 @@ main(int argc, char **argv)
 			  strerror(errno), errno);
 	}
 
+	cleanup_gwfd = GW_DEVT_INVALID;
+
+#if defined(WIN64) || defined(WIN32)
+	free((char *)cmd_settings.fdd.device);
+#endif
+
 	if (msg_fclose() == EOF) {
 		msg_fatal("Failed to close message logging: %s (%d)\n",
 			  strerror(errno), errno);
 	}
 
-	cleanup_gwfd = GW_DEVT_INVALID;
+	free((char *)cmd_settings.logfile);
 
 	return EXIT_SUCCESS;
 }

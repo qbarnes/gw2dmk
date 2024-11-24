@@ -368,7 +368,11 @@ parse_args(int argc,
 			break;
 
 		case 'u':
-			cmd_set->logfile = optarg;
+			/* Always use malloc for allocation of logfile name
+			 * so we always know we can free(). */
+			cmd_set->logfile = strdup(optarg);
+			if (!cmd_set->logfile)
+				msg_fatal("Cannot allocate logfile name.\n");
 			break;
 
 		case 'v':;
@@ -689,6 +693,8 @@ write_track(struct cmd_settings *cmd_set,
 			true, true, 5);
 	// error checking
 
+	free(tes.tbuf);
+
 	return 0;
 }
 
@@ -966,7 +972,33 @@ main(int argc, char **argv)
 
 	dmk2gw(&cmd_settings, gw_info.sample_freq, dmkf);
 
+	msg(MSG_NORMAL, "Done!\n");
+
+	free(dmkf);
+
+	/*
+	 * Finish up and close out.
+	 */
+
+	gw_unsetdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive);
+
+	if (gw_close(cmd_settings.fdd.gwfd)) {
+		msg_fatal("Failed to close GW device: %s (%d)\n",
+			  strerror(errno), errno);
+	}
+
 	cleanup_gwfd = GW_DEVT_INVALID;
 
-	return 0;
+#if defined(WIN64) || defined(WIN32)
+	free((char *)cmd_settings.fdd.device);
+#endif
+
+	if (msg_fclose() == EOF) {
+		msg_fatal("Failed to close message logging: %s (%d)\n",
+			  strerror(errno), errno);
+	}
+
+	free((char *)cmd_settings.logfile);
+
+	return EXIT_SUCCESS;
 }
