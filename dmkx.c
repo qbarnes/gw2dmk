@@ -284,7 +284,7 @@ dmk2pulses(struct dmk_track *dmkt,
 	bool	skip = false;
 	int	rx02_data = 0;
 	int	sector_data = 0;
-	uint8_t	dmk_encoding[DMKRD_TRACKLEN_MAX - DMK_TKHDR_SIZE] = { 0 };
+	uint8_t	dmk_encoding[DMKRD_TRACKLEN_MAX] = { 0 };
 
 	struct rx02_bitpair	rx02bp;
 	rx02_bitpair_init(&rx02bp);
