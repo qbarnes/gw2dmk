@@ -38,7 +38,6 @@ fdecoder_init(struct fdecoder *fdec,
 
 		.mark_after = -1,
 		.sizecode = 0,
-		.t0s0ss = -1,
 		.maxsecsize = 3,
 
 		.awaiting_iam = false,

@@ -945,7 +945,8 @@ read_track(struct cmd_settings *cmd_set,
 	   int track,
 	   int side,
 	   int *first_encoding,
-	   int *prev_cyl)
+	   int *prev_cyl,
+	   int *t0s0ss)
 {
 	struct dmk_track_stats	dts;
 	dmk_track_stats_init(&dts);
@@ -1090,11 +1091,11 @@ retry:
 	    track == 0 &&
 	    dts.good_sectors > 0) {
 		if (side == 0) {
-			flux2dmk.fdec.t0s0ss = secsize(flux2dmk.fdec.sizecode,
-						flux2dmk.fdec.cur_encoding,
-						flux2dmk.fdec.maxsecsize,
-						flux2dmk.fdec.quirk);
-		} else if (flux2dmk.fdec.t0s0ss != 512 &&
+			*t0s0ss = secsize(flux2dmk.fdec.sizecode,
+					  flux2dmk.fdec.cur_encoding,
+					  flux2dmk.fdec.maxsecsize,
+					  flux2dmk.fdec.quirk);
+		} else if (*t0s0ss != 512 &&
 			   secsize(flux2dmk.fdec.sizecode,
 				   flux2dmk.fdec.cur_encoding,
 				   flux2dmk.fdec.maxsecsize,
@@ -1341,13 +1342,15 @@ restart:
 	int first_encoding =
 		(cmd_set->usr_encoding == RX02) ? FM : cmd_set->usr_encoding;
 	int prev_cyl = -1;
+	int t0s0ss = -1;
 
 	for (int h = 0; h < tracks; ++h) {
 
 		for (int s = 0; s < sides; ++s) {
 			int rtv = read_track(cmd_set, sample_freq,
 					     dmkf, &dds, h, s,
-					     &first_encoding, &prev_cyl);
+					     &first_encoding, &prev_cyl,
+					     &t0s0ss);
 
 			switch (rtv) {
 			case -2:
