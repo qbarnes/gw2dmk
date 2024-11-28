@@ -30,10 +30,10 @@ $ sudo apt-get update
 $ sudo apt-get install -y build-essential
 ```
 
-Then when cloning this repo, make sure to use the `--recursive` flag like so:
+To clone this repo, run:
 
 ```
-$ git clone --recursive git@github.com:qbarnes/gw2dmk.git
+$ git clone git@github.com:qbarnes/gw2dmk.git
 ```
 
 ### Building natively
@@ -79,10 +79,10 @@ $ sudo apt-get update
 $ sudo apt-get install -y build-essential mingw-w64 gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 ```
 
-Then when cloning this repo, make sure to use the `--recursive` flag like so:
+To clone this repo, run:
 
 ```
-$ git clone --recursive git@github.com:qbarnes/gw2dmk.git
+$ git clone git@github.com:qbarnes/gw2dmk.git
 ```
 
 ### Cross-building
@@ -141,10 +141,10 @@ $ sudo apt-get update
 $ sudo apt-get install -y git make docker.io
 ```
 
-Then when cloning this repo, make sure to use the `--recursive` flag like so:
+To clone this repo, run:
 
 ```
-$ git clone --recursive git@github.com:qbarnes/gw2dmk.git
+$ git clone git@github.com:qbarnes/gw2dmk.git
 ```
 
 ### Using containers for building
