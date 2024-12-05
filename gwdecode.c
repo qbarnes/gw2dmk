@@ -282,7 +282,8 @@ dmk_iam(struct flux2dmk_sm *f2dsm, unsigned char byte, int encoding)
 			 * as instructed.  This can result in data loss if
 			 * an IAM appears somewhere in the middle of the
 			 * track, unless the read was for twice the track
-			 * length as the use_hole=0 (-h0) flag sets it.  */
+			 * length as the use_hole=0 (--nohole) flag sets it.
+			 */
 
 			int iam_pos = dtsm->dmk_iam_pos;
 	 

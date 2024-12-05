@@ -44,17 +44,21 @@ static const struct option cmd_long_args[] = {
 	{ "dmktracklen", required_argument, NULL, 'l' },
 	{ "steps",	 required_argument, NULL, 'm' },
 	{ "postcomp",	 required_argument, NULL, 'p' },
+	{ "quirks",	 required_argument, NULL, 'q' },
 	{ "sides",	 required_argument, NULL, 's' },
 	{ "tracks",	 required_argument, NULL, 't' },
 	{ "logfile",	 required_argument, NULL, 'u' },
 	{ "verbosity",	 required_argument, NULL, 'v' },
 	{ "fmtimes",	 required_argument, NULL, 'w' },
-	{ "maxtries",	 required_argument, NULL, 'x' },
+	{ "maxretries",	 required_argument, NULL, 'x' },
 	{ "maxsize",	 required_argument, NULL, 'z' },
 	{ "device",	 required_argument, NULL, 'G' },
 	{ "menu",	 required_argument, NULL, 'M' },
+	{ "replay",	 required_argument, NULL, 'R' },
+	{ "minsectors",	 required_argument, NULL, 'S' },
 	{ "stepdelay",	 required_argument, NULL, 'T' },
 	{ "gwlogfile",	 required_argument, NULL, 'U' },
+	{ "minretry",	 required_argument, NULL, 'X' },
 	{ "mfmthresh1",	 required_argument, NULL, '1' },
 	{ "mfmthresh2",	 required_argument, NULL, '2' },
 	/* Start of binary long options without single letter counterparts. */
@@ -245,7 +249,8 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	u("  --[no]force     Force or not to overwrite existing DMK output "
 				"file [%sforce]\n",
 				cmd_set->forcewrite ? "" : "no");
-	u("  --[no]reset     Reset GW upon initialization [%sreset]\n",
+	u("  --[no]reset     Reset Greaseweazle upon initialization "
+				"[%sreset]\n",
 				cmd_set->reset_on_init ? "" : "no");
 
 	u("\n Options to manually set values that are normally "
@@ -267,7 +272,6 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 				cmd_set->min_sectors[0][0]);
 	u("  --[no]reverse   Reverse sides or not [%sreverse]\n",
 				cmd_set->reverse_sides ? "" : "no");
-	// XXX -z
 	u("  -q quirk        Bitmap of support for some format quirks "
 				"[0x%02x]\n", cmd_set->quirk);
 	u("                  0x01 = ID CRCs omit a1 a1 a1 premark\n");
@@ -1007,7 +1011,7 @@ retry:
 		int	gwerr = (int)-bytes_read;
 
 		free(fbuf);
-		msg(MSG_ERRORS, "gw_read_stream() failure: %s (%d)%s\n",
+		msg(MSG_ERRORS, "Flux read failure: %s (%d)%s\n",
 		    gw_cmd_ack(gwerr), gwerr,
 		    gwerr == ACK_NO_INDEX ?  " [Is diskette in drive?]" : "");
 		return 2;
@@ -1394,7 +1398,7 @@ leave:
 
 	if (dds.flippy) {
 		msg(MSG_SUMMARY,
-		    "Possibly a flippy disk; check reverse side too\n");
+		    "Possibly a flippy disk.  Check reverse side too.\n");
 	}
 }
 
@@ -1480,7 +1484,7 @@ redo_kind:;
 	}
 
 	if (kind == -1) {
-		msg_fatal("Failed to detect media type.\n"
+		msg_fatal("Failed to detect drive and media type.\n"
 			  "  Bit rate:    %7.3f kHz\n"
 			  "  Drive speed: %7.3f RPM\n", brate, rpm);
 	}
@@ -1671,7 +1675,7 @@ main(int argc, char **argv)
 					   cmd_settings.reset_on_init);
 
 	if (cmd_settings.fdd.gwfd == GW_DEVT_INVALID)
-		msg_fatal("Failed to find or initialize GW.\n");
+		msg_fatal("Failed to find or initialize Greaseweazle.\n");
 
 	cleanup_gwfd = cmd_settings.fdd.gwfd;
 
@@ -1847,7 +1851,7 @@ main(int argc, char **argv)
 	gw_unsetdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive);
 
 	if (gw_close(cmd_settings.fdd.gwfd)) {
-		msg_fatal("Failed to close GW device: %s (%d)\n",
+		msg_fatal("Failed to close Greaseweazle device: %s (%d)\n",
 			  strerror(errno), errno);
 	}
 
