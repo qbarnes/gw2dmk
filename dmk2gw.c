@@ -175,6 +175,8 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 					u("                  %d = %s\n",
 						k, kind2desc(k));
 	u("  -m steps        Step multiplier, 1 or 2\n");
+	u("  -s maxsides     Maximum number of sides, 1 or 2 [%d]\n",
+				cmd_set->max_sides);
 	u("  -T stp[,stl]    Step time");
 				if (cmd_set->fdd.step_ms != -1)
 					u(" [%u]", cmd_set->fdd.step_ms);
@@ -182,18 +184,19 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 				if (cmd_set->fdd.settle_ms != -1)
 					u(" [%u]", cmd_set->fdd.settle_ms);
 				u(" in ms\n");
-	u("  -s maxsides     Maximum number of sides, 1 or 2 [%d]\n",
-				cmd_set->max_sides);
 	u("  -u logfile      Log output to the given file [%s]\n",
 				cmd_set->logfile ? cmd_set->logfile : "none");
 	u("  -U gwlogfile    Greaseweazle transaction logfile [%s]\n",
 				cmd_set->devlogfile ? cmd_set->devlogfile :
 				"none");
+	u("  --[no]reset     Reset Greaseweazle upon initialization "
+				"[%sreset]\n",
+				cmd_set->reset_on_init ? "" : "no");
 
 	u("\nThese values normally need not be changed:\n");
 	u("  -p plo[,phi]    Write-precompensation range (ns) [%g,%g]\n",
 				cmd_set->precomp_low, cmd_set->precomp_high);
-	u("  -h HD           HD; 0=lo, 1=hi, 2=lo/hi, 3=hi/lo, 4=by kind "
+	u("  -h HD           HD: 0=lo, 1=hi, 2=lo/hi, 3=hi/lo, 4=by kind "
 				"[%d]\n", cmd_set->hd);
 	u("  -l len          Use only first len bytes of track [%d]\n",
 				cmd_set->data_len);
@@ -920,7 +923,7 @@ main(int argc, char **argv)
 					   cmd_settings.reset_on_init);
 
 	if (cmd_settings.fdd.gwfd == GW_DEVT_INVALID)
-		msg_fatal("Failed to find or initialize GW.\n");
+		msg_fatal("Failed to find or initialize Greaseweazle.\n");
 
 	cleanup_gwfd = cmd_settings.fdd.gwfd;
 
@@ -1002,7 +1005,7 @@ main(int argc, char **argv)
 	gw_unsetdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive);
 
 	if (gw_close(cmd_settings.fdd.gwfd)) {
-		msg_fatal("Failed to close GW device: %s (%d)\n",
+		msg_fatal("Failed to close Greaseweazle device: %s (%d)\n",
 			  strerror(errno), errno);
 	}
 

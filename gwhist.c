@@ -12,18 +12,25 @@
 #include "gwhisto.h"
 #include "msg_levels.h"
 #include "msg.h"
+#include "gwfddrv.h"
+#include "gwdetect.h"
 
 
 static const struct option cmd_long_args[] = {
-	{ "drive",	  required_argument, NULL, 'd' },
-	{ "revs",	  required_argument, NULL, 'r' },
-	{ "side",	  required_argument, NULL, 's' },
-	{ "track",	  required_argument, NULL, 't' },
-	{ "logfile",	  required_argument, NULL, 'u' },
-	{ "verbosity",	  required_argument, NULL, 'v' },
-	{ "device",	  required_argument, NULL, 'G' },
-	{ "high-density", required_argument, NULL, 'H' },
-	{ "gwlogfile",	  required_argument, NULL, 'U' },
+	{ "drive",	 required_argument, NULL, 'd' },
+	{ "revs",	 required_argument, NULL, 'r' },
+	{ "side",	 required_argument, NULL, 's' },
+	{ "track",	 required_argument, NULL, 't' },
+	{ "logfile",	 required_argument, NULL, 'u' },
+	{ "verbosity",	 required_argument, NULL, 'v' },
+	{ "device",	 required_argument, NULL, 'G' },
+	{ "stepdelay",	 required_argument, NULL, 'T' },
+	{ "gwlogfile",	 required_argument, NULL, 'U' },
+	/* Start of binary long options without single letter counterparts. */
+	{ "hd",		 no_argument, NULL, 0 },
+	{ "dd",		 no_argument, NULL, 0 },
+	{ "reset",	 no_argument, NULL, 0 },
+	{ "noreset",	 no_argument, NULL, 0 },
 	{ 0, 0, 0, 0 }
 };
 
@@ -34,19 +41,35 @@ static const char gwsd_def[] = "/dev/ttyACM0";
 #endif
 
 static struct cmd_settings {
-	const char	*device;
-	int		bus;
-	int		drive;
+	struct gw_fddrv	fdd;
 	int		track;
 	int		side;
-	int		densel;
 	int		revs;
+	bool		reset_on_init;
 	int		scrn_verbosity;
 	int		file_verbosity;
 	const char	*logfile;
 	const char	*devlogfile;
-} cmd_settings = { gwsd_def, BUS_IBMPC, 0, 0, 0, 1, 1,
-			MSG_NORMAL, MSG_QUIET, "gw.log", NULL };
+} cmd_settings = {
+	.fdd.device = gwsd_def,
+	.fdd.bus = BUS_IBMPC,
+	.fdd.drive = -1,
+	.fdd.kind = -1,
+	.fdd.tracks = -1,
+	.fdd.sides = -1,
+	.fdd.steps = -1,
+	.fdd.densel = DS_NOTSET,
+	.fdd.step_ms = -1,
+	.fdd.settle_ms = -1,
+	.track = 0,
+	.side = 0,
+	.revs = 1,
+	.reset_on_init = true,
+	.scrn_verbosity = MSG_NORMAL,
+	.file_verbosity = MSG_QUIET,
+	.logfile = "gw.log",
+	.devlogfile = NULL
+};
 
 
 static void
@@ -77,9 +100,10 @@ strtol_strict(const char *nptr, int base, const char *name)
 static void
 usage(const char *pgm_name)
 {
-	msg_fatal("Usage: %s [-G GW device] [-d drive] [-H high density line] "
-		  "[-r revs] [-t track] [-s side] [-u logfile] [-U gwlogfile]"
-		  "[-v verbosity]\n",
+	msg_fatal("Usage: %s [-G device] [-d drive] "
+		  "[-t track] [-s side] [-r revs] "
+		  "[--dd|--hd] [-T stp[,stl]] --[no]reset "
+		  "[-v verbosity] [-u logfile] [-U gwlogfile]\n",
 		  pgm_name);
 }
 
@@ -91,10 +115,26 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 	int	opt;
 	int	lindex = 0;
 
-	while ((opt = getopt_long(argc, argv, "d:r:s:t:u:v:G:H:U:",
+	while ((opt = getopt_long(argc, argv, "d:r:s:t:u:v:G:T:U:",
 		cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
+		case 0:;
+			const char *name = cmd_long_args[lindex].name;
+
+			if (!strcmp(name, "hd")) {
+				cmd_set->fdd.densel = DS_HD;
+			} else if (!strcmp(name, "dd")) {
+				cmd_set->fdd.densel = DS_DD;
+			} else if (!strcmp(name, "reset")) {
+				cmd_set->reset_on_init = true;
+			} else if (!strcmp(name, "noreset")) {
+				cmd_set->reset_on_init = false;
+			} else {
+				goto err_usage;
+			}
+			break;
+
 		case 'd':
 			if (optarg[1]) goto d_err;
 
@@ -104,13 +144,13 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 			case '0':
 			case '1':
 			case '2':
-				cmd_set->bus = BUS_SHUGART;
-				cmd_set->drive = loarg - '0';
+				cmd_set->fdd.bus = BUS_SHUGART;
+				cmd_set->fdd.drive = loarg - '0';
 				break;
 			case 'a':
 			case 'b':
-				cmd_set->bus = BUS_IBMPC;
-				cmd_set->drive = loarg - 'a';
+				cmd_set->fdd.bus = BUS_IBMPC;
+				cmd_set->fdd.drive = loarg - 'a';
 				break;
 			default: d_err:
 				msg_error("Option-argument to '%c' must "
@@ -212,21 +252,28 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 			}
 			if (!ds)
 				msg_fatal("Cannot allocate device name.\n");
-			cmd_set->device = ds;
+			cmd_set->fdd.device = ds;
 #else
-			cmd_set->device = optarg;
+			cmd_set->fdd.device = optarg;
 #endif
 			break;
 
-		case 'H':;
-			const int densel = strtol_strict(optarg, 10, "'H'");
+		case 'T':;
+			unsigned int step_ms, settle_ms;
+			int sfn = sscanf(optarg, "%u,%u", &step_ms, &settle_ms);
 
-			if (densel >= 0 && densel <= 1) {
-				cmd_set->densel = densel;
-			} else {
-				msg_error("Option-argument to '%c' must "
-					  "be 0 or 1.\n", opt);
+			switch (sfn) {
+			case 2:
+				if (settle_ms > 65000) goto err_usage;
+				cmd_set->fdd.settle_ms = settle_ms;
+				/* FALLTHRU */
+			case 1:
+				if (step_ms > 65) goto err_usage;
+				cmd_set->fdd.step_ms = step_ms;
+				break;
+			default:
 				goto err_usage;
+				break;
 			}
 			break;
 
@@ -290,7 +337,7 @@ main(int argc, char **argv)
 
 	parse_args(argc, argv, &cmd_settings);
 
-	const char *gwsd = cmd_settings.device;
+	const char *gwsd = cmd_settings.fdd.device;
 
 	gw_devt gwfd = gw_open(gwsd);
 
@@ -300,8 +347,11 @@ main(int argc, char **argv)
 
 	gw_init(gwfd);
 
-	// Get us back into a saner state if crashed on last run.
-	gw_reset(gwfd);
+	if (cmd_settings.reset_on_init)
+		gw_reset(gwfd);
+
+	if (cmd_settings.fdd.drive == -1)
+		gw_detect_drive(&cmd_settings.fdd);
 
 	struct gw_info	gw_info;
 
@@ -312,9 +362,10 @@ main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	gw_set_bus_type(gwfd, cmd_settings.bus);
+	gw_set_bus_type(gwfd, cmd_settings.fdd.bus);
 
-	gw_setdrive(gwfd, cmd_settings.drive, cmd_settings.densel);
+	gw_setdrive(gwfd, cmd_settings.fdd.drive,
+		    cmd_settings.fdd.densel == DS_HD ? DS_HD : DS_DD);
 
 	msg(MSG_NORMAL, "Reading track %d, side %d...\n",
 		cmd_settings.track, cmd_settings.side);
@@ -340,7 +391,7 @@ main(int argc, char **argv)
 	histo_analyze(&histo, &ha);
 	histo_show(MSG_NORMAL, &histo, &ha);
 
-	gw_unsetdrive(gwfd, cmd_settings.drive);
+	gw_unsetdrive(gwfd, cmd_settings.fdd.drive);
 
 	gw_close(gwfd);
 

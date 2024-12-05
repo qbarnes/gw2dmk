@@ -84,7 +84,7 @@ gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwdecode.o gwmedia.o dmk.o \
 dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwmedia.o dmk.o dmkx.o secsize.o dmk2gw.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
-gwhist$E: msg.o gw.o gwx.o gwhisto.o gwhist.o
+gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwhist.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 m2$E: msg.o m2.o gw.o gwx.o
@@ -97,7 +97,7 @@ $(TARBALLGZ): $(tar_files)
 
 
 clean clobber distclean:
-	$(call scrub_files_call,$($*_files))
+	$(call scrub_files_call,$($@_files))
 
 
 .PHONY: FORCE all release

@@ -318,7 +318,7 @@ dmk2pulses(struct dmk_track *dmkt,
 			/* No problem; there is nothing to
 			 * write here. */
 		} else {
-			msg_fatal("Drive is 1-sided but DMK file is "
+			msg_fatal("Drive is 1-sided, but DMK file is "
 				  "2-sided.\n");
 		}
 	}
