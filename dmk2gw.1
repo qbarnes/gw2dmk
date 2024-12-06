@@ -1,0 +1,455 @@
+.TH dmk2gw 1
+.SH NAME
+dmk2gw \- Write a DMK archive file to a floppy disk using a Greaseweazle
+.SH SYNOPSIS
+.B dmk2gw [options] filename.dmk
+.SH DESCRIPTION
+The \fBdmk2gw\fP program uses a Greaseweazle universal floppy disk
+controller to write a disk archive file in DMK format to a physical
+floppy disk.
+
+\fBdmk2gw\fP can write all floppy disk formats that can be written
+by the Western Digital 177x/179x floppy disk controllers used in
+the original TRS-80 machines and all formats that can be written by
+the NEC 765-compatible floppy disk controllers used in PCs.  Even
+formats that mix FM (single density) and MFM (double/high density)
+on the same track can be written.
+
+\fBdmk2gw\fP has also been extended to write Digital Equipment
+Corporation\[aq]s RX02 format, and some support for UDOS, CZ-MDOS, and
+CZ-SDOS formats written by Mikroelektronik M\(:uhlhausen U8xxx FDCs.
+
+\fBdmk2gw\fP by default guesses the drive type and disk format to
+be written by measuring the rotational speed of the drive (300 or
+360 RPM) and checking the track length and other fields in the DMK
+file.  You can override these defaults with command line arguments
+if needed.  However, \fBdmk2gw\fP does not automatically double-step
+if you are writing a 40-track disk in an 80-track drive.  See the
+\fB\-m\%\fP flag.  Also, if you are using a single sided drive, see
+the \fB\-s\%\fP flag.
+.SH OPTIONS
+.TP
+.B \-G|\-\-device \fIname\fP
+Specify the Greaseweazle\[aq]s device \fIname\fP.  On Linux, this will
+typically be a device under the \fB/dev\%\fP path.  The default name is
+\fB/dev/greaseweazle\%\fP.  If not found, \fB/dev/ttyACM0\%\fP.
+On Microsoft Windows, the device name defaults to \fBCOM3\fP.
+
+If you are unsure of your device\[aq]s name, run \fBgw\~info\%\fP and
+use the string returned after \[lq]Port:\[rq].
+.TP
+.B \-d|\-\-drive \fIunit\fP
+Specify the drive unit number.
+
+If your drive is connected via an IBM PC bus (flat cable with
+twist), use \fBa\fP or \fBb\fP.  For a Shugart bus (straight-through
+flat cable), use \fB0\fP, \fB1\fP, or \fB2\fP.
+.TP
+.B \-v|\-\-verbosity \fIlevel\fP
+Specify how much output is printed.  Larger levels select more
+output.  The default level is 1.
+
+Possible values for \fIlevel\fP:
+.RS
+.TP
+0
+No output.
+.TP
+1
+Print progress information.
+.TP
+2
+Also dump the bytes from the DMK file being encoded for the device.
+
+When the encoding changes, print a character in angle brackets to show
+the new encoding:
+.RS
+.TP
+F
+FM data byte(s)
+.TP
+I
+An FM Index Address Mark (IAM)
+.TP
+A
+FM ID (IDAM) or Data Address Mark (DAM)
+.TP
+M
+MFM data byte(s)
+.TP
+J
+MFM pre-index address mark
+.TP
+B
+MFM pre-data or pre-ID address mark
+.TP
+X
+RX02-modified MFM data
+.RE
+
+.RS
+Output a newline before each address mark encoding.  Output a
+\(oq|\(cq after the last byte of valid data for a sector, counting
+the sector CRC and any extra bytes specified by quirks.
+.RE
+.TP
+3
+Also dump the DMK bytes being written, prefixing each with the
+encoding used.  This option argument is primarily for debugging
+purposes.
+.TP
+4
+Like 2, but also dump the Greaseweazle\[aq]s samples generated for each
+byte.  This option argument is primarily for debugging purposes.
+.RE
+.TP
+.B \-k|\-\-kind \fIdrivetype\fP
+Specify the type of drive and type of media in use.
+
+This option is generally not needed, as \fBdmk2gw\fP should always
+autorecognize the correct value.  You can use it if you want to
+eliminate the slight delay for autodetection, or in the special
+case where you want to treat a 3.5-inch high density disk as
+an 8-inch disk (ignoring the last 1/6 of each track) by giving
+the \fB\-k\~3\%\fP option where \fB\-k\~4\%\fP would have been the
+autorecognized value.
+
+Possible \fIdrivetype\%\fP values:
+.RS
+.TP
+1
+5.25-inch SD/DD disk in 1.2MB drive
+.TP
+2
+5.25-inch SD/DD disk in 360KB/720KB drive, or 3.5-inch SD/DD disk 
+.TP
+3
+5.25-inch HD disk, or 8-inch SD/DD disk
+.TP
+4
+3.5-inch HD disk
+.RE
+.TP
+.B \-m|\-\-steps {1,2}
+Specify the step multiplier with a 1 or 2.  The default step is 1.
+
+A step multiplier of 2 is used when writing a 40-track (or 35-track)
+disk in an 80-track drive.
+
+If you set \fB\-m\~2\%\fP, you should bulk-erase the media first to
+eliminate residual magnetization from the odd numbered tracks that
+may cause problems when the disk is read in a 40-track drive.
+.TP
+.B \-s|\-\-sides {1,2}
+Specifies the number of sides.  The default is 2.
+
+Use \fB\-s\~1\%\fP if your physical floppy drive has only one head
+(that is, if it can only write to side 0 of the disk).  If you
+forget to do this and the DMK file has space reserved for side
+1 data (even if there are no valid sectors in that space),
+\fBdmk2gw\fP will overwrite the side 0 data on each track of the
+media with the side 1 data.
+.TP
+.B \-T|\-\-stepdelay \fIstep_time\fP[,\fIsettling_time\fP]
+Time in milliseconds to delay after each step pulse (sometimes
+called \[lq]step rate\[rq]), and additional time to delay
+after the last step pulse (head settling time).  The comma and
+\fIsettling_time\%\fP value are optional.
+
+The defaults are 10ms step time and 15ms settling time, or the
+values as configured into the Greaseweazle.  Use \fBgw\~delays\%\fP
+to check those values.
+
+If your drive has difficulty stepping, try a slower step rate.  If
+you often see errors on the first sector or first few sectors of a
+track, especially when reading with \fB\-\-nohole\%\fP, or if you know
+your drive requires it, add some additional head settling time.
+.TP
+.B \-u|\-\-logfile \fIfilename\fP
+Specify the \fIfilename\%\fP for logging output.  The default is not
+to log to a file unless you give a two-digit \fB\-v\%\fP option.
+
+If you give a two-digit \fB\-v\%\fP option and do not give the
+\fB\-u\%\fP option, the default logfile name is formed by stripping
+any extension off the DMK file name and appending \fB.log\%\fP.
+
+If you give the \fB\-u\%\fP option with a one-digit \fB\-v\%\fP option,
+the same output is logged to the file and to the screen.
+.TP
+.B \-U|\-\-gwlogfile \fIfilename\fP
+Specify the \fIfilename\%\fP to capture communication with the
+Greaseweazle device in text form.  The default is not to log any
+communication with the Greaseweazle.
+.TP
+.B \-\-[no]reset
+Reset the Greaseweazle (or not) on start up of \fBgw2dmk\fP.
+Default is to reset.
+
+If some Greaseweazle parameters are manually set by running
+\fBgw\fP and don\[aq]t want those settings undone by \fBdmk2gw\fP
+on reset, suppress the reset operation with \fB\-\-noreset\%\fP.
+.P
+The remaining options usually do not need to be changed from their
+default values.
+.TP
+.B \-p|\-\-precomp \fIplo[,phi]\fP
+Specifies the number of nanoseconds to advance or retard transitions
+for write precompensation.  The default is 140ns.
+
+If one value is given, the same precompensation is used on all
+tracks. If a comma-separated pair of values are given, \fIplo\fP
+is used for track 0 and \fIphi\fP for the highest track, with tracks
+between interpolated linearly.
+
+The actual distance between transitions is always rounded to
+a multiple of the Greaseweazle clock period, so making finer
+adjustments are not worthwhile.
+
+For more information, see \[lq]Precompensation Further
+Explanation\[rq] in the \fBNOTES\fP section.
+.TP
+.B \-h|\-\-hd {1,2,3,4}
+Controls pin 2 on the floppy drive bus setting it for media type,
+high-density (logic 0) or double-density (logic 1).  The default
+is 4.
+
+For \fB\-h\~0\%\fP or \fB\-h\~1\%\fP set the HD line to the
+indicated value.
+
+For \fB\-h\~2\%\fP, set the HD line to 0 for tracks 0 to 43 and to 1
+for tracks greater than 43.
+
+For \fB\-h\~3\%\fP, set the HD line to 1 for tracks 0 to 43, to 0
+for tracks greater than 43.
+
+For \fB\-h\~4\%\fP (the default), the line is set according
+to the disk kind (\fB\-k\%\fP flag), 0 for \fB\-k\~1\%\fP and
+\fB\-k\~2\%\fP or to 1 for \fB\-k\~3\%\fP and \fB\-k\~4\%\fP.
+
+This pin is only used on high-density drives.  The pin is not
+connected on single- or double-density drives.
+
+On high-density drives, setting this pin while reading often has
+little to no use, but in some situations, may still be handy.
+
+Some high-density drives while reading may enable additional data
+separation circuitry for the matching media.  While some dual-speed,
+high-density drives may use the pin to control switching between 300
+and 360 RPM.
+
+Often high-density drives have a jumper that inverts the logic of
+this pin both for density type and RPM.  You may want to check
+your drive\[aq]s manual, and if it has such a jumper, ensure it is
+strapped appropriately.
+.TP
+.B \-l|\-\-len \fIvalue\fP
+Causes \fBdmk2gw\fP to ignore any data beyond the first \fIvalue\fP
+bytes in the DMK file of each track.  This option is applied before
+\fB\-g\%\fP or \fB\-i\%\fP.  It has no effect if len is greater than
+the track data length recorded in the DMK file.
+.TP 
+.B \-g|\-\-ignore \fIvalue\fP
+Causes \fBdmk2gw\fP to ignore the first \fIvalue\fP bytes in the
+DMK file of each track.  If \fIvalue\fP is negative, an extra
+\-\fIvalue\fP bytes of padding are inserted at the beginning of each
+track.
+.TP
+.B \-i|\-\-ipos \fIvalue\fP
+Causes \fBdmk2gw\fP to force the first IAM (Index Address Mark)
+encountered on each track to be exactly \fIvalue\fP bytes from the
+physical start of the track, by ignoring bytes or adding padding at
+the start of the track as with the \fB\-g\%\fP flag.
+
+The default of \fB\-1\%\fP disables this feature.  Instead, it
+records the gap exactly as in the DMK file.  Note that if you set
+\fBvalue\%\fP too small, there will not be enough bytes in the
+initial gap for the IAM to be recognized when the disk is read.
+.TP
+.B \-\-[no]reverse
+If \fB\-\-reverse\%\fP is given, \fBdmk2gw\fP reverses the sides of
+the disk.  That is, it writes side 0 of the DMK file to physical
+side 1 of the disk and side 1 of the DMK (if any) to physical side 0
+of the disk.  The default is to not reverse the sides.
+
+This option may be useful if you want to write a separate 1-sided
+DMK file to each side of a disk in a double-side drive.  You
+can do this by running \fBdmk2gw\fP twice, once writing with
+head 0 using \fB\-s\~1\~\-r\~0\%\fP, then with head 1 using
+\fB\-s\~1\~\-r\~1\%\fP.
+.TP
+.B \-f|\-\-fill \fIvalue\fP
+If the track data being written (after possibly being shortened by
+the options above) is not sufficient to fill the physical track,
+\fBdmk2gw\fP writes the rest of the physical track with a fill
+pattern.  The default fill value is 0.
+
+Fill values and their meanings:
+.RS
+.RS
+.TP
+0
+If the last data byte written was FM or RX02 encoded, the
+fill pattern is 0xff.  If MFM, the pattern ix 0x4e.
+.TP
+1
+Erases the remainder of the track and writes nothing.
+.TP
+2
+A sequence of very long transitions, which also effectively erases
+the remainder of the track.
+.TP
+3
+No fill, the Greaseweazle stops writing leaving whatever was
+left on the track untouched.
+.TP
+0x1\fInn\fP
+The fill pattern is 0x\fInn\fP encoded in FM.
+.TP
+0x2\fInn\fP
+The fill pattern is 0x\fInn\fP encoded in MFM.
+.RE
+.RE
+.TP
+.B \-a|\-\-rateadj \fIvalue\fP
+Causes dmk2gw to multiply the average data rate by \fIvalue\fP
+(default 1.0).  Values should be close to 1.0.  For example, 1.005
+makes the data rate 0.5% faster, while 0.995 makes it 0.5% slower.
+
+Making the data rate 1% faster has a similar effect to running the
+drive motor 1% slower: more data fits on the track.  Of course if
+the data rate is adjusted to be too far off from the standard value,
+the resulting disk may not be readable.
+.TP
+.B \-\-[no]dither
+If dithering (\fB\-\-dither\%\fP), \fBdmk2gw\fP adjusts the number
+of Greaseweazle clock ticks in the intervals between transitions by
++/-1 when needed to keep the average data rate accurate.
+
+If not dithering (\fB\-\-nodither\%\fP) (the default), no such
+adjustment is done.  As a result, the interval sizes are consistent
+across the whole track, but the average data rate may be off
+(typically by much less than 1%) because of cumulative rounding
+error.
+
+If a disk needs the \fB\-a\%\fP option to adjust the average data
+rate very precisely, turning on dither too may help.  Using this
+feature, it is not yet clear whether it is an improvement or whether
+the occasional +/\-1 tick will make disks more difficult to read.
+.TP
+.B \-\-[no]gwdebug
+With this option enabled, file names of the format
+\fBgwflux\-\fP\f[BI]nn\f[]\fB\-\fP\f[BI]m\f[]\fB.bin\%\fP are
+created where \fInn\%\fP is the track number and \fIm\fP is the
+side.  The files store the raw flux stream as written to the
+Greaseweazle.
+
+.TP
+.B \-y \fItestmode\fP
+Set various undocumented test modes for debugging.
+.SH DIAGNOSTICS
+Common fatal diagnostics:
+.TP
+.B Failed to find or initialize Greaseweazle.
+The Greaseweazle device could not be found.  You may need to
+provide a \fB\-G\~\fP\fIdevicename\%\fP option.
+.TP
+.B dmk2gw: Cannot determine drive RPM.
+You may need to provide a \fB\-d\~\fP\fIunit\%\fP option or check
+for a floppy disk properly inserted into the drive.
+.TP
+.B dmk2gw: Failed to open DMK file '\fIfilename\fP': \fIreason\fP
+The DMK file could not be opened successfully.  See \fIreason\fP for
+explanation.
+.TP
+.B dmk2gw: File '\fIfilename\fP' not in expected DMK format.
+The DMK file was opened successfully, but a read from it failed.
+.TP
+.B dmk2gw: Failed to guess drive kind; use \-k.
+This message is printed if drive/media autodetection fails.  Either
+the drive speed could not be measured, or the track length was not
+one of the common values used in most DMK files.  You can specify
+the kind of drive and media in use with the \fB\-k\%\fP flag.
+.TP
+.B dmk2gw: Drive is 1\-sided, but DMK file is 2\-sided.  This
+message means that there is space reserved in the DMK file for two
+sides, and some apparently valid data was found on side 1, but you
+gave the \fB\-s\~1\%\fP flag to say that your disk drive is only
+one-sided.
+.SH NOTES
+.SS Conversion from other archive formats to DMK
+If you have a JV1 or JV3 archive file to write to disk, convert it
+to a DMK archive file by using \fBjv2dmk\fP.
+.SS Precompensation Further Explanation
+The magnetic flux transitions on a floppy disk tend to move slightly
+farther apart if they are recorded very close together, thus
+lengthening the short intervals and shortening the long ones, a
+phenomenon sometimes called bit-shifting.  When a disk is recorded,
+the disk controller ordinarily applies write precompensation to
+reduce this effect; that is, it makes the short intervals extra
+short and the long ones correspondingly longer, especially on the
+inner, higher-numbered tracks.  In \fBdmk2gw\fP, if the shortest
+legal interval appears immediately to the left (or right) of a
+longer one, the flux transition between them is moved to the left
+(or respectively, right).
+
+In general, disks need more precompensation on the inner
+(higher-numbered) tracks than on the outer tracks, and this effect
+is more pronounced for larger disks where the difference in length
+between the inner and outer tracks is greater.
+
+The default value of 140ns for all tracks seems to work reasonably
+well on 3.5-inch and 5.25-inch disks, though it is likely not
+optimal.
+
+For 8-inch disks, a few experiments with the \fBgwhist\fP program
+suggest that \fB\-o\~70,700\%\fP is a good value.  It makes tracks 1
+and 76 have much more similar histograms than if a constant value is
+used.
+
+If you have trouble reading disks written by \fBdmk2gw\fP with a
+regular floppy disk controller, try using \fBgwhist\fP to compare
+track histograms of natively-written media that read successfully in
+your controller with media written by \fBdmk2gw\fP.  If there is a
+substantial difference, try different \fB\-o\%\fP values to see if
+you can get \fBdmk2gw\fP to write disks that are more similar to the
+native disks.
+.SH SEE ALSO
+.SS Other related commands
+.BR gw2dmk (1),
+.BR gwhist (1)
+.SS Greaseweazle
+For more information about Greaseweazle controllers and other
+software that works with them, see:
+.EX
+.RS 4
+.UR https://github.com/keirf/greaseweazle/wiki
+.UE
+.RE
+.EE
+.SS DMK floppy disk archive file format
+For information about the DMK file format and the emulators that
+use it, see:
+.EX
+.RS 4
+.UR https://www.trs\-80.com/wordpress/tips/formats/#dmk
+.UE
+.UR https://www.trs\-80.com/wordpress/intro\-to\-emulators/
+.UE
+.RE
+.EE
+.SH AUTHORS
+\fBdmk2gw\fP was written by
+.UR https://github.com/qbarnes/
+Quentin Barnes
+.UE
+based on the \fBcw2dmk\fP utilities by
+.UR https://tim\-mann.org/
+Tim Mann
+.UE
+\&.
+
+\fBgw2dmk\fP is free software released under the GNU General Public
+License.
+
+Thanks to David Keil for designing and documenting the DMK file
+format for archiving floppy disks.

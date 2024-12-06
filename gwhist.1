@@ -1,0 +1,140 @@
+.TH gwhist 1
+.SH NAME
+gwhist \- Display a histogram after read a floppy using a Greaseweazle
+.SH SYNOPSIS
+.B gwhist [options]
+.SH DESCRIPTION
+\fBgwhist\fP utilizes a Greaseweazle universal floppy disk
+controller to read a floppy disk then displays a histogram of its
+flux and some statistics.
+
+This utility is primarily used for aiding with debugging.
+.SH OPTIONS
+.TP
+.B \-G|\-\-device \fIname\fP
+Specify the Greaseweazle's device \fIname\fP.  On Linux, this will
+typically be a device under the \fB/dev\%\fP path.  The default name
+is \fB/dev/greaseweazle\%\fP.  If not found, \fB/dev/ttyACM0\%\fP.
+On Microsoft Windows, the device name defaults to \fBCOM3\fP.
+
+If you are unsure of your device\[aq]s name, run \fBgw\~info\%\fP and
+use the string returned after \[lq]Port:\[rq].
+.TP
+.B \-d|\-\-drive \fIunit\fP
+Specify the drive unit number.
+
+If your drive is connected via an IBM PC bus (flat cable with
+twist), use \fBa\fP or \fBb\fP.  For a Shugart bus (straight-through
+flat cable), use \fB0\fP, \fB1\fP, or \fB2\fP.
+.TP
+.B \-t|\-\-track \fInumber\fP
+Specify the track \fInumber\fP to read and analyze.  Default is
+track 0.
+.TP
+.B \-s|\-\-side {0,1}
+Specify the side to read and analyze.  Default is side 0.
+.TP
+.B \-r|\-\-revs \fInumber\fP
+Specify the \fInumber\fP of revolutions to read for analysis.
+Default is 1 revolution.
+.TP
+.B \-\-hd|\-\-dd
+Controls pin 2 on the floppy drive bus for controlling media type,
+high-density (logic 0) or double-density (logic 1).  The default
+is \fB\-\-dd\%\fP.
+.TP
+.B \-T|\-\-stepdelay \fIstep_time\fP[,\fIsettling_time\fP]
+Time in milliseconds to delay after each step pulse (sometimes
+called \[lq]step rate\[rq]), and additional time to delay
+after the last step pulse (head settling time).  The comma and
+\fIsettling_time\fP value are optional.
+
+The defaults are 10ms step time and 15ms settling time, or the
+values as configured into the Greaseweazle.  Use \fBgw\~delays\%\fP
+to check those values.
+
+If your drive has difficulty stepping, try a slower step rate.  If
+you often see errors on the first sector or first few sectors of a
+track, especially when reading with \fB\-\-nohole\%\fP, or if you know
+your drive requires it, add some additional head settling time.
+.TP
+.B \-\-[no]reset
+Reset the Greaseweazle (or not) on start up of \fBgwhist\fP.
+Default is to reset.
+
+If some Greaseweazle parameters are manually set by running \fBgw\fP
+and you don\[aq]t want those settings undone by \fBgwhist\fP on
+reset, suppress the reset operation with \fB\-\-noreset\%\fP.
+.TP
+.B \-v|\-\-verbosity \fIlevel\fP
+Specify how much output is printed.  Larger levels select more
+output.  The default level is 1.
+
+Different levels of output can be logged to the logfile and to the
+screen (i.e., stdout) by giving a two-digit number.  The first digit
+specifies how much output to log to the logfile and the second how
+much to log to the screen.
+.RS
+.TP
+0
+No output.
+.TP
+1
+Print a histogram and statistical analysis of media\[aq]s flux.
+.RE
+.TP
+.B \-u|\-\-logfile \fIfilename\fP
+Specify the \fIfilename\fP for logging output.  The default is not
+to log to a file unless you give a two-digit \fB\-v\%\fP option.
+If you give a two-digit \fB\-v\%\fP option and do not give the
+\fB\-u\%\fP option, the default logfile name is \fBgw.log\fP.
+
+If you give the \fB\-u\%\fP option with a one-digit \fB\-v\%\fP
+option, the same output is logged to the file and to the screen.
+.TP
+.B \-U|\-\-gwlogfile \fIfilename\fP
+Specify the \fIfilename\fP to capture communication with the
+Greaseweazle device in text form.  The default is not to log any
+communication with the Greaseweazle.
+.SH DIAGNOSTICS
+.TP
+.B \fBgwhist\fP: Failed to open Greaseweazle's serial device '\fIdevname\fP' ...
+A Greaseweazle device was not detected.  You may need to provide
+a \fB\-G\~\fP\fIdevname\fP option.
+.SH SEE ALSO
+.SS Other related commands
+.BR gw2dmk (1),
+.BR dmk2gw (1)
+.SS Greaseweazle
+For more information about Greaseweazle controllers and other
+software that works with them, see:
+.EX
+.RS 4
+.UR https://github.com/keirf/greaseweazle/wiki
+.UE
+.RE
+.EE
+.SS DMK floppy disk archive file format
+For information about the DMK file format and the emulators that
+use it, see:
+.EX
+.RS 4
+.UR https://www.trs\-80.com/wordpress/tips/formats/#dmk
+.UE
+.UR https://www.trs\-80.com/wordpress/intro\-to\-emulators/
+.UE
+.RE
+.EE
+.SH AUTHORS
+\fBgwhist\fP was written by
+.UR https://github.com/qbarnes/
+Quentin Barnes
+.UE
+based on the \fBcw2dmk\fP utilities by
+.UR https://tim\-mann.org/
+Tim Mann
+.UE
+\&.
+
+\fBgwhist\fP is free software released under the GNU General Public
+License.

@@ -1,0 +1,947 @@
+.TH gw2dmk 1
+.SH NAME
+gw2dmk \- Read a floppy disk using a Greaseweazle to a DMK archive file
+.SH SYNOPSIS
+.B gw2dmk [options] filename.dmk
+.SH DESCRIPTION
+\fBgw2dmk\fP utilizes a Greaseweazle universal floppy disk
+controller to read disks and save their contents to files in DMK
+format, originally used by some TRS-80 emulators. The DMK file
+format precisely represents the disk, including sector positioning,
+spacing, and gap contents, enabling accurate reproduction of many
+disks, including some with copy-protection.
+
+\fBgw2dmk\fP supports reading all formats written by Western Digital
+177x/179x floppy disk controllers used in the original TRS-80
+machines, all formats written by NEC 765-compatible floppy disk
+controllers used in PCs, and the Digital Equipment Corporation RX02
+format.
+
+\fBgw2dmk\fP automatically recognizes most variations of drive kind
+and disk media format, but its autodetection can be overridden with
+command line arguments; see \fBOPTIONS\fP.  Detection of FM (single
+density) or MFM (double/high density) encoding works even for disks
+that have both types of encoding within the same track, such as
+disks that were made to dual boot on both TRS-80 Models I and III.
+.SH OPTIONS
+.TP
+.B \-G|\-\-device \fIname\fP
+Specify the Greaseweazle\[aq]s device \fIname\fP.  On Linux, this will
+typically be a device under the \fB/dev\fP path.  The default name is
+.nh
+\fB/dev/greaseweazle\%\fP.
+.hy
+If not found,
+.nh
+\fB/dev/ttyACM0\%\fP.
+.hy
+On Microsoft Windows, the device name defaults to \fBCOM3\fP.
+
+If you are unsure of your device\[aq]s name, run \fBgw\~info\%\fP
+and use the string returned after \[lq]Port:\[rq].
+.TP
+.B \-d|\-\-drive \fIunit\fP
+Specify the drive unit number.
+
+If your drive is connected via an IBM PC bus (flat cable with
+twist), use \fBa\fP or \fBb\fP.  For a Shugart bus (straight-through
+flat cable), use \fB0\fP, \fB1\fP, or \fB2\fP.
+.TP
+.B \-v|\-\-verbosity \fIlevel\fP
+Specify how much output is printed.  Larger levels select more
+output.  The default level is 2.
+
+Different levels of output can be logged to the logfile and to the
+screen (i.e., stdout) by giving a two-digit number.  The first digit
+specifies how much output to log to the logfile and the second how
+much to log to the screen.
+.RS
+.TP
+0
+No output.
+.TP
+1
+Print a summary at the end of conversion.
+.TP
+2
+Also print the number of good sectors and errors on each track.
+When a retry is needed, print the number of errors on the previous
+try and the retry number.
+.TP
+3
+Also print the sector numbers, plus a short message in brackets when
+an error is encountered or the FM/MFM/RX02 encoding detector switches
+state.
+.TP
+4
+Also print the track\[aq]s IDAMs (ID Address Marks) and DAMs (Data
+Address Marks).
+.TP
+5
+Also print all data in hexadecimal.  Print \[lq]{\[rq] and
+\[lq]}\[rq] to indicate where the index hole sensor went on and off.
+Print \[lq](\-\fIN\%\fP)\[rq] or \[lq](+\fIN\%\fP)\[rq] where the
+decoder dropped or duplicated \fIN\fP clock/data bits in an attempt
+to resynchronize itself with the data bit and byte boundaries.
+Print a \[lq]?\[rq] before any byte where a clock was missing or
+unexpectedly present even after the resynchronization heuristics
+were applied.
+.TP
+6
+Like 4, but also print the data as raw characters.
+.TP
+7
+Like 5, but also print the histogram generated when autodetecting
+the drive and media type, and print each Greaseweazle sample and
+its classification as tiny (t), short (s), medium (m), or long
+(l).  Enclose the decoded hexadecimal data bytes in angle brackets
+(\[lq]<\~>\[rq]) to distinguish them from the samples.
+.RE
+.TP
+.B \-u|\-\-logfile \fIfilename\fP
+Specify the \fIfilename\fP for logging output.  The default is not
+to log to a file unless you give a two-digit \fB\-v\fP option.
+If you give a two-digit \fB\-v\fP option and do not give the
+\fB\-u\fP option, the default logfile name is formed by stripping
+any extension off the DMK file name and appending \fB.log\fP.
+
+If you give the \fB\-u\fP option with a one-digit \fB\-v\fP option,
+the same output is logged to the file and to the screen.
+.TP
+.B \-U|\-\-gwlogfile \fIfilename\fP
+Specify the \fIfilename\fP to capture communication with the
+Greaseweazle device in text form.  The default is not to log any
+communication with the Greaseweazle.
+.TP
+.B \-R|\-\-replay \fIfilename\fP
+\fB[Feature currently unavailable.]\fP
+
+Replay a level 7 verbosity logfile instead of reading a new disk
+from the Greaseweazle.  This option can be useful to retry decoding
+a disk using different command line options, without physically
+rereading the disk.  First capture a logfile at verbosity level 7
+using the \fB\-v\%\fP and \fB\-u\%\fP options.  Then run \fBgw2dmk\fP
+as many times as desired, using the \fB\-R\fP option to replay
+the logfile, together with other command line options as desired.
+The \fB\-k\%\fP option is always required with \fB\-R\%\fP, and the
+\fB\-\-nohole\%\fP option generally should be used if the
+original capture was performed with \fB\-\-nohole\%\fP, while the
+\fB\-m\%\fP, \fB\-T\%\fP, \fB\-M\%\fP, \fB\-d\%\fP, \fB\-a\%\fP,
+\fB\-\-reverse\%\fP, and \fB\-x\%\fP options are not allowed.
+.TP
+.B \-M|\-\-menu {i,e,d}
+Controls interactive menu mode through using \fBi\fP, \fBe\fP,
+or \fBd\fP option-arguments.
+
+Possible letters for \fB\-M\%\fP:
+.RS
+.TP
+i
+Enables the menu when the interrupt key is pressed, typically
+\fB^C\%\fP.
+.TP
+e
+Enables the menu when the number of retries due to errors from
+reading the current track has been reached.
+.TP
+d
+Disables any enabled menu modes (default).
+.RE
+.P
+When the menu is invoked, \fBgw2dmk\fP will pause reading the
+current floppy disk and present a menu with the actions:
+.RS
+.TP
+c
+Continue reading without change.
+.TP
+q
+Abandon reading and quit the program (^C while at the menu prompt
+also does the same action).
+.TP
+r
+Prompt to change the number of retries (allows changing
+\fB\-x\%\fP\[aq]s value on-the-fly).
+.TP
+g
+Give up attempting to reread the current track, accept the data
+as read, and move on to the next track or side.  (Choice does not
+appear when the current track being read has no errors.)
+.RE
+.P
+The remaining options are usually not needed.  \fBgw2dmk\fP will
+ordinarily detect or guess the correct values.
+.TP
+.B \-k|\-\-kind \fIdrivetype\fP
+Specify the type of drive and type of media in use.  This option is
+generally not needed, as \fBgw2dmk\fP should always autorecognize
+the correct value.  You can use it if you want to eliminate the
+slight delay for autodetection, or in the special case where you
+want to treat a 3.5-inch high density disk as an 8-inch disk
+(ignoring the last 1/6 of each track) by giving the \fB\-k\~3\fP
+option where \fB\-k\~4\%\fP would have been the autorecognized value.
+
+Possible \fIdrivetype\fP values for \fB\-k\%\fP:
+.RS
+.TP
+1
+5.25-inch SD/DD disk in 1.2MB drive
+.TP
+2
+5.25-inch SD/DD disk in 360KB/720KB drive, or 3.5-inch SD/DD disk 
+.TP
+3
+5.25-inch HD disk, or 8-inch SD/DD disk
+.TP
+4
+3.5-inch HD disk
+.RE
+.TP
+.B \-m|\-\-steps {1,2}
+Step multiplier, 1 or 2.  A step multiplier of 2 is used when
+reading a 40-track (or 35-track) disk in an 80-track drive.
+
+If this option is not given, \fBgw2dmk\fP guesses a likely value
+and checks its guess by trying to read the first few tracks.  If
+the guess appears wrong, \fBgw2dmk\fP will use the other step
+multiplier instead.
+
+Giving this option will speed up \fBgw2dmk\fP slightly by
+eliminating the time to check the guess, and will remove the
+small possibility that the guess is wrong even after having been
+checked.  This may occur with copy-protected disks that have
+nonstandard track numbers.  The initial guess step is 2 if the
+drive/media type (\fB\-k\%\fP option) is set or autodetected to be a
+\fIdrivetype\%\fP of 1; otherwise the initial guess step is 1.
+.TP
+.B \-t|\-\-tracks \fIcount\fP
+Specifies the number of tracks per side.
+
+If this option is not given, \fBgw2dmk\fP will guess 44 if the
+\fB\-m\%\fP option is set (or guessed) to be 2, otherwise 88.
+
+If \fBgw2dmk\fP is operating with a guessed value for \fB\-t\%\fP,
+and the next track after one of the more likely ending places (35,
+40, 77, or 80 tracks) has no valid sectors or has the same logical
+track number as the previous track, it will lower its guess and
+immediately stop reading at that point.
+.TP
+.B \-s|\-\-sides {1,2}
+Specifies the number of sides.
+
+If this option is not given, \fBgw2dmk\fP will guess 2 sides if
+the second side appears to be formatted, then revise its guess to
+1 side if there are no valid sectors on the first track or two of
+the second side.  Giving the \fB\-s\~1\%\fP option explicitly for a
+single-sided disk will save the time needed for this autodetection.
+.TP
+.B \-T|\-\-stepdelay \fIstep_time\fP[,\fIsettling_time\fP]
+Time in milliseconds to delay after each step pulse (sometimes
+called \[lq]step rate\[rq]), and additional time to delay
+after the last step pulse (head settling time).  The comma and
+\fIsettling_time\%\fP value are optional.
+
+The defaults are 10ms step time and 15ms settling time, or the
+values as configured into the Greaseweazle.  Use \fBgw delays\%\fP
+to check those values.
+
+If your drive has difficulty stepping, try a slower step rate.  If
+you often see errors on the first sector or first few sectors of a
+track, especially when reading with \fB\-\-nohole\%\fP, or if you
+know your drive requires it, add some additional head settling time.
+.TP
+.B \-\-hd|\-\-dd
+Controls pin 2 on the floppy drive bus for controlling media type,
+high-density (logic 0) or double-density (logic 1).  If neither
+option is provided, \fBgw2dmk\fP will make a best guess from drive
+kind and media type.
+
+This pin is only used on high-density drives.  The pin is not
+connected on double-density drives.
+
+On high-density drives, setting this pin while reading often has
+little to no use, but in some situations, may still be handy.
+
+Some high-density drives while reading may enable additional data
+separation circuitry for the matching media.  While some dual-speed,
+high-density drives may use the pin to control switching between 300
+and 360 RPM.
+
+Often high-density drives have a jumper that inverts the logic of
+this pin both for density type and RPM.  You may want to check
+your drive\[aq]s manual, and if it has such a jumper, ensure it is
+strapped appropriately.
+.TP
+.B \-\-[no]compat
+Controls whether the sides of track 0 are compared for incompatible
+formats.  The option \fB\-\-nocompat\%\fP disables the comparison
+where \fB\-\-compat\%\fP enables it (default).
+
+If side 1 of track 0 has 512-byte sectors, but side 0 has any other
+sector size, the read is restarted as single-sided.  This often
+happens when a 5.25-inch floppy disk came pre-formatted from its
+factory for MS-DOS but was later reformatted in a single-sided drive
+by another OS for its use.
+.TP
+.B \-\-[no]reset
+Reset the Greaseweazle (or not) on start up of \fBgw2dmk\fP.
+Default is to reset.
+
+If some Greaseweazle parameters are manually set by running \fBgw\fP
+and you don\[aq]t want those settings undone by \fBgw2dmk\fP on
+reset, suppress the reset operation with \fB\-\-noreset\%\fP.
+
+.TP
+.B \-\-[no]force
+When \fBgw2dmk\fP starts up, it checks to ensure that the DMK file
+argument doesn\[aq]t already exist.  If it does, it immediately
+quits with an error.  That way it won\[aq]t accidentally overwrite
+the file.  The default is \fB\-\-noforce\%\fP.
+
+If the contents of the DMK file are unimportant, the check can be
+disabled with \fB\-\-force\%\fP, and \fBgw2dmk\fP will overwrite the
+DMK file.
+.TP
+.B \-\-[no]dmkopt
+When \fBgw2dmk\fP goes to write out the DMK file, it will select
+a pre-set DMK track size based on drive kind and media type.
+Default is \fB\-\-nodmkopt\%\fP.
+
+If \fB\-\-dmkopt\%\fP is enabled, \fBgw2dmk\fP will select the
+smallest DMK track size that will store all the tracks\[aq]
+information.
+
+Why \fB\-\-dmkopt\%\fP isn\[aq]t enabled by default is because some
+emulators make assumptions about the DMK\[aq]s drive format type
+based on hard-coded lookups of DMK track size.  If those values vary
+by even a byte, that may break some emulators, so pre-set values
+are used by default.
+.TP
+.B \-w|\-\-fmtimes {1,2}
+Normally, FM bytes are written into the DMK file twice
+(\fB-w\~2\%\fP), so that they take up the correct proportion of the
+space on mixed-density tracks.  You can set \fB-w\~1\%\fP to cause
+FM bytes to be written only once.  This does not save space in the
+DMK file unless you also reduce the track length with the \fB-l\%\fP
+option.
+.TP
+.B \-e|\-\-encoding {1,2,3}
+Overrides the normal FM/MFM/RX02 autodetection.
+
+To try only FM decoding, specify \fB-e\~1\%\fP; to try only MFM,
+specify \fB-e\~2\%\fP; to try only RX02, specify \fB-e\~3\%\fP.
+
+Using this option does not speed up \fBgw2dmk\fP appreciably;
+however, it can help on noisy disks where the decoder occasionally
+makes an error while looking for all three possible encodings.
+.P
+The following are special options for dealing with hard to read
+disks:
+.TP
+.B \-\-[no]join
+Join sectors between retries.  Enabled by default.
+
+When enabled in the case of errors, \fBgw2dmk\fP will re-use good
+sector reads from previous attempts to replace corresponding bad
+sectors in the current read attempt.  This allows \fBgw2dmk\fP to
+recover a track even if it can never fully read all the sectors in a
+single pass.  However, this option may not work reliably for some
+copy protected disks or when a track\[aq]s sectors are too degraded.
+.TP
+.B \-S|\-\-minsectors \fImin_sectors\fP
+This option specifies the minimum number of sectors per track that
+must be seen before continuing to the next track.
+
+This option is only useful when a sector is completely missed
+without also triggering an error.  For this to occur, the IDAM
+and DAM for a given sector both must be misread.
+
+The \fImin_sectors\%\fP argument can be just a number or optionally
+a comma-separated list of track ranges.  See section \fBLIST OF
+TRACKS AND SIDES\fP for more information.
+
+If more or fewer sectors are encountered during a track read than
+are anticipated by this option, a fractional sector number is
+reported with the denominator being the minimum sector value for
+that track\[aq]s read (e.g. \[lq]9/10\[rq] or \[lq]19/18\[rq]).
+.TP
+.B \-x|\-\-maxretries \fImax_retry\fP
+While reading a track, \fBgw2dmk\fP tries to recognize sector IDs
+and sector data, and it checks that each ID has a corresponding
+sector and that both have correct CRCs.  If any of these checks
+fail, \fBgw2dmk\fP will try reading the track again, up to the
+number of additional times specified by this option.  The default
+value is 4.
+
+If you have an old disk with CRC errors, increasing the number of
+retries to a large value may still allow the disk to be read.  If
+you have a copy-protected disk with intentional CRC errors, or other
+strange formatting that \fBgw2dmk\fP interprets as a possible error,
+you might want to reduce or eliminate the retries to speed up the
+conversion.
+
+The \fImax_retry\%\fP argument can be just a number or optionally a
+comma-separated list of track ranges.  See section \fBLIST OF TRACKS
+AND SIDES\fP for more information.
+.TP
+.B \-X|\-\-minretry \fImin_retry\fP
+This option asks \fBgw2dmk\fP to retry reading a track at least the
+given minimum number of times, even if the track was decoded with
+no detected errors.  Except in replay mode, however, the number
+of retries is still limited by the track\[aq]s \fImax_retry\%\fP
+value as specified by the \fB\-x\%\fP option.  The \fImin_retry\%\fP
+argument accepts the same syntax as the \fImax_retry\%\fP argument.
+The default value is 0.
+
+This feature can be useful when gathering a level 7 verbosity log
+for later replay, in order to be sure that each track is captured
+multiple times.
+.TP
+.B \-a|\-\-alternate {0,1,2,3}
+This option is used only when when reading a 40-track disk in
+an 80-track drive (\fB-m\~2\%\fP).
+
+If \fB-a\%\fP is set to 0 (the default), \fBgw2dmk\fP reads from
+the even-numbered head positions, skipping the odd-numbered ones.
+That is, disk track \fIn\fP is read from head position 2\fIn\%\fP.
+Occasionally, more data may be recoverable by reading at the next
+higher head position.
+
+If you set \fB\-a\%\fP to 1, \fBgw2dmk\fP will always read at odd
+positions (2\fIn\fP+1).  If \fB\-a\%\fP is 2 or 3, \fBgw2dmk\fP will
+alternate between even and odd positions when retries are needed to
+read a track, trying even positions first if \fB\-a\%\fP is 2; odd
+if \fB\-a\%\fP is 3.
+.TP
+.B \-p|\-\-postcomp \fIvalue\fP
+If you have a disk that shows a lot of CRC errors, you can try
+re-reading it with different values for this parameter.  The default
+is 0.5.  Try larger values if errors occur mostly on high-numbered
+tracks, smaller values if errors occur on lower-numbered tracks or
+all tracks.  Values must be between 0.0 and 1.0.
+
+See \[lq]Postcompensation and magnetic flux\[rq] in section
+\fBNOTES\fP for further information.
+.TP
+.B \-\-[no]hole
+If hole is enabled (the default), \fBgw2dmk\fP uses the disk\[aq]s
+index hole to determine where each track starts.  If hole is
+disabled (\fB\-\-nohole\%\fP), \fBgw2dmk\fP reads disks without
+using the index hole.
+
+With \fB\-\-nohole\fP, the tracks in the DMK file will not start
+with the same sector as on the original disk.  Instead, each
+track will start 48 bytes before the ID address mark (IDAM) of
+the first sector that \fBgw2dmk\fP happens to read on the media.
+Alternatively, if the tracks have an index address mark (IAM), the
+\fB\-i\%\fP option (see below) can be used to position the track
+start relative to the IAM.
+
+Note that if a disk actually has no index hole, \fBgw2dmk\fP
+cannot autodetect the drive kind and media type, so you must
+give the \fB\-k\%\fP option to specify the type as well as giving
+\fB\-\-nohole\%\fP.
+
+For an additional use of the \fB\-\-nohole\%\fP option with flippy
+disks in a custom modified drive, see \[lq]Flippy Disks\[rq] in
+section \fBNOTES\fP.
+.TP 
+.B \-g|\-\-ignore \fIcount\fP
+Causes \fBgw2dmk\fP to ignore the first \fIcount\fP bytes decoded on
+each track.  If \fIcount\fP is negative, an extra \-count bytes of
+padding are inserted at the beginning of each track.
+.TP
+.B \-i|\-\-ipos \fIcount\fP
+If this option is given, \fBgw2dmk\fP forces the first IAM (index
+address mark) encountered to be exactly \fIcount\fP bytes from the
+physical start of the track by ignoring bytes or adding padding at
+the start of the track as with the \fB-g\%\fP option.  The default
+value is \[lq]\-1\[rq], which disables this feature.
+
+This feature can be useful in conjunction with the
+\fB\-\-nohole\%\fP option.  If your disk was originally formatted
+with an IAM at the start of each track, \fBgw2dmk\fP can start
+the tracks at the same point in the DMK file, even though the
+\fB\-\-nohole\%\fP option keeps it from being able to use the
+physical index hole to find the start.  For this purpose,
+\fB-i\~96\%\fP is a good value to make sure that gap0 (the pre-IAM
+gap) is large enough to meet the IBM format spec.  Use a smaller
+value if \fB-i\~96\%\fP causes the last sector of some tracks to be
+partially cut off.
+
+This feature can also be useful to reproduce certain copy-protected
+disks exactly.  Some copy-protection schemes work only if the data
+is precisely positioned on the physical track. If you have this
+problem, you may need to experiment with different values for the
+\fB-i\%\fP or \fB-g\%\fP options.
+.TP
+.B \-z|\-\-maxsize \fIvalue\fP
+Changes the maximum value expected for IBM-compatible sector size
+codes.
+
+This option does not affect the actual data that is read from the
+disk and written to the DMK file.  It only affects the CRC checking
+and error retry algorithm described under the \fB-x\%\fP option
+above.
+
+The default value is correct for disks that were written by Western
+Digital WD177x/179x controllers used in TRS-80s.  On most of these
+controllers, only the two low-order bits of the code are ever
+significant, and the sector size is given by 128 << (code & 3).  On
+the 1771, there is also an optional \[lq]non-IBM\[rq] feature that
+can be selected when a sector is read or written.  When this feature
+is used, the sector size is given by 16 * code (or 16 * 256 if code
+is zero).
+
+As a heuristic, \fBgw2dmk\fP assumes the non-IBM feature was used
+if a sector is recorded in FM (single density) and its size code
+is more than \fIvalue\fP.  In contrast, with NEC765-compatible
+floppy disk controllers as used in PCs, the sector size is given by
+128 << (code & 7).  Thus if you have a disk written by a PC with
+sectors larger than 1024 bytes, setting \fIvalue\fP to 7 will allow
+\fBgw2dmk\fP to correctly determine the sector sizes and avoid
+reporting false CRC errors.
+.TP
+.B \-\-[no]reverse
+If \fB\-\-reverse\%\fP, \fBgw2dmk\fP reverses the sides of the disk;
+that is, it reads side 0 of the DMK file from physical side 1 of
+the disk and side 1 of the DMK (if any) from physical side 0 of the
+disk.  The default is \fB\-\-noreverse\%\fP, which does not reverse
+the sides.
+
+This option is most likely to be useful if you have a disk
+that was recorded in a double-sided drive with a separate
+single-sided filesystem on each side.  Reading such a disk
+twice, once with \fB\-s\~1\~\-\-noreverse\%\fP and once with
+\fB-s\~1\~\-\-reverse\%\fP, gives you a separate 1-sided DMK file of
+each side of the disk.  (Note: this option is not useful for reading
+the back of a flippy disk; see the \fB\-\-nohole\%\fP option.)
+
+.TP
+.B \-q|\-\-quirks \fIvalues\fP
+Enable support for various format quirks.  So far, these quirks have
+been observed only on UDOS and CZ-SDOS disks; see \fBLIMITATIONS\fP.
+
+To enable multiple quirks, add the values together.  The value can
+be given either in hex with a 0x prefix or in decimal.  For example,
+\fB\-q\~17\%\fP enables quirks 1 and 16.  The three QUIRK_EXTRA*
+quirks are mutually exclusive.  If any are given together, a fatal
+error message will be displayed.
+.RS
+.TP
+0x01 (1) QUIRK_ID_CRC
+The ID CRCs are calculated without including the a1 a1 a1 premark
+bytes.  If this quirk is needed but not enabled (or enabled when not
+needed!), \fBgw2dmk\fP will detect an ID CRC error on every sector.
+.TP
+0x02 (2) QUIRK_DATA_CRC
+The data CRCs are calculated without including the a1 a1 a1 premark
+bytes.  If this quirk is needed but not enabled (or enabled when not
+needed!), \fBgw2dmk\fP will detect a data CRC error on every sector.
+.TP
+0x04 (4) QUIRK_PREMARK
+In the a1 a1 a1 premark, possibly only the first two bytes have
+a missing clock.  If this quirk is needed but not enabled,
+\fBgw2dmk\fP will fail to detect some ID address marks and/or data
+address marks.  If this quirk is enabled when not needed, there is a
+very small chance it could lead to a problem where an address mark
+is falsely detected and \fBgw2dmk\fP reports it as an error.
+.TP
+0x08 (8) QUIRK_EXTRA
+Immediately following the CRC of each data sector, there are some
+extra, meaningful data bytes.  This quirk prevents the extra bytes
+from being damaged, by forbidding the decoder from resynchronizing
+to apparent MFM 4e 4e or 00 00 byte sequences as expected in the
+gap.  As a result, the decoder generally will not resynchronize
+until the a1 a1 a1 sequence preceding the next ID address mark, so
+the gap bytes preceding it that should be 4e 4e... 00 00... are
+likely to be decoded incorrectly.
+.TP
+0x10 (16) QUIRK_EXTRA_CRC
+Immediately following the CRC of each data sector, there are four
+extra, meaningful data bytes, followed by two extra CRC bytes that
+cover the four extra data bytes.  The extra CRC is checked and the
+track read is retried if the CRC is invalid.  Unlike with quirk
+0x08, the decoder is allowed to resynchronize to apparent MFM 4e 4e
+or 00 00 byte sequences following the extra CRC.
+.TP
+0x20 (32) QUIRK_EXTRA_DATA
+Each sector has 4 more data bytes preceding the CRC than its size
+code indicates.  For example, if the size code indicates 128 bytes,
+there are actually 132 data bytes, followed by a standard 2-byte CRC
+that covers the data address mark and all 132 data bytes.
+.TP
+0x40 (64) QUIRK_IAM
+A standard index address mark (IAM) in FM is the data value 0xfc
+with a 0xd7 clock pattern. If this quirk is specified, \fBgw2dmk\fP
+recognizes 0xfc with either a 0xd7 or 0xc7 clock pattern as an IAM.
+.TP
+0x80 (128) QUIRK_MFM_CLOCK
+In general, floppy disk data is encoded as a stream of alternating
+clock and data bit cells.  With MFM encoding, a clock bit cell
+should contain a 1 if and only if the data bit cells immediately
+before and after it both contain 0.  If this quirk is not specified,
+\fBgw2dmk\fP makes a strong assumption that the MFM clocking rule
+is not violated, and so it may fail to decode a disk that has
+clock bits set to 1 that should be 0.  If this quirk is specified,
+\fBgw2dmk\fP relaxes that assumption and may successfully decode
+such a disk.  It is probably harmless to set this quirk even when
+not needed, but that is mostly untested.
+.RE
+.P
+The next few options modify individual parameters that are normally
+set correctly by the \fB\-k\%\fP option (or by autodetection of the
+correct value for the \fB\-k\%\fP option).  These options can be
+given only after the \fB\-k\%\fP option.  To see the default values
+for a particular disk kind \fIN\fP, type the command \fBgw2dmk\fP
+\fB\-k\~\fP\f[BI]N\%\f[] with no other arguments; they will be shown
+in brackets in the usage message.
+.TP
+.B \-1|\-\-mfmthresh1 \fIthreshold\fP
+MFM threshold for short (10) vs. medium (100), in number of samples.
+.TP
+.B \-2|\-\-mfmthresh2 \fIthreshold\fP
+MFM threshold for medium (100) vs. long (1000), in number of samples.
+.TP
+.B \-f|\-\-fmthresh \fIthreshold\fP
+FM threshold for short (1) vs. long (10), in number of samples.
+Used only in \fB\-e\~1\%\fP mode; in the default mode where encoding
+is autodetected on the fly, FM samples must lie outside the range
+between the two MFM thresholds to be decoded correctly.
+.TP
+.B \-\-[no]usehisto\fP
+Enable the use of a histogram to automatically choose new values for
+FM and MFM thresholds.  The values used will be displayed in the log
+at level 2 or higher.
+
+Use of \fB\-\-usehisto\%\fP will often result in a better (or same)
+read of a disk.  However, it is not enabled by default because on
+some disks with a severely degraded side 0, track 0, it may chose
+wild values resulting in a much worse read.
+.TP
+.B \-l \fIbytes\fP
+DMK track length in bytes.  The maximum is 0x4000 hex or 16384
+decimal.  Note that \fBgw2dmk\fP uses this value as part of its
+heuristic to determine when it has read one complete track and is
+starting to see wraparound back to the start of the track.  If the
+DMK track buffer is more than 95% full and a sector with the same
+header as the first sector on the track is seen again, \fBgw2dmk\fP
+assumes it has wrapped around to the start of the track again and
+stops reading.  This heuristic will be defeated if you set the track
+length to a huge value, so set it at most a few percent higher than
+the default for the disk kind (\fB\-k\%\fP option) you are using.
+
+.SH LIST OF TRACKS AND SIDES
+The options \fB\-S\%\fP, \fB\-x\%\fP, and \fB\-X\%\fP allow a
+list of ranges giving tracks and sides.  These ranges can be
+straightforward for simple needs, but grow in complexity for more
+intricate specifications.
+
+The list are always parsed from left to right with the later ranges
+taking precedence.
+
+A track range always starts with the number to be used as the value
+for the option and may be followed by an optional colon and track
+and side ranges that the number applies to.
+
+The format of a track range is
+.nh
+\fBnumber[:{start\~track[/side][\-[end\~track[/side]]]}]\fP.
+.hy
+
+Sides are specified with a \[aq]0\[aq] (front) or \[aq]1\[aq] (back).
+
+If a \fB\-\%\fP is given without an \fBend\~track\%\fP, the range is
+for all remaining tracks.
+
+A track list may have multiple track ranges separated by commas.
+
+Some examples may make understanding the track list easier to
+follow.
+.RS 4
+.TP
+\fB\-x 40\fP
+Set the number of retries for all tracks and sides to 40.
+.TP
+\fB\-x 40,0:4-12\fP
+Set the number of retries for all tracks and sides to 40, except
+disable retries for tracks 4 through 12.
+.TP
+\fB\-x 10,20:30-,0:33/0\fP
+Set retries for all tracks and sides to 10, except set to 20 for
+tracks 30 through end of media, then disable retries for track 33
+side 0.
+.TP
+\fB\-x 15:27-30,80:35-\fP
+Leave default retries (4) for all tracks and sides except set it to
+15 for tracks 27 through 30, then set it to 80 for tracks 35 through
+end of media.
+.TP
+\fB\-S 18,10:0/0
+Set the minimum number of sectors for all tracks and sides to 18,
+except for track 0, side 0, make it 10.  (Common for a Model 1 DSDD
+disk.)
+.TP
+\fB\-X 5
+Set the minimum number of retries for all tracks and sides to 5.
+.RE
+.SH LIMITATIONS
+Below are some cases where the results may not be correct unless an
+additional command line option is given.
+
+If the disk has a defect but can be successfully read by using a
+larger number of retries than normal, use the \fB\-x\%\fP option.
+
+If the disk is noisy, \fBgw2dmk\fP\[aq]s decoder may sometimes
+misclassify a sample or even misdetect the encoding (FM, MFM, or
+RX02), usually resulting in a CRC error or a missing sector.  You
+can sometimes work around this (especially for FM-only disks) by
+using the \fB\-e\%\fP option to force only one encoding to be
+considered.  Another workaround that can help is the \fB\-o\%\fP
+option.  In rare cases, tweaking thresholds with the \fB\-1\%\fP,
+\fB\-2\%\fP, and \fB\-f\%\fP options may help.  The histogram
+displayed by the \fB\-v\~7\%\fP option or the separate cwtsthst
+program may help you find the best thresholds.
+
+If the disk was formatted with more than 44 tracks in a 40-track
+drive, or more than 88 tracks in an 80-track drive, use the
+\fB\-t\%\fP option.
+
+Double-stepping is used to read 35- or 40-track disks in an 80-track
+drive.  If a copy-protected disk has nonstandard track numbers that
+fool \fBgw2dmk\fP when it tries to detect whether the drive needs to
+be single or double-stepped, use the \fB\-s\%\fP option.
+
+If the TRS-80 program on a copy-protected disk does a Read Track
+when it is run, and it expects the raw track data to be precisely
+aligned, but the data comes out shifted a few bytes forward or
+backward when read with the Greaseweazle, use the \fB\-g\%\fP or
+\fB\-i\%\fP option.
+
+If the last sector on a track wraps around through the index
+hole and extends too far past it, \fBgw2dmk\fP\[aq]s normal
+\fB\-\-hole\%\fP reading strategy may cut off the end of it,
+resulting in a CRC error.  Using the \fB\-\-nohole\%\fP option may
+take care of the problem.
+
+If the disk was made by a NEC765-compatible controller and has
+sectors longer than 1024 bytes, use the \fB\-z\~7\%\fP option.
+
+If a disk has fewer tracks than \fBgw2dmk\fP guesses, reading will
+sometimes continue past the last valid track.  It is harmless for
+extra tracks of garbage to be written to the end of the DMK file,
+but if you know the correct number of tracks, you can use the
+\fB\-t\%\fP option to force \fBgw2dmk\fP to stop at the right place.
+Remember that track numbers start from zero, so (for example) giving
+the option \fB\-t\~35\%\fP will cause tracks numbered 0 to 34 to be
+read.
+
+Atari 800 floppy disk drives typically rotate at 288 RPM instead of
+300 RPM, allowing for somewhat more data per track than standard
+drives, and they write data to the disk without regard for the
+position of the index hole.  To read one of these disks with
+\fBgw2dmk\fP in a standard floppy drive, give the \fB\-\-nohole\%\fP
+option to ignore the index hole position, the \fB\-k\~1\%\fP or
+\fB\-k\~2\fP option as needed to specify the kind of drive and media
+in use, and the \fB\-l\%\fP 0x1A40 option to increase the DMK track
+length.
+
+Various East German computers that used floppy disk controllers
+built from discrete logic and that ran variants of the UDOS
+operating system produce disks with nonstandard formats.  See
+.UR https://www.robotrontechnik.de/html/software/udos.htm.
+.UE
+To read these disks, use \fBgw2dmk\fP\[aq]s quirk support
+(\fB\-q\%\fP option).  UDOS disks generally have four extra bytes
+of meaningful data for each sector.  These bytes may either follow
+the data CRC and have no CRC covering them (use QUIRK_EXTRA to
+ensure the bytes are read correctly), follow the data CRC and have
+their own CRC covering them (use QUIRK_EXTRA_CRC to ensure the
+bytes are read correctly and their CRC is checked), or precede
+the data CRC and are included in the data CRC\[aq]s coverage (use
+QUIRK_EXTRA_DATA to avoid a data CRC error on every sector).  Some
+of the variants also have other nonstandard features that require
+QUIRK_PREMARK, QUIRK_ID_CRC, and/or QUIRK_IAM.
+
+The following information is based on a small sample of UDOS
+disks.  It does not cover all UDOS variants and may not be
+fully accurate, so try other combinations of quirks if these
+don\[aq]t work: UDOS PRG v4 disks need \fB\-q\~0x0d\%\fP
+(QUIRK_ID_CRC, QUIRK_PREMARK, QUIRK_EXTRA).  UDOS 1526 v4 needs
+only \fB\-q\~0x08\%\fP (QUIRK_EXTRA).  UDOS 1526 v5 needs
+\fB\-q\~0x0c\%\fP (QUIRK_PREMARK, QUIRK_EXTRA).  CZ-SDOS needs
+\fB\-q\~0x60\%\fP (QUIRK_EXTRA_DATA, QUIRK_IAM).  Note: If you have
+a version of UDOS where QUIRK_EXTRA_CRC works, it is preferable to
+use it instead of QUIRK_EXTRA, so that \fBgw2dmk\fP will check the
+extra CRC and retry if it shows an error.
+.SH DIAGNOSTICS
+.TP
+.B \fBgw2dmk\fP: Failed to detect Greaseweazle
+A Greaseweazle device was not detected.  You may need to provide
+a \fB\-G \fP\fIdevname\fP option.
+.TP
+.B \fBgw2dmk\fP: Failed to detect any drives
+You did not specify a drive to use with the \fB\-d\~\fP\fIunit\%\fP
+option, and no drives were detected.  The track 0 sensor is used
+to detect the presence of a drive, so you may get this message if
+your drive has a broken track 0 sensor.  In that case, use the
+\fB\-d\%\fP option to select which drive to use.
+.TP
+.B \fBgw2dmk\fP: Drive d not detected; proceeding anyway
+You specified a drive for \fBgw2dmk\fP to use with the \fB-d\%\fP
+option, but it was not detected.  The track 0 sensor is used to
+detect the presence of a drive, so you may get this message for a
+drive with a broken track 0.  However, it\[aq]s more likely that the
+specified drive number does not exist.  Cabling and drive selection
+can be confusing, so before giving up, try the other drive number or
+leave out the -d option and let \fBgw2dmk\fP autodetect the drive
+number.  Note: In versions prior to 3.0, \fBgw2dmk\fP used the
+opposite drive numbering convention from the bundled Greaseweazle
+software supplied by Individual Computers.  This has now been
+corrected.
+.TP
+.B gw2dmk: Track 0 side 0 is unformatted
+For drive/media autodetection to work, track 0 of the diskette must
+be formatted.  This message is printed if the track appears not to be
+formatted.
+.TP
+.B gw2dmk: Failed to detect drive and media type
+This message is printed if drive/media autodetection fails for some
+unknown reason.  The detector\[aq]s estimate of the data clock rate
+and disk rotation speed are also printed; if they are wildly wrong,
+the disk may be unformatted.
+.TP
+.B gw2dmk: Flux read failure: ...
+.TQ
+.B gw2dmk: Flux read failure: ... [Is diskette in drive?]
+The Greaseweazle could not read flux from the drive.
+
+If no index hole was detected, \fBgw2dmk\fP will ask if the diskette
+is in the drive.
+
+These messages usually mean that there is no disk in the drive.
+They might also appear in some cases if the drive is not connected
+properly, the door is not closed, the disk is inserted upside-down,
+etc.
+
+If the disk really does not have an index hole -- in particular,
+if you are reading the back of a disk that was written in a flippy
+drive by inserting it upside-down into a normal drive (see the
+\fB\-\-nohole\%\fP option) -- \fBgw2dmk\fP cannot autodetect the drive
+and media type or if side 1 is formatted, so you will have to give
+the \fB\-k\%\fP and \fB\-s\%\fP flags to tell it the correct type and
+number of sides.
+.TP
+.B Possibly a flippy disk.  Check reverse side too.
+This message is not an error.  It means that you are reading a disk
+in a double-sided drive and \fBgw2dmk\fP detected there might be
+\[lq]flippy\[rq] data on the back of the disk in addition to the
+normal data on the front. \fBgw2dmk\fP cannot read all of this data
+unless you flip the disk over (see the \fB\-\-nohole\%\fP option for
+details), but it can usually read enough to detect that there is
+some data present and print this message.
+.SH NOTES
+.SS DEC RX02 Disks
+RX02 disks use a nonstandard encoding for double density.  A
+slight extension to the DMK format is used to represent them: Bit
+5 (previously unused) is set in the DMK header\[aq]s options byte
+(byte 4).  The DMK double density flag (bit 15 of the IDAM pointer)
+is not set for RX02 double density sectors on the grounds that only
+the data and CRC are in MFM, not the ID, DAM, gap, etc.  A program
+reading a DMK with the RX02 option bit set should expect a sector to
+contain twice as many valid data bytes as its sizecode indicates if
+the sector\[aq]s DAM is 0xf9 (deleted RX02 MFM data) or 0xfd (normal
+RX02 MFM data).  Note that as with other disk types, FM bytes are
+written to the DMK file twice unless you set the \fB-w\~1\%\fP option,
+while MFM bytes are written only once.  RX02 autodetection will fail
+if the first track with RX02 sectors has only deleted data (0xf9
+DAMs).  This is unlikely to occur, but using \fB\-e\~3\%\fP will work
+around the problem if it does.
+.SS Postcompensation and magnetic flux
+The magnetic flux transitions on a floppy disk tend to move slightly
+farther apart if they are recorded very close together, thus
+lengthening the short intervals and shortening the long ones, a
+phenomenon sometimes called bit-shifting.  When a disk is recorded,
+the disk controller ordinarily applies write-precompensation to
+reduce this effect; that is, it makes the short intervals extra
+short and the long ones correspondingly longer, especially on
+the inner, higher-numbered tracks.  Sometimes a disk is recorded
+with too little write precompensation, or perhaps the bits shift
+even more as the disk ages.
+
+With the \fB\-p\%\fP option, if \fBgw2dmk\fP observes that an
+interval is longer or shorter than its nominal length, it will
+assume that the interval\[aq]s ending transition moved slightly,
+and will lengthen or shorten the next interval as a sort of
+read-postcompensation.  The deviation of each interval is multiplied
+by \fIvalue\fP before being added to the next interval.
+.SS \[lq]Flippy\[rq] Disks
+Generally, a \[lq]flippy\[rq] disk is a disk that has a separate
+single-sided format written on each side, where the format on the
+back was written by flipping the disk over and reinserting it into
+the drive upside-down.  To accomplish this, the disk jacket either
+had to have been modified with an extra index hole and write-protect
+notch, or the disk had to have been written in a flippy disk drive
+with double sensors.
+
+Unfortunately, you can't read a flippy-formatted disk using a
+double-sided (two head) drive in a single pass.  \fBgw2dmk\fP could
+compensate for the disk rotating the opposite way, however, a more
+serious limitation exists.  With double-sided drives, their heads
+for the back side are displaced by a few tracks (e.g. by 4 tracks
+for 48 TPI drives).  That means that their back side heads cannot
+access those first few tracks of a flippy disk.
+
+For flippy disks with modified jackets, there is no problem.  Just
+flip the disk over and read the reverse side.  With disks written
+in a flippy drive, you can modify its jacket yourself by adding the
+extra hole to its jacket with a hole punch.
+
+For those who are truly adventurous, you may also attempt to modify
+your drive with the directions found here:
+.UR http://icomp.de/man/flipside.html
+.UE
+\&.
+
+After modification, if still having trouble reading some diskettes,
+using the \fB\-\-nohole\%\fP may help.
+.SH SEE ALSO
+.SS Other related commands
+.BR dmk2gw (1),
+.BR gwhist (1)
+.SS Greaseweazle
+For more information about Greaseweazle controllers and other
+software that works with them, see:
+.EX
+.RS 4
+.UR https://github.com/keirf/greaseweazle/wiki
+.UE
+.RE
+.EE
+.SS DMK floppy disk archive file format
+For information about the DMK file format and the emulators that
+use it, see:
+.EX
+.RS 4
+.UR https://www.trs\-80.com/wordpress/tips/formats/#dmk
+.UE
+.UR https://www.trs\-80.com/wordpress/intro\-to\-emulators/
+.UE
+.RE
+.EE
+.SH AUTHORS
+\fBgw2dmk\fP was written by
+.UR https://github.com/qbarnes/
+Quentin Barnes
+.UE
+based on the \fBcw2dmk\fP utilities by
+.UR https://tim\-mann.org/
+Tim Mann
+.UE
+\&.
+
+\fBgw2dmk\fP is free software released under the GNU General Public
+License.
+
+Thanks to David Keil for designing and documenting the DMK file
+format for archiving floppy disks.

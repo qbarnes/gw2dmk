@@ -8,6 +8,12 @@ ifdef E
 LDLIBS  += -static -lregex
 endif
 
+nroff ?= nroff
+groff ?= groff
+
+nroff_txt_flags	?= -c
+groff_pdf_flags	?=
+
 build_dir	?= build
 
 ifndef top_dir
@@ -29,10 +35,17 @@ vpath %		$(top_dir)
 obj_targets	= gw2dmk.o dmk2gw.o gw.o gwx.o msg.o m2.o gwhisto.o \
 		   gwhist.o gwdetect.o crc.o
 
-targets		= gw2dmk$E dmk2gw$E gwhist$E m2$E
+bins		= gw2dmk dmk2gw gwhist
+bin_targets	= $(foreach b,$(bins), $b$E)
 
-#tar_files	= LICENSE README.md $(targets) $(tar_extras)
-tar_files	= LICENSE README.md gw2dmk$E dmk2gw$E gwhist$E $(tar_extras)
+man_txt_targets	 = $(foreach b,$(bins),$b.1.txt)
+man_pdf_targets	 = $(foreach b,$(bins),$b.1.pdf)
+man_html_targets = $(foreach b,$(bins),$b.1.html)
+man_targets	 = $(man_txt_targets) $(man_pdf_targets) $(man_html_targets)
+
+targets		= $(bin_targets) $(man_targets)
+
+tar_files	= LICENSE README.md $(targets) $(tar_extras)
 
 clean_files	= $(targets) $(obj_targets)
 
@@ -89,6 +102,16 @@ gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwhist.o
 
 m2$E: msg.o m2.o gw.o gwx.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
+
+%.txt: %
+	$(nroff) -man -Tascii $(nroff_txt_flags) $< | col -b | cat -s > $@
+
+%.pdf: %
+	$(groff) -man -Tpdf $(groff_pdf_flags) $< > $@
+
+%.html: %
+	$(groff) -man -Thtml $(groff_html_flags) $< > $@
+
 
 $(TARBALLGZ): $(tar_files)
 	tar -czP \
