@@ -71,6 +71,8 @@ jobs:
         platform: [linux_x86_64, linux_armv7l, linux_aarch64, mswin32, mswin64]
         include:
           - platform: linux_x86_64
+            # Use crossbuild-aarch64 for native builds.
+            container: ${{ inputs.container_base }}/ubuntu-20.04-crossbuild-aarch64
             target_platform_name: linux
             target_platform: LINUX_X86_64
             target_arch: .x86_64
