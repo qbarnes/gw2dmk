@@ -15,19 +15,20 @@ to install additional packages before you build.
 
 ### Installing packages
 
-First, you'll need to install packages for C development.
+First, you'll need to install packages for C development and generating
+PDFs.
 
 On Fedora and RHEL-like distros, run:
 
 ```
-$ sudo dnf install -y @c-development
+$ sudo dnf install -y @c-development groff-perl perl-IO-Compress
 ```
 
 On Debian, Ubuntu, and related distros, run:
 
 ```
 $ sudo apt-get update
-$ sudo apt-get install -y build-essential
+$ sudo apt-get install -y build-essential groff
 ```
 
 To clone this repo, run:
