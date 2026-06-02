@@ -465,7 +465,7 @@ parse_args(int argc,
 
 	if (cmd_set->file_verbosity > MSG_QUIET) {
 		if (!cmd_set->logfile) {
-			char *p = strrchr(cmd_set->dmkfile, '.');
+			const char *p = strrchr(cmd_set->dmkfile, '.');
 
 			size_t dmk_len = p ? p - cmd_set->dmkfile :
 					     strlen(cmd_set->dmkfile);
