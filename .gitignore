@@ -1,4 +1,3 @@
-*~
 *.o
 *.obj
 *.dmk
@@ -6,10 +5,5 @@
 *.gwlog
 *.exe
 *.tar.gz
-cscope.*
-build
-build.*
-core.*
-tags
-m2
-gwhist
+/build
+/build.*
