@@ -43,7 +43,7 @@ clean:
 	[ ! -d '$(build_dir)' ] || $(build_make) '$@'
 
 clobber distclean:
-	rm -rf -- '$(build_dir)'
+	$(call scrub_files_call,$($@_files))
 
 
 show_package:
