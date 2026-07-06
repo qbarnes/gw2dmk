@@ -8,11 +8,6 @@ repo_dir  ?= /tmp/$(PRODUCT)
 oci_base  ?= ghcr.io/qbarnes/containers-for-cross-compiling
 oci_tag   ?= latest
 
-define nl
-
-
-endef
-
 # Any of the cross containers will work for the LINUX_X86_64 native build
 # since they all contain the native build environment.
 
