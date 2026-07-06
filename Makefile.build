@@ -19,10 +19,7 @@ build_dir	?= build
 ifndef top_dir
 top_dir		:= ..
 else
-ifndef PWD
-PWD := $(shell pwd)
-endif
-top_dir		:= $(shell realpath --relative-to '$(PWD)' '$(top_dir)')
+top_dir		:= $(shell realpath --relative-to '$(CURDIR)' '$(top_dir)')
 endif
 
 src_dir		?= $(top_dir)

@@ -3,16 +3,12 @@ include product.mk
 
 build_dir	?= build
 
-ifndef PWD
-PWD := $(shell pwd)
-endif
-
 ifndef top_dir
 top_dir		:= $(shell realpath \
-			--relative-to '$(PWD)/$(build_dir)' '$(PWD)')
+			--relative-to '$(CURDIR)/$(build_dir)' '$(CURDIR)')
 else
 top_dir		:= $(shell realpath \
-			--relative-to '$(PWD)/$(build_dir)' '$(top_dir)')
+			--relative-to '$(CURDIR)/$(build_dir)' '$(top_dir)')
 endif
 
 src_dir		?= $(top_dir)

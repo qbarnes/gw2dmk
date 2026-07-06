@@ -37,7 +37,7 @@ all::
 %::
 	$(foreach v,$(BUILDS),\
 		$(container_cmd) run --rm \
-			-v "$(PWD):$(repo_dir):Z" \
+			-v "$(CURDIR):$(repo_dir):Z" \
 			"$(oci_$v)" \
 			make \
 				-C "$(repo_dir)" \
