@@ -46,6 +46,14 @@ $ make
 
 The binaries will be under the `build` directory.
 
+If you're only wanting to build just the binaries (without the man
+pages) due to not wanting to install the additional, necessary
+packages or take the time, you can run:
+```
+$ make bins
+```
+
+The complementary command `make mans` will build just the man pages.
 
 ## Cross-Building Gw2dmk
 

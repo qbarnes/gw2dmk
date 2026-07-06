@@ -51,7 +51,11 @@ tar_files	= LICENSE README.md $(targets) $(tar_extras)
 clean_files	= $(targets) $(obj_targets)
 
 
-all: $(targets)
+all: bins mans
+
+bins: $(bin_targets)
+
+mans: $(man_targets)
 
 release: $(TARBALLGZ)
 
@@ -124,6 +128,6 @@ clean clobber distclean:
 	$(call scrub_files_call,$($@_files))
 
 
-.PHONY: FORCE all release
+.PHONY: FORCE bins mans all release
 .PHONY: clean clobber distclean
 .DELETE_ON_ERROR:
