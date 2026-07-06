@@ -46,5 +46,9 @@ all::
 				"$*"$(nl) \
 	)
 
+pull:
+	$(foreach v,$(BUILDS),\
+		$(container_cmd) pull "$(oci_$v)"$(nl))
+
 
 .DELETE_ON_ERROR:

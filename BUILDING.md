@@ -162,6 +162,7 @@ To cross-build for all platforms using containers, change directory
 into the cloned repo and run:
 
 ```
+$ make -f Makefile.oci pull  # Optional to download latest container versions
 $ make -f Makefile.oci
 ```
 
