@@ -17,6 +17,7 @@ extern "C" {
 #include "gwmedia.h"
 #include "gwfddrv.h"
 #include "gwhisto.h"
+#include "gwscan.h"
 #include "msg_levels.h"
 
 
@@ -26,7 +27,8 @@ extern int kind2densel(int kind);
 
 extern gw_devt gw_openlist(const char **device_list, const char **selected_dev);
 
-extern gw_devt gw_find_open_gw(const char *device, const char **device_list,
+extern gw_devt gw_find_open_gw(const char *device, const char *serial,
+			       const char **device_list,
 			       const char **selected_dev);
 
 extern gw_devt gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info,

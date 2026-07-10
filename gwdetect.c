@@ -64,8 +64,61 @@ gw_openlist(const char **device_list, const char **selected_dev)
 }
 
 
+static void
+gw_scan_list_devs(const struct gw_scan_dev *devs, int cnt)
+{
+	for (int i = 0; i < cnt; ++i)
+		msg_error("    %s  (serial '%s')\n",
+			  devs[i].device, devs[i].serial);
+}
+
+
+/*
+ * Open the scanned device at "devs[di]" and report it.
+ *
+ * Returns device descriptor and sets "selected_dev" to a copy of the
+ * device name, or returns GW_DEVT_INVALID on failure.
+ */
+
+static gw_devt
+gw_open_scanned_dev(const struct gw_scan_dev *devs, int di,
+		    const char **selected_dev)
+{
+	gw_devt	gwfd = gw_open(devs[di].device);
+
+	if (gwfd == GW_DEVT_INVALID) {
+		msg_error("Failed open Greaseweazle ('%s').\n",
+			  devs[di].device);
+		return GW_DEVT_INVALID;
+	}
+
+	msg(MSG_NORMAL, "Using Greaseweazle at '%s' (serial '%s').\n",
+	    devs[di].device, devs[di].serial);
+
+	if (selected_dev) {
+		char	*dev_copy = strdup(devs[di].device);
+
+		if (!dev_copy) {
+			msg_error("Failed to allocate memory for device "
+				  "name.\n");
+			gw_close(gwfd);
+			return GW_DEVT_INVALID;
+		}
+
+		*selected_dev = dev_copy;
+	}
+
+	return gwfd;
+}
+
+
 /*
  * Find and open GW.
+ *
+ * If "device" is given, open it directly.  Otherwise scan the USB bus
+ * for Greaseweazles; if "serial" is given, use the device whose USB
+ * serial number matches exactly, else use the sole device found.  On
+ * platforms without a scan backend, fall back to trying "device_list".
  *
  * Returns device file descriptor and sets "selected_dev" to device name
  * or returns GW_DEVT_INVALID on failure.
@@ -73,6 +126,7 @@ gw_openlist(const char **device_list, const char **selected_dev)
 
 gw_devt
 gw_find_open_gw(const char *device,
+		const char *serial,
 		const char **device_list,
 		const char **selected_dev)
 {
@@ -88,7 +142,20 @@ gw_find_open_gw(const char *device,
 
 		if (selected_dev)
 			*selected_dev = device;
-	} else {
+
+		return gwfd;
+	}
+
+	struct gw_scan_dev	*devs;
+	int			cnt = gw_scan(&devs);
+
+	if (cnt == GW_SCAN_UNSUPPORTED) {
+		if (serial) {
+			msg_error("Greaseweazle scanning not supported on "
+				  "this platform; use '-G <devname>'.\n");
+			return GW_DEVT_INVALID;
+		}
+
 		gwfd = gw_openlist(device_list, selected_dev);
 
 		if (gwfd == GW_DEVT_INVALID) {
@@ -96,7 +163,49 @@ gw_find_open_gw(const char *device,
 				  "'-G <devname>'.\n");
 			return GW_DEVT_INVALID;
 		}
+
+		return gwfd;
 	}
+
+	if (cnt == GW_SCAN_ERROR) {
+		msg_error("Failed to scan for Greaseweazles: %s.\n",
+			  strerror(errno));
+		return GW_DEVT_INVALID;
+	}
+
+	gwfd = GW_DEVT_INVALID;
+
+	if (serial) {
+		int	di;
+
+		for (di = 0; di < cnt; ++di) {
+			if (strcmp(devs[di].serial, serial) == 0)
+				break;
+		}
+
+		if (di < cnt) {
+			gwfd = gw_open_scanned_dev(devs, di, selected_dev);
+		} else {
+			msg_error("No Greaseweazle with serial '%s' "
+				  "found.\n", serial);
+
+			if (cnt > 0) {
+				msg_error("Greaseweazles found:\n");
+				gw_scan_list_devs(devs, cnt);
+			}
+		}
+	} else if (cnt == 0) {
+		msg_error("No Greaseweazle found.\n");
+	} else if (cnt == 1) {
+		gwfd = gw_open_scanned_dev(devs, 0, selected_dev);
+	} else {
+		msg_error("Multiple Greaseweazles found:\n");
+		gw_scan_list_devs(devs, cnt);
+		msg_error("Select one with '-Z <serial>' or "
+			  "'-G <devname>'.\n");
+	}
+
+	gw_scan_free(devs, cnt);
 
 	return gwfd;
 }

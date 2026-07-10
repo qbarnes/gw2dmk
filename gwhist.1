@@ -13,12 +13,26 @@ This utility is primarily used for aiding with debugging.
 .TP
 .B \-G|\-\-device \fIname\fP
 Specify the Greaseweazle's device \fIname\fP.  On Linux, this will
-typically be a device under the \fB/dev\%\fP path.  The default name
-is \fB/dev/greaseweazle\%\fP.  If not found, \fB/dev/ttyACM0\%\fP.
-On Microsoft Windows, the device name defaults to \fBCOM3\fP.
+typically be a device under the \fB/dev\%\fP path such as
+\fB/dev/ttyACM0\%\fP.  On Microsoft Windows, it will typically be a
+\fBCOM\fP device such as \fBCOM3\fP.
+
+By default, no device name is needed: attached Greaseweazles are
+detected automatically by scanning the USB bus.  If exactly one is
+found, it is used.  Otherwise, all devices found are listed with
+their USB serial numbers and the program exits; select one with
+\fB\-G\fP or \fB\-Z\fP.
 
 If you are unsure of your device\[aq]s name, run \fBgw\~info\%\fP and
 use the string returned after \[lq]Port:\[rq].
+.TP
+.B \-Z|\-\-serial \fIserial\fP
+Select the Greaseweazle whose USB serial number exactly matches
+\fIserial\fP (case sensitive).  Cannot be combined with \fB\-G\fP.
+
+The serial numbers of attached Greaseweazles are shown by running
+without \fB\-G\fP and \fB\-Z\fP when more than one is attached, or
+by running \fBgw\~info\%\fP.
 .TP
 .B \-d|\-\-drive \fIunit\fP
 Specify the drive unit number.

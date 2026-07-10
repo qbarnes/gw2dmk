@@ -27,6 +27,7 @@ static const struct option cmd_long_args[] = {
 	{ "device",	 required_argument, NULL, 'G' },
 	{ "stepdelay",	 required_argument, NULL, 'T' },
 	{ "gwlogfile",	 required_argument, NULL, 'U' },
+	{ "serial",	 required_argument, NULL, 'Z' },
 	/* Start of binary long options without single letter counterparts. */
 	{ "hd",		 no_argument, NULL, 0 },
 	{ "dd",		 no_argument, NULL, 0 },
@@ -35,11 +36,16 @@ static const struct option cmd_long_args[] = {
 	{ 0, 0, 0, 0 }
 };
 
-#if defined(WIN64) || defined(WIN32)
-static const char gwsd_def[] = "\\\\.\\COM3";
-#else
-static const char gwsd_def[] = "/dev/ttyACM0";
+/* Only used on platforms without a USB scan backend. */
+static const char *device_list[] = {
+#if linux
+	"/dev/greaseweazle",
+	"/dev/ttyACM0",
+#elif defined(WIN64) || defined(WIN32)
+	"\\\\.\\COM3",
 #endif
+	NULL
+};
 
 static struct cmd_settings {
 	struct gw_fddrv	fdd;
@@ -52,7 +58,8 @@ static struct cmd_settings {
 	const char	*logfile;
 	const char	*devlogfile;
 } cmd_settings = {
-	.fdd.device = gwsd_def,
+	.fdd.device = NULL,
+	.fdd.serial = NULL,
 	.fdd.bus = BUS_IBMPC,
 	.fdd.drive = -1,
 	.fdd.kind = -1,
@@ -76,7 +83,7 @@ static struct cmd_settings {
 static void
 usage(const char *pgm_name)
 {
-	msg_fatal("Usage: %s [-G device] [-d drive] "
+	msg_fatal("Usage: %s [-G device] [-Z serial] [-d drive] "
 		  "[-t track] [-s side] [-r revs] "
 		  "[--dd|--hd] [-T stp[,stl]] --[no]reset "
 		  "[-v verbosity] [-u logfile] [-U gwlogfile]\n",
@@ -91,7 +98,7 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 	int	opt;
 	int	lindex = 0;
 
-	while ((opt = getopt_long(argc, argv, "d:r:s:t:u:v:G:T:U:",
+	while ((opt = getopt_long(argc, argv, "d:r:s:t:u:v:G:T:U:Z:",
 		cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -200,10 +207,19 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 			cmd_set->devlogfile = optarg;
 			break;
 
+		case 'Z':
+			cmd_set->fdd.serial = optarg;
+			break;
+
 		default:  /* '?' */
 			goto err_usage;
 			break;
 		}
+	}
+
+	if (cmd_set->fdd.device && cmd_set->fdd.serial) {
+		msg_error("Options '-G' and '-Z' are mutually exclusive.\n");
+		goto err_usage;
 	}
 
 	if (optind != argc)
@@ -256,13 +272,14 @@ main(int argc, char **argv)
 
 	parse_args(argc, argv, &cmd_settings);
 
-	const char *gwsd = cmd_settings.fdd.device;
+	const char *sdev = NULL;
 
-	gw_devt gwfd = gw_open(gwsd);
+	gw_devt gwfd = gw_find_open_gw(cmd_settings.fdd.device,
+				       cmd_settings.fdd.serial,
+				       device_list, &sdev);
 
 	if (gwfd == GW_DEVT_INVALID)
-		msg_fatal("Failed to open Greaseweazle's serial device "
-			  "'%s': %s.\n", gwsd, strerror(errno));
+		return EXIT_FAILURE;
 
 	gw_init(gwfd);
 

@@ -45,6 +45,7 @@ static const struct option cmd_long_args[] = {
 	{ "device",	required_argument, NULL, 'G' },
 	{ "stepdelay",	required_argument, NULL, 'T' },
 	{ "gwlogfile",	required_argument, NULL, 'U' },
+	{ "serial",	required_argument, NULL, 'Z' },
 	/* Start of binary long options without single letter counterparts. */
 	{ "gwdebug",	no_argument, NULL, 0 },
 	{ "nogwdebug",	no_argument, NULL, 0 },
@@ -57,6 +58,7 @@ static const struct option cmd_long_args[] = {
 
 
 struct cmd_settings cmd_settings = {
+	/* Only used on platforms without a USB scan backend. */
 	.device_list = (const char *[]){
 #if linux
 		"/dev/greaseweazle",
@@ -67,6 +69,7 @@ struct cmd_settings cmd_settings = {
 		NULL },
 	.fdd.gwfd = GW_DEVT_INVALID,
 	.fdd.device = NULL,
+	.fdd.serial = NULL,
 	.fdd.bus = BUS_IBMPC,
 	.fdd.drive = 0,
 	.fdd.kind = 0,
@@ -108,7 +111,8 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 
 	u("  -G device       Greaseweazle device [%s]\n",
 				cmd_set->fdd.device ? cmd_set->fdd.device :
-				cmd_set->device_list[0]);
+				"autodetect");
+	u("  -Z serial       Select Greaseweazle by USB serial number\n");
 	u("  -d drive        Drive unit {a,b,0,1,2} [%c]\n",
 				cmd_set->fdd.bus == BUS_SHUGART ?
 				cmd_set->fdd.drive + '0' :
@@ -189,7 +193,7 @@ parse_args(int argc,
 	int	lindex = 0;
 
 	while ((opt = getopt_long(argc, argv,
-			"a:d:f:g:h:i:k:l:m:p:s:u:v:y:G:T:U:",
+			"a:d:f:g:h:i:k:l:m:p:s:u:v:y:G:T:U:Z:",
 			cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -350,10 +354,19 @@ parse_args(int argc,
 			cmd_set->devlogfile = optarg;
 			break;
 
+		case 'Z':
+			cmd_set->fdd.serial = optarg;
+			break;
+
 		default:  /* '?' */
 			goto err_usage;
 			break;
 		}
+	}
+
+	if (cmd_set->fdd.device && cmd_set->fdd.serial) {
+		msg_error("Options '-G' and '-Z' are mutually exclusive.\n");
+		goto err_usage;
 	}
 
 	if (optind != (argc-1))
@@ -884,10 +897,14 @@ main(int argc, char **argv)
 	 */
 
 	struct gw_info		gw_info;
-	const char		*sdev;
+	const char		*sdev = NULL;
 
 	cmd_settings.fdd.gwfd = gw_find_open_gw(cmd_settings.fdd.device,
+					cmd_settings.fdd.serial,
 					cmd_settings.device_list, &sdev);
+
+	if (cmd_settings.fdd.gwfd == GW_DEVT_INVALID)
+		exit(EXIT_FAILURE);
 
 	cmd_settings.fdd.gwfd = gw_init_gw(&cmd_settings.fdd, &gw_info,
 					   cmd_settings.reset_on_init);

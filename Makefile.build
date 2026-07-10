@@ -5,7 +5,7 @@ CPPFLAGS =
 CFLAGS   = -O -g -Wall -Werror -Wfatal-errors
 LDLIBS  += -lm
 ifdef E
-LDLIBS  += -static
+LDLIBS  += -static -lsetupapi
 endif
 
 nroff ?= nroff
@@ -31,6 +31,7 @@ vpath %		$(top_dir)
 
 obj_targets	= cmdutil.o crc.o dmk2gw.o dmkmerge.o dmk.o dmkx.o gw2dmk.o \
 		  gwdecode.o gwdetect.o gwhist.o gwhisto.o gwmedia.o \
+		  gwscan.o gwscan_linux.o gwscan_win.o \
 		  gw.o gwx.o msg.o parsetracks.o secsize.o
 
 bins		= gw2dmk dmk2gw gwhist
@@ -73,10 +74,18 @@ gwhisto.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
 
 gwhist.o gw2dmk.o dmk2gw.o: CFLAGS += '-DVERSION="$(VERSION)"'
 
-gwhist.o: gw.h gwx.h gwhisto.h msg_levels.h msg.h misc.h gwfddrv.h cmdutil.h
+gwhist.o: gw.h gwx.h gwhisto.h msg_levels.h msg.h misc.h gwfddrv.h \
+	  cmdutil.h gwdetect.h gwscan.h
 
 gwdetect.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwmedia.h \
-		gwhisto.h gwfddrv.h gw2dmkcmdset.h gwdetect.h gwdetect.c
+		gwhisto.h gwfddrv.h gwscan.h gw2dmkcmdset.h gwdetect.h \
+		gwdetect.c
+
+gwscan.o: gwscan.h gwscan_impl.h gwscan.c
+
+gwscan_linux.o: gwscan.h gwscan_impl.h greaseweazle.h gwscan_linux.c
+
+gwscan_win.o: gwscan.h gwscan_impl.h greaseweazle.h gwscan_win.c
 
 gwdecode.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h dmk.h \
 		gwmedia.h gwhisto.h gwdecode.h gwdecode.c
@@ -93,20 +102,24 @@ dmkx.o: dmk.h msg.h msg_levels.h misc.h dmkx.c
 secsize.o: dmk.h misc.h secsize.c
 
 gw2dmk.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
-		gw2dmkcmdset.h gwhisto.h dmk.h cmdutil.h parsetracks.h gw2dmk.c
+		gw2dmkcmdset.h gwhisto.h dmk.h cmdutil.h parsetracks.h \
+		gwdetect.h gwscan.h gw2dmk.c
 
 dmk2gw.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
-		dmk2gwcmdset.h gwhisto.h dmk.h cmdutil.h dmk2gw.c
+		dmk2gwcmdset.h gwhisto.h dmk.h cmdutil.h gwdetect.h gwscan.h \
+		dmk2gw.c
 
-gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwdecode.o gwmedia.o dmk.o \
-	dmkmerge.o secsize.o cmdutil.o parsetracks.o gw2dmk.o crc.o
+gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan.o gwscan_linux.o \
+	gwscan_win.o gwdecode.o gwmedia.o dmk.o dmkmerge.o secsize.o \
+	parsetracks.o cmdutil.o gw2dmk.o crc.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
-dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwmedia.o dmk.o dmkx.o secsize.o \
-	cmdutil.o dmk2gw.o
+dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwscan.o gwscan_linux.o gwscan_win.o \
+	gwmedia.o dmk.o dmkx.o secsize.o cmdutil.o dmk2gw.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
-gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o cmdutil.o gwhist.o
+gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan_linux.o gwscan_win.o \
+	cmdutil.o gwhist.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 %.txt: %

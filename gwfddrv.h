@@ -22,6 +22,7 @@ enum {
 struct gw_fddrv {
 	gw_devt		gwfd;
 	const char	*device;
+	const char	*serial;
 	int		bus;
 	int		drive;
 	int		kind;
