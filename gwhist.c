@@ -311,13 +311,18 @@ main(int argc, char **argv)
 	if (gwfd == GW_DEVT_INVALID)
 		return EXIT_FAILURE;
 
+	cmd_settings.fdd.gwfd = gwfd;
+
 	gw_init(gwfd);
 
 	if (cmd_settings.reset_on_init)
 		gw_reset(gwfd);
 
-	if (cmd_settings.fdd.drive == -1)
-		gw_detect_drive(&cmd_settings.fdd);
+	gw_set_bus_type(gwfd, cmd_settings.fdd.bus);
+
+	if (cmd_settings.fdd.drive == -1 &&
+	    gw_detect_drive(&cmd_settings.fdd, false))
+		return EXIT_FAILURE;
 
 	struct gw_info	gw_info;
 
@@ -327,8 +332,6 @@ main(int argc, char **argv)
 		// error handling
 		return EXIT_FAILURE;
 	}
-
-	gw_set_bus_type(gwfd, cmd_settings.fdd.bus);
 
 	if (gw_setdrive(gwfd, cmd_settings.fdd.drive,
 			cmd_settings.fdd.densel == DS_HD ?

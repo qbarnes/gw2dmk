@@ -307,15 +307,83 @@ gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info, bool reset)
 }
 
 
+static char
+unit2char(int bus, int unit)
+{
+	return (bus == BUS_SHUGART) ? '0' + unit : 'a' + unit;
+}
+
+
 /*
- * Detect drive connected to GW.
+ * Detect drive(s) connected to the GW by probing each unit on the
+ * active bus: select the unit, seek to cylinder 0, and check whether
+ * the TRK0 line asserted.  A powered, connected drive asserts TRK0
+ * at cylinder 0 whether or not a diskette is inserted.
+ *
+ * If "require_unique" is false, the first drive found is used.  If
+ * true, all units are probed and exactly one drive must be found.
+ *
+ * Sets "fdd->drive" and returns 0 on success, or reports the problem
+ * and returns -1 on failure.
  */
 
 int
-gw_detect_drive(struct gw_fddrv *fdd)
+gw_detect_drive(struct gw_fddrv *fdd, bool require_unique)
 {
-	if (fdd->drive == -1)
-		msg_fatal("Must specify drive with '-d <drive>' for now.\n");
+	const int	max_units = (fdd->bus == BUS_SHUGART) ? 3 : 2;
+	const int	densel    = (fdd->densel == DS_HD) ? DS_HD : DS_DD;
+	int		found[3];
+	int		found_cnt = 0;
+
+	for (int unit = 0; unit < max_units; ++unit) {
+		gw_setdrive(fdd->gwfd, unit, densel);
+
+		int	seek_ret = gw_seek(fdd->gwfd, 0);
+
+		gw_unsetdrive(fdd->gwfd, unit);
+
+		if (seek_ret == ACK_OKAY) {
+			found[found_cnt++] = unit;
+
+			if (!require_unique)
+				break;
+		} else if (seek_ret != ACK_NO_TRK0) {
+			msg_error("Failed to probe drive '%c' (%d).\n",
+				  unit2char(fdd->bus, unit), seek_ret);
+			return -1;
+		}
+	}
+
+	if (found_cnt == 0) {
+		msg_error("No drive detected on %s bus.\n",
+			  fdd->bus == BUS_SHUGART ? "Shugart" : "IBM PC");
+		msg_error("Check drive cabling and power, or specify "
+			  "'-d <drive>' (and '-B <bustype>' if needed).\n");
+		return -1;
+	}
+
+	if (require_unique && found_cnt > 1) {
+		char	list[sizeof found / sizeof found[0] * 4 + 1];
+		int	li = 0;
+
+		for (int i = 0; i < found_cnt; ++i) {
+			list[li++] = ' ';
+			list[li++] = '\'';
+			list[li++] = unit2char(fdd->bus, found[i]);
+			list[li++] = '\'';
+		}
+
+		list[li] = '\0';
+
+		msg_error("Multiple drives detected:%s\n", list);
+		msg_error("Select one with '-d <drive>'.\n");
+		return -1;
+	}
+
+	fdd->drive = found[0];
+
+	msg(MSG_NORMAL, "Using drive '%c'.\n",
+	    unit2char(fdd->bus, fdd->drive));
 
 	return 0;
 }

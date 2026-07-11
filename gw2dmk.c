@@ -165,8 +165,10 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 				cmd_set->fdd.device ? cmd_set->fdd.device :
 				"autodetect");
 	u("  -Z serial       Select Greaseweazle by USB serial number\n");
-	u("  -d drive        Drive unit {a,b,0,1,2} [%c]\n",
-				cmd_set->fdd.drive == -1 ? '?' :
+	if (cmd_set->fdd.drive == -1)
+		u("  -d drive        Drive unit {a,b,0,1,2} [autodetect]\n");
+	else
+		u("  -d drive        Drive unit {a,b,0,1,2} [%c]\n",
 				cmd_set->fdd.bus == BUS_SHUGART ?
 				cmd_set->fdd.drive + '0' :
 				cmd_set->fdd.drive + 'a');
@@ -1534,8 +1536,9 @@ main(int argc, char **argv)
 
 	cleanup_gwfd = cmd_settings.fdd.gwfd;
 
-	if (cmd_settings.fdd.drive == -1)
-		gw_detect_drive(&cmd_settings.fdd);
+	if (cmd_settings.fdd.drive == -1 &&
+	    gw_detect_drive(&cmd_settings.fdd, false))
+		exit(EXIT_FAILURE);
 
 	/*
 	 * Detect drive kind and characteristics.

@@ -34,7 +34,7 @@ extern gw_devt gw_find_open_gw(const char *device, const char *serial,
 extern gw_devt gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info,
 			  bool reset);
 
-extern int gw_detect_drive(struct gw_fddrv *fdd);
+extern int gw_detect_drive(struct gw_fddrv *fdd, bool require_unique);
 
 
 #ifdef __cplusplus

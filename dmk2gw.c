@@ -72,7 +72,7 @@ struct cmd_settings cmd_settings = {
 	.fdd.device = NULL,
 	.fdd.serial = NULL,
 	.fdd.bus = BUS_IBMPC,
-	.fdd.drive = 0,
+	.fdd.drive = -1,
 	.fdd.kind = 0,
 	.fdd.tracks = -1,
 	.fdd.sides = -1,
@@ -114,7 +114,10 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 				cmd_set->fdd.device ? cmd_set->fdd.device :
 				"autodetect");
 	u("  -Z serial       Select Greaseweazle by USB serial number\n");
-	u("  -d drive        Drive unit {a,b,0,1,2} [%c]\n",
+	if (cmd_set->fdd.drive == -1)
+		u("  -d drive        Drive unit {a,b,0,1,2} [autodetect]\n");
+	else
+		u("  -d drive        Drive unit {a,b,0,1,2} [%c]\n",
 				cmd_set->fdd.bus == BUS_SHUGART ?
 				cmd_set->fdd.drive + '0' :
 				cmd_set->fdd.drive + 'a');
@@ -947,8 +950,9 @@ main(int argc, char **argv)
 
 	cleanup_gwfd = cmd_settings.fdd.gwfd;
 
-	if (cmd_settings.fdd.drive == -1)
-		gw_detect_drive(&cmd_settings.fdd);
+	if (cmd_settings.fdd.drive == -1 &&
+	    gw_detect_drive(&cmd_settings.fdd, true))
+		exit(EXIT_FAILURE);
 
 	/* Select the drive with DD density for the RPM test below;
 	 * the -h density selection is applied once the drive kind

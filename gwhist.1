@@ -40,6 +40,10 @@ Specify the drive unit number.
 If your drive is connected via an IBM PC bus (flat cable with
 twist), use \fBa\fP or \fBb\fP.  For a Shugart bus (straight-through
 flat cable), use \fB0\fP, \fB1\fP, or \fB2\fP.
+
+If \fB\-d\fP is not given, each unit on the active bus type is
+probed and the first drive found is used.  A drive that is not
+powered on cannot be detected.
 .TP
 .B \-B|\-\-bustype \fIbus\fP
 Specify the floppy drive bus type.  Use \fBi\fP or \fBibm\fP for an
