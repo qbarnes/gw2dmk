@@ -59,6 +59,16 @@ If your drive is connected via an IBM PC bus (flat cable with
 twist), use \fBa\fP or \fBb\fP.  For a Shugart bus (straight-through
 flat cable), use \fB0\fP, \fB1\fP, or \fB2\fP.
 .TP
+.B \-B|\-\-bustype \fIbus\fP
+Specify the floppy drive bus type.  Use \fBi\fP or \fBibm\fP for an
+IBM PC bus (flat cable with twist), or \fBs\fP or \fBshugart\fP for
+a Shugart bus (straight-through flat cable).  Matching is case
+insensitive.  The default is the IBM PC bus.
+
+If \fB\-d\fP is also given, its drive unit must belong to the same
+bus type (\fBa\fP or \fBb\fP for IBM PC; \fB0\fP, \fB1\fP, or
+\fB2\fP for Shugart).
+.TP
 .B \-v|\-\-verbosity \fIlevel\fP
 Specify how much output is printed.  Larger levels select more
 output.  The default level is 1.

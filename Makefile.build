@@ -118,8 +118,8 @@ dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwscan.o gwscan_linux.o gwscan_win.o \
 	gwmedia.o dmk.o dmkx.o secsize.o cmdutil.o dmk2gw.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
-gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan_linux.o gwscan_win.o \
-	cmdutil.o gwhist.o
+gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan.o gwscan_linux.o \
+	gwscan_win.o cmdutil.o gwhist.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 %.txt: %

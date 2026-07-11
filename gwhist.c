@@ -24,6 +24,7 @@ static const struct option cmd_long_args[] = {
 	{ "track",	 required_argument, NULL, 't' },
 	{ "logfile",	 required_argument, NULL, 'u' },
 	{ "verbosity",	 required_argument, NULL, 'v' },
+	{ "bustype",	 required_argument, NULL, 'B' },
 	{ "device",	 required_argument, NULL, 'G' },
 	{ "stepdelay",	 required_argument, NULL, 'T' },
 	{ "gwlogfile",	 required_argument, NULL, 'U' },
@@ -84,7 +85,7 @@ static void
 usage(const char *pgm_name)
 {
 	msg_fatal("Usage: %s [-G device] [-Z serial] [-d drive] "
-		  "[-t track] [-s side] [-r revs] "
+		  "[-B bustype] [-t track] [-s side] [-r revs] "
 		  "[--dd|--hd] [-T stp[,stl]] --[no]reset "
 		  "[-v verbosity] [-u logfile] [-U gwlogfile]\n",
 		  pgm_name);
@@ -97,8 +98,10 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 
 	int	opt;
 	int	lindex = 0;
+	int	opt_bus = BUS_NONE;
+	bool	opt_d_given = false;
 
-	while ((opt = getopt_long(argc, argv, "d:r:s:t:u:v:G:T:U:Z:",
+	while ((opt = getopt_long(argc, argv, "d:r:s:t:u:v:B:G:T:U:Z:",
 		cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -121,6 +124,8 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 		case 'd':
 			if (parse_drive_arg(optarg, opt, &cmd_set->fdd))
 				goto err_usage;
+
+			opt_d_given = true;
 			break;
 
 		case 'r':;
@@ -193,6 +198,21 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 
 			break;
 
+		case 'B':
+			if (!strcasecmp(optarg, "i") ||
+			    !strcasecmp(optarg, "ibm")) {
+				opt_bus = BUS_IBMPC;
+			} else if (!strcasecmp(optarg, "s") ||
+				   !strcasecmp(optarg, "shugart")) {
+				opt_bus = BUS_SHUGART;
+			} else {
+				msg_error("Option-argument to '%c' must be "
+					  "'i', 'ibm', 's', or 'shugart'.\n",
+					  opt);
+				goto err_usage;
+			}
+			break;
+
 		case 'G':
 			if (parse_device_arg(optarg, &cmd_set->fdd))
 				goto err_usage;
@@ -215,6 +235,16 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 			goto err_usage;
 			break;
 		}
+	}
+
+	if (opt_bus != BUS_NONE) {
+		if (opt_d_given && cmd_set->fdd.bus != opt_bus) {
+			msg_error("Option '-B' bus type conflicts with the "
+				  "bus type implied by '-d'.\n");
+			goto err_usage;
+		}
+
+		cmd_set->fdd.bus = opt_bus;
 	}
 
 	if (cmd_set->fdd.device && cmd_set->fdd.serial) {
