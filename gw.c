@@ -272,16 +272,23 @@ err:
 	cfsetspeed(&t, 9600);
 	tcsetattr(gwfd, TCSANOW, &t);
 
-	/* Reset the device by setting DTR and RTS. */
+	/*
+	 * Reset the device by setting DTR and RTS.
+	 *
+	 * Tolerate ENOTTY and EINVAL for serial devices without modem
+	 * lines, such as ptys (used by gwsim) and some USB CDC stacks.
+	 */
 
 	flag = TIOCM_DTR;
-	if (ioctl(gwfd, TIOCMBIS, &flag) == -1) {
+	if (ioctl(gwfd, TIOCMBIS, &flag) == -1 &&
+	    errno != ENOTTY && errno != EINVAL) {
 		err = -1;
 		goto err;
 	}
 
 	flag = TIOCM_RTS;
-	if (ioctl(gwfd, TIOCMBIS, &flag) == -1) {
+	if (ioctl(gwfd, TIOCMBIS, &flag) == -1 &&
+	    errno != ENOTTY && errno != EINVAL) {
 		err = -2;
 		goto err;
 	}
