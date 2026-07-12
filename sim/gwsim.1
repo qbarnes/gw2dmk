@@ -1,0 +1,117 @@
+.TH GWSIM 1
+.SH NAME
+gwsim \- Greaseweazle device simulator for gw2dmk, dmk2gw, and gwhist
+.SH SYNOPSIS
+.B gwsim
+[\fIoptions\fP]
+.SH DESCRIPTION
+.B gwsim
+emulates a Greaseweazle flux-imaging device with attached floppy
+drives whose diskettes are backed by DMK image files.  It serves the
+Greaseweazle serial protocol on a pseudo-terminal, so the unmodified
+host tools connect to it exactly as to real hardware:
+.PP
+.RS
+gwsim &
+.br
+gw2dmk \-G ./gwsim-pty out.dmk
+.RE
+.PP
+The simulator is functionally accurate rather than cycle accurate.
+Seek, motor spin-up, and rotational latencies track wall time
+(within a few percent) unless
+.B \-\-fast
+is given, in which case all delays are skipped; the flux data
+produced is identical either way.
+.SH OPTIONS
+.TP
+.B \-m, \-\-model \fImodel\fP
+Greaseweazle model to emulate:
+.B f7
+(default) or
+.BR v4.1 .
+The models differ only in the identity reported by CMD_GET_INFO.
+.TP
+.B \-f, \-\-fast
+Skip all simulated delays.
+.TP
+.B \-p, \-\-pty-link \fIpath\fP
+Where to place the symlink to the pty device [./gwsim-pty].
+.TP
+.B \-s, \-\-socket \fIpath\fP
+UNIX-domain control socket [./gwsim.sock]; \fBnone\fP disables it.
+.TP
+.B \-D, \-\-drive \fIN\fP:\fItype\fP[,\fIoption\fP...]
+Attach a drive at unit \fIN\fP (0\-2).  May be repeated.  If no
+drive is given, a 5.25" DD drive is attached at unit 0.
+Drive types and defaults:
+.RS
+.TP
+.B 8sd, 8dd
+8" single/double density; 77 tracks, 360 RPM (the spindle turns
+whenever the drive is powered), attached through an FDADAP 50-to-34
+pin adapter.
+.TP
+.B 525sd
+5.25" single density; 35 tracks, 300 RPM.
+.TP
+.B 525dd
+5.25" double density; 40 tracks, 300 RPM.
+.TP
+.B 525qd
+5.25" quad density (96 tpi); 80 tracks, 300 RPM.
+.TP
+.B 525hd
+5.25" high density; 80 tracks, 360 RPM (300 selectable).
+.TP
+.B 35dd, 35hd
+3.5" double/high density; 80 tracks, 300 RPM.
+.RE
+.IP
+Options: \fBtracks=\fIT\fR, \fBrpm=\fI300|360\fR (where the type
+supports both), \fBsides=\fI1|2\fR, \fBfdadap\fP (implied for 8"
+types), and \fBwp\fP (force write protect).
+.TP
+.B \-i, \-\-insert \fIN\fP:\fIfile\fP
+Insert diskette image \fIfile\fP into unit \fIN\fP at startup.
+.TP
+.B \-l, \-\-list
+List supported Greaseweazle models and drive types.
+.SH CONTROL COMMANDS
+The following commands are accepted on standard input and on the
+control socket while the simulator runs:
+.TP
+.B insert \fIunit\fP \fIfile\fP
+Insert a diskette image.
+.TP
+.B eject \fIunit\fP
+Remove the diskette, flushing any writes back to the file.
+.TP
+.B wp \fIunit\fP on|off
+Force or release write protection.
+.TP
+.B status
+Show the emulated device, drives, and media.
+.TP
+.B quit
+Shut down (also flushes written media).
+.SH MEDIA
+Diskette images are DMK files, read and written with the same
+conventions as gw2dmk and dmk2gw.  The media's data rate is derived
+from the DMK track length and the drive's rotational speed, so a
+standard DD image in a 300 RPM drive presents as 250 kbps and the
+same image in a 360 RPM 5.25" HD drive presents as 300 kbps, just
+as with real hardware.  A DMK is write-protected if its header
+write-protect byte is set or the file is not writable.
+.SH BUSES
+The host tool selects the bus type at runtime: on the IBM PC bus
+two units are addressable (drives \fBa\fP and \fBb\fP); on the
+Shugart bus, three (\fB0\fP\-\fB2\fP).  8" drives sit behind an
+emulated FDADAP adapter.
+.SH LIMITATIONS
+The simulator does not appear on the USB bus, so the host tools'
+device autodetection cannot find it; always pass \fB\-G\fP.
+Reading an unformatted track or the far side of a single-sided
+diskette returns random flux.  Linux only.
+.SH SEE ALSO
+gw2dmk(1), dmk2gw(1), gwhist(1)

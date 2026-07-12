@@ -1,0 +1,488 @@
+gwsim: Architecture and Design
+==============================
+
+This document describes the architecture and design of gwsim, the
+Greaseweazle device simulator, in enough detail to maintain and
+extend it.  The reader is assumed to know the repository's host
+tools (gw2dmk, dmk2gw, gwhist) and the DMK format; decoder.txt in
+the repository root covers the flux decoder the simulator reuses.
+
+
+1. Purpose and fidelity philosophy
+----------------------------------
+
+gwsim emulates a Greaseweazle flux-imaging device, its floppy bus,
+attached floppy drives, and inserted diskettes, so the unmodified
+host tools can be exercised without hardware.
+
+The simulator is *functionally* accurate, not cycle accurate:
+
+  - Interfaces are faithful: the serial protocol, ACK codes, flux
+    stream encodings, and index timing are what the tools would see
+    from real firmware.  No firmware is executed.
+
+  - Data timing is exact in tick arithmetic: flux pulse values,
+    revolution periods, and index spacing are computed at the
+    emulated sample clock (72 MHz), so histograms, RPM measurement,
+    and FM/MFM decoding behave as with real media.
+
+  - Wall-clock latency is approximate: seek, motor spin-up, and
+    rotational delays sleep real time (within a few percent) in the
+    default "timed" mode, and are skipped entirely in --fast mode.
+    The bytes produced are identical in both modes; only elapsed
+    wall time differs.  This is the key invariant to preserve when
+    modifying timing code.
+
+One host-tool concession was required: gw_init() in gw.c would abort
+because ptys do not implement the TIOCM* (DTR/RTS) ioctls.  gw.c now
+ignores ENOTTY/EINVAL from those ioctls.  Everything else works with
+stock tools via their -G <device> option.
+
+
+2. Process model and data flow
+------------------------------
+
+gwsim is a single-threaded, single-process program.  There are two
+independent interfaces:
+
+  Host tool (gw2dmk/dmk2gw/gwhist)
+        |  open()/read()/write() on the pty slave (via symlink)
+        v
+  pty master (simpty) --> protocol engine (simproto)
+                              |         ^
+                              v         |
+                     device model (simgw: bus/unit/head/params)
+                              |
+                     bus semantics (simbus) [+ simfdadap for 8"]
+                              |
+                     drive instances (simdrive: cyl, motor, phase)
+                              |
+                     media vtable (simmedia) -> DMK backend (simdmk)
+                              |
+                     flux synthesis/consumption (simflux, dmkx,
+                     gwdecode)                        |
+                                                      v
+                                              DMK image file
+
+  Operator (stdin or UNIX socket)
+        |
+        v
+  control plane (simctl): insert/eject/wp/status/quit
+
+simmain.c owns the poll() loop over: pty master, stdin, the control
+socket listener, and connected control clients.  Protocol commands
+are handled *synchronously and to completion* inside the loop body,
+including any sleeps and multi-kilobyte stream transfers.  This is a
+deliberate simplification: the Greaseweazle protocol is strictly
+request/response with a single host, so there is nothing to
+interleave.  Control commands arriving during a long operation just
+wait in their socket buffers and are processed between commands.
+If you ever need concurrent behavior (e.g. emulating auto-off
+mid-transfer), that is the assumption to revisit.
+
+
+3. Module inventory
+-------------------
+
+All simulator sources live in sim/.  Reused repository objects are
+listed in section 8.
+
+  simmain.c    CLI parsing (--model, --fast, --pty-link, --socket,
+               --drive, --insert, --list), setup, poll loop, signal
+               handling, shutdown (flushes dirty media).
+
+  simpty.c/.h  Pty transport.  struct sim_pty {mfd, kfd, slave_path,
+               link_path}.  See section 4.
+
+  simproto.c/.h  Protocol engine.  struct sim_proto holds the command
+               accumulation buffer, a CMD vs WRSTREAM state, and the
+               captured write stream.  See section 5.
+
+  simgw.c/.h   Greaseweazle device model.  struct sim_gw_model is a
+               per-model descriptor (identity + sample_freq); the
+               table has F7 and V4.1.  struct sim_gw is device
+               state: bus type, selected unit, head, densel level,
+               delay parameters, flux status, firmware's per-unit
+               cylinder notion, and the attached drives.
+               sim_gw_reset() restores power-on state (CMD_RESET).
+
+  simbus.c/.h  Bus semantics: unit counts (IBM PC = 2, Shugart = 3)
+               and unit naming ('a'/'b' vs '0'..'2').  Intentionally
+               thin; the protocol engine consults it for validation.
+
+  simfdadap.c/.h  FDADAP 50<->34-pin adapter for 8" drives.
+               Functionally a validity gate (8" drives must be
+               behind one, nothing else may be) plus a TG43 hook.
+               Exists as a named component so future 8" quirks
+               (head load, REDWC, ready) have a home.
+
+  simdrive.c/.h  Drive types and instances.  struct sim_drive_type
+               is mechanism: media size, default tracks/RPM/sides,
+               alternate RPM, needs_fdadap.  struct sim_drive is
+               state: head cylinder, motor, rotation phase
+               reference, forced write protect, inserted media.
+
+  simmedia.c/.h  Media abstraction.  struct sim_media_ops is a
+               vtable (load/save/unload/track_pulses/
+               track_from_pulses/tracks/describe); struct sim_media
+               is the common base (path, wp, dirty).  sim_media_load()
+               dispatches on file extension.  See section 7.
+
+  simdmk.c/.h  DMK backend implementing sim_media_ops.  See
+               section 7.
+
+  simflux.c/.h  Flux stream synthesis for CMD_READ_FLUX: pulse
+               train representation, noise generation, and the
+               encoder that emits stream bytes with FLUXOP_INDEX
+               opcodes.  See section 6.
+
+  simctl.c/.h  Control-plane command parser (shared by stdin and
+               socket): insert, eject, wp, status, help, quit.
+               Responses are written to the requester's fd.
+
+  simclock.c/.h  Timing.  sim_now_ns() (CLOCK_MONOTONIC) and the
+               sim_sleep_*() helpers, which are no-ops when the
+               global sim_fast is set.  Every simulated latency goes
+               through these helpers; do not call nanosleep
+               directly.
+
+  gwsim.1      Man page (rendered by the existing man rules).
+
+  tests/mkdmk.c        Golden-DMK generator / sector comparator.
+  tests/run-tests.sh   End-to-end tests.  See section 10.
+
+
+4. Pty transport
+----------------
+
+sim_pty_open() creates a pty with posix_openpt/grantpt/unlockpt and
+publishes a stable symlink (default ./gwsim-pty) to the /dev/pts/N
+slave; users pass the symlink to the tools' -G option.
+
+Two non-obvious mechanisms:
+
+  Keepalive fd: the simulator holds its own open fd on the slave
+  (kfd).  Without it, when a host tool closes the device the master
+  would see POLLHUP/EIO, and the slave name could not be reopened
+  cleanly.  With it, tools can connect and disconnect repeatedly.
+  The keepalive fd is never read from -- host-written data is only
+  readable on the master, so there is no read race.
+
+  Raw mode at creation: a fresh pty has a default line discipline
+  (echo, canonical mode, CR/NL mangling) that would corrupt
+  master->slave protocol bytes.  sim_pty_open() sets cfmakeraw()
+  via the keepalive fd immediately.  The tools also set raw mode in
+  gw_init(), but the simulator must not depend on who talks first.
+
+The master is O_NONBLOCK.  sim_pty_write_all() loops write() and
+poll(POLLOUT); this matters because flux streams (tens to hundreds
+of KB) far exceed the pty buffer and only drain as fast as the host
+reads.  The host does drain actively (gw_read_stream blocks on a
+1-byte read, then slurps FIONREAD bytes), so the loop terminates.
+
+Limitation: because of the keepalive fd the simulator cannot detect
+a host disconnect.  If a tool dies in the middle of sending a
+WRITE_FLUX stream, the engine stays in stream-consuming state and
+the next tool run desyncs (real firmware has a BAUD_CLEAR_COMMS
+escape on USB endpoint 0, which does not exist on a pty).  Restart
+gwsim in that case.  If this becomes a real nuisance, options are a
+timeout on WRSTREAM state or watching for the next open() via
+inotify on the slave.
+
+
+5. Protocol engine
+------------------
+
+Wire format (see greaseweazle.h and gw.c for the host's view):
+
+  Command:   byte0 = opcode, byte1 = total length, then arguments.
+  Response:  [echoed opcode, ACK code], then, only when the ACK is
+             ACK_OKAY and the command has a payload, the payload
+             (e.g. 32 bytes for CMD_GET_INFO).
+
+sim_proto_input() accumulates bytes; once byte1 bytes have arrived
+the command is dispatched.  A length outside [2, 64) answers
+ACK_BAD_COMMAND and resets accumulation (best-effort resync).
+
+State machine: PROTO_CMD is the normal state.  CMD_WRITE_FLUX
+switches to PROTO_WRSTREAM, which consumes bytes into wbuf until the
+0x00 terminator (0x00 cannot occur inside a stream: data bytes are
+nonzero and N28 argument bytes have the low bit set).  The capture
+is bounded by WRBUF_MAX; overflow drops data but keeps consuming so
+framing stays intact.
+
+Command semantics implemented (everything else: ACK_BAD_COMMAND):
+
+  GET_INFO       index 0: 32-byte firmware block from the model
+                 descriptor (fw version, max_cmd, sample_freq,
+                 hw_model/submodel, usb_speed).  Only sample_freq
+                 matters to the tools numerically; the rest is
+                 identity.  Index 1: fixed plausible bandwidth
+                 stats (only m2.c ever asks).
+  SEEK           No unit selected: ACK_NO_UNIT.  cyl >=
+                 GW_MAX_TRACKS: ACK_BAD_CYLINDER.  Selected unit
+                 empty: ACK_NO_TRK0 (this is exactly what
+                 gw_detect_drive() probes for).  Otherwise: sleep
+                 steps*step_delay + seek_settle, clamp the physical
+                 head to the drive's track count, remember the
+                 firmware-commanded cylinder per unit.
+  HEAD           0 or 1; stored in sim_gw.
+  SET/GET_PARAMS PARAMS_DELAYS blob (5 LE16s), stored/returned.
+  MOTOR          Needs a bus; validates unit; toggles drive motor;
+                 sleeps motor_delay on off->on.
+  SELECT/DESELECT Needs a bus; validates unit against
+                 sim_bus_max_units(); tracks selection.
+  SET_BUS_TYPE   Accepts BUS_IBMPC/BUS_SHUGART only.
+  SET_PIN        Pin 2 (density select) stored; others ACK_BAD_PIN.
+  RESET          sim_gw_reset().
+  READ_FLUX      Section 6.  Argument parse: bytes 2-5 LE32 tick
+                 limit, bytes 6-7 LE16 max index count.  Note the
+                 tools send revs+1 as max_index and 0 ticks.
+  WRITE_FLUX     Write-protected target: ACK_WRPROT immediately
+                 (the host then never sends the stream).  Otherwise
+                 ACK_OKAY and switch to PROTO_WRSTREAM.
+  GET_FLUX_STATUS Returns the recorded outcome of the last flux op
+                 (ACK_OKAY or ACK_NO_INDEX).
+
+Host-side expectations worth knowing when debugging:
+
+  - gw_do_command() requires the echoed opcode to match; a desync
+    shows up in the tools as "Unexpected command returned".
+  - After a write stream, gw_write_stream() performs one 1-byte
+    "synchronize" read before asking GET_FLUX_STATUS.  wrstream_done()
+    must emit exactly one byte or dmk2gw hangs.
+  - A read with no diskette must end with a bare 0x00 terminator and
+    ACK_NO_INDEX from GET_FLUX_STATUS; gw2dmk prints "[Is diskette
+    in drive?]" from that code path.
+
+
+6. Flux model
+-------------
+
+Representation: a pulse train (struct sim_pulses) is one full
+revolution of inter-transition tick counts at the device sample
+clock; total_ticks is their sum.
+
+The revolution period is *defined by the pulse train*, not by an
+ideal 60/RPM value.  A nominal DD track (6272 data bytes at 32
+us/byte) yields ~200.7 ms, i.e. ~299 RPM in a "300 RPM" drive --
+comfortably inside gw2dmk's detection windows and self-consistent:
+index spacing always equals the data length, so there are no gaps or
+overlaps at the index.  Keep that property when changing synthesis.
+
+READ_FLUX (do_read_flux + sim_flux_stream):
+
+  1. Get the pulse train from the media backend for (mapped track,
+     head).  Unformatted track, missing side, or head beyond the
+     drive's head count: synthesize noise instead (random 2-30 us
+     pulses from a deterministic LCG).  Noise makes gw2dmk's
+     histogram overflow, which is how it detects unformatted
+     surfaces and single-sided media.
+  2. Compute the rotation phase (ticks past the index):
+       timed mode:  (now - drive spin reference) * freq mod rev
+       fast mode:   a per-drive virtual cursor, advanced by each
+                    stream's duration
+     8" drives report "spinning" whenever powered (their spindles
+     always turn; the motor line maps to head load), so reads work
+     without CMD_MOTOR.
+  3. Walk transitions in unrolled time starting at the phase.
+     Emit FLUXOP_INDEX (with the N28 ticks-to-index relative to the
+     sample cursor) whenever a revolution boundary falls before the
+     next transition; stop after max_index indexes, or after the
+     tick limit when max_index is 0; terminate with 0x00.
+  4. Encoding of an inter-transition interval mirrors the firmware:
+     1 byte for < 250 ticks, 2 bytes up to 1524, otherwise
+     FLUXOP_SPACE plus a short final pulse.  FLUXOP_ASTABLE is a
+     *write-stream* opcode and must never appear in a read stream
+     (gw_decode_stream() in gwx.c treats it as an error).
+  5. In timed mode, sleep the stream's duration before sending it.
+
+WRITE_FLUX (wrstream_pulses + media track_from_pulses):
+
+  The captured stream is parsed into pulses with the same code
+  space, plus FLUXOP_ASTABLE support: an ASTABLE fills the
+  *preceding* FLUXOP_SPACE with regular transitions at the given
+  period (encode_ticks() in gwx.c emits SPACE+ASTABLE for gaps over
+  150 us).  The pulse train is handed to the media backend for
+  decoding; the sim assumes cue-at-index (dmk2gw always cues), so
+  the train is treated as one revolution starting at the index.
+
+
+7. Media abstraction and the DMK backend
+----------------------------------------
+
+sim_media_ops is the extension point for new image formats.  The
+contract is pulse trains, not bytes: a backend converts its stored
+representation to/from one revolution of flux pulses given (track,
+side, sample_freq, drive RPM).  Everything above the vtable is
+format-agnostic.
+
+simdmk.c implements it by reusing the repository's codecs:
+
+  Read path:   dmk2pulses() + encode_bit() (dmkx.c) convert a DMK
+               track to pulses, exactly as dmk2gw does when writing
+               to real hardware.
+  Write path:  the pulses are fed through gw2dmk's decoder FSM
+               (fdecoder/dmk_track_sm, gwdecode.c) with thresholds
+               from media_encoding_init() (gwmedia.c), producing a
+               struct dmk_track that replaces the image's track.
+               use_hole is 0 because the data is already cued at
+               the index.  Writing beyond header.ntracks extends
+               the image.
+
+Data-rate derivation -- the core trick that makes drive kinds work
+without configuration:
+
+  equiv_bytes_per_rev = (tracklen - 128) * (2 if single-density
+                                            image else 1)
+  rate_bps = equiv_bytes_per_rev * 8 * RPM / 60
+  mult     = ticks_per_us * 500000 / rate_bps      (read path)
+  fm_bitcell_us = 2 * 500000 / rate_bps            (write path)
+
+The medium's bytes-per-revolution is a physical property recorded in
+the DMK track length; spinning the same medium faster raises the
+observed bit rate.  This reproduces dmk2gw's per-kind mult table and
+gw2dmk's per-kind threshold table for all four kinds: a DD image is
+250 kbps in a 300 RPM drive (kind 2) and 300 kbps in a 360 RPM
+5.25" HD drive (kind 1); 8" and HD images are 500 kbps (kinds 3/4).
+
+Track mapping: sim_drive_media_track() divides the cylinder by two
+when 48 tpi media (<= 44 tracks) is in a 96 tpi (80-track) drive,
+matching gw2dmk's steps=2 double-stepping.  8" drives are excluded
+(77 tracks is their native spacing).
+
+Write protect has three independent sources, OR'd together: the DMK
+header write-protect byte, the image file not being writable, and
+the operator's "wp <unit> on".  It is checked at WRITE_FLUX time
+(ACK_WRPROT) and again before saving at eject.
+
+Lifecycle: load reads the whole file into a struct dmk_file;
+track_from_pulses marks the media dirty; eject (or simulator
+shutdown, or 'quit') writes it back with dmk2fp().  Crashing the
+simulator loses unsaved writes by design.
+
+To add a media format: implement sim_media_ops in a new simXXX.c,
+add it to the media_ops[] table in simmedia.c (dispatch is by file
+extension = ops->name), and nothing else changes.  If the format
+cannot express arbitrary flux (most sector images cannot), decode
+in track_from_pulses as DMK does and lose what does not fit --
+that is what real tools writing to that format would do.
+
+
+8. Reuse of repository code
+---------------------------
+
+gwsim links (see the gwsim rule in Makefile.build): dmk.o (DMK file
+I/O), dmkx.o (DMK->pulses), gwdecode.o + gwmedia.o + secsize.o +
+crc.o (pulses->DMK), msg.o (logging used by those objects).  It does
+NOT link gw.o/gwx.o -- the only things it needs from gwx.h
+(gw_read_28/gw_write_28) are static inlines.  This keeps the
+simulator from dragging in the host-side serial code.
+
+Consequence: changes to dmkx.c/gwdecode.c affect both the tools and
+the simulator; that is intentional (one codec, exercised from both
+directions), but remember it when bisecting.
+
+
+9. Timing model
+---------------
+
+All delays funnel through simclock's sim_sleep_*(), which no-op in
+fast mode.  Delay parameters live in sim_gw.delays, initialized to
+the firmware defaults (select 10 us, step 3 ms, settle 15 ms, motor
+750 ms, auto_off 10 s) and settable by the host via CMD_SET_PARAMS.
+
+Sleeps happen inline in the protocol handlers:
+
+  SEEK        steps * step_delay + seek_settle (steps counted from
+              the firmware's per-unit notion; an unhomed unit
+              counts a full sweep).
+  MOTOR on    motor_delay, only on an actual off->on transition.
+  READ_FLUX   the stream's tick duration, converted to ns.
+  WRITE_FLUX  one revolution's worth after the stream arrives.
+  no-diskette read: a fixed NO_INDEX_MS (500 ms) "timeout".
+
+Rotation phase in timed mode derives from wall time since the motor
+turned on (spin_ref_ns), so successive reads land at physically
+consistent angles.  auto_off is stored but not enforced; the tools
+never rely on it.  If you implement it, do it in the poll loop with
+a timeout, not with signals.
+
+
+10. Testing and debugging
+-------------------------
+
+sim/tests/run-tests.sh builds nothing itself; run `make bins mkdmk`
+first (mkdmk is a separate make target).  The suite starts gwsim in
+--fast mode with various configurations and runs the real tools
+against it:
+
+  1. read round trip: mkdmk golden -> gw2dmk -> sector compare
+  2. write round trip: dmk2gw golden -> eject flush -> compare
+  3. gwhist RPM sanity
+  4. control socket: insert/eject/wp; wp verified by image
+     immutability because dmk2gw *ignores* ACK_WRPROT (its error
+     checking is stubbed) -- do not "fix" the test to expect a
+     nonzero exit
+  5. Shugart bus unit 1 + V4.1 model
+  6. 8" + FDADAP, kind 3 geometry (77 tracks, 0x2940 tracklen)
+
+mkdmk generates IBM-style MFM tracks with deterministic payloads
+(function of track/side/sector) and compares sector payloads by
+walking IDAM pointers, so gap/format differences do not cause false
+mismatches.
+
+Debugging aids: gwsim logs to stdout (redirect when scripted); the
+tools' -U <file> option logs every serial transaction byte-for-byte
+on the host side, which is the fastest way to find a protocol
+disagreement; dmk2gw --gwdebug dumps the exact flux stream it sends.
+The 'status' control command shows the device/drive/media state.
+
+
+11. Extension recipes
+---------------------
+
+  New Greaseweazle model: add a row to gw_models[] in simgw.c.
+  If the new model has a different sample clock, everything scales
+  automatically (nothing else hardcodes 72 MHz).
+
+  New drive type: add a row to drive_types[] in simdrive.c.  Set
+  needs_fdadap for 50-pin drives.  If it needs new behavior (e.g.
+  a dual-RPM rule tied to density select), prefer a new field in
+  sim_drive_type over special-casing by name.
+
+  New media format: see section 7.
+
+  New protocol command: add a case to dispatch() in simproto.c and
+  keep the reply()-based ACK discipline.  Check gw.c first for the
+  exact argument layout the tools send; the length byte counts the
+  whole frame.
+
+  Apple II bus: add a case in simbus.c, accept BUS_APPLE2 in
+  do_set_bus_type(), and decide what a drive on that bus means --
+  the current drive model assumes 34/50-pin semantics.
+
+  Timing-sensitive features (auto-off, index-synchronous writes
+  with realistic splices): revisit the synchronous-handling
+  assumption in section 2 before starting.
+
+
+12. Known limitations
+---------------------
+
+  - Not discoverable by the tools' USB autodetection (no sysfs
+    presence); -G is required.
+  - Host disconnect mid-WRITE_FLUX stream desyncs the engine
+    (section 4); restart gwsim.
+  - auto_off accepted but not enforced.
+  - Density-select level is stored but does not alter behavior
+    (dual-RPM-on-densel drives are not modeled; RPM is a drive
+    configuration option instead).
+  - IBM PC twisted-cable motor/select coupling is simplified to
+    per-unit motor state.
+  - Write splices are idealized: a written track replaces the whole
+    revolution; terminate_at_index truncation is implicit in
+    treating the stream as one revolution.
+  - Single host at a time; the protocol engine has one command
+    buffer.
+  - Linux only (pty + /sys-free but POSIX-pty-specific transport).

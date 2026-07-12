@@ -25,35 +25,56 @@ endif
 src_dir		?= $(top_dir)
 inc_dir		?= $(top_dir)
 
-vpath %.c	$(src_dir)
-vpath %.h	$(inc_dir)
+vpath %.c	$(src_dir) $(src_dir)/sim $(src_dir)/sim/tests
+vpath %.sh	$(src_dir)/sim/tests
+vpath %.h	$(inc_dir) $(inc_dir)/sim
+vpath %.1	$(src_dir)/sim
 vpath %		$(top_dir)
 
-obj_targets	= cmdutil.o crc.o dmk2gw.o dmkmerge.o dmk.o dmkx.o gw2dmk.o \
+bin_objs	= cmdutil.o crc.o dmk2gw.o dmkmerge.o dmk.o dmkx.o gw2dmk.o \
 		  gwdecode.o gwdetect.o gwhist.o gwhisto.o gwmedia.o \
 		  gwscan.o gwscan_linux.o gwscan_win.o \
 		  gw.o gwx.o msg.o parsetracks.o secsize.o
 
-bins		= gw2dmk dmk2gw gwhist
-bin_targets	= $(foreach b,$(bins), $b$E)
+sim_objs	= simmain.o simproto.o simgw.o simbus.o simdrive.o \
+		  simfdadap.o simmedia.o simdmk.o simflux.o simctl.o \
+		  simclock.o simpty.o
 
-man_txt_targets	 = $(foreach b,$(bins),$b.1.txt)
-man_pdf_targets	 = $(foreach b,$(bins),$b.1.pdf)
-man_html_targets = $(foreach b,$(bins),$b.1.html)
-man_targets	 = $(man_txt_targets) $(man_pdf_targets) $(man_html_targets)
+test_objs	= mkdmk.o
 
-targets		= $(bin_targets) $(man_targets)
+# The simulator is native Linux only (it serves a pty).
+ifeq ($E,)
+ifeq ($(shell uname -s),Linux)
+sim_bins	= gwsim
+endif
+endif
 
-tar_files	= LICENSE README.md $(targets) $(tar_extras)
-
-clean_files	= $(targets) $(obj_targets)
+test_bins	= mkdmk run-tests
 
 
-all: bins mans
+# Deliverables
+basebins	= gw2dmk dmk2gw gwhist
+bins		= $(addsuffix $E,$(basebins))
+man1s		= $(addsuffix .1,$(basebins))
+mans		= $(man1s) $(foreach s,txt pdf html,$(addsuffix .$s,$(man1s)))
+deliverables	= $(bins) $(mans) LICENSE README.md
 
-bins: $(bin_targets)
+tar_files	= $(deliverables) $(tar_extras)
 
-mans: $(man_targets)
+
+clean_files	= $(bins) $(mans) $(sim_bins) $(test_bins) \
+		  $(bin_objs) $(sim_objs) $(test_objs)
+
+
+all: bins mans sim tests
+
+bins: $(bins)
+
+mans: $(mans)
+
+sim: $(sim_bins) $(sim_mans) $(test_bins)
+
+tests: $(test_bins)
 
 release: $(TARBALLGZ)
 
@@ -122,6 +143,49 @@ gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan.o gwscan_linux.o \
 	gwscan_win.o cmdutil.o gwhist.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
+$(sim_objs): CFLAGS += -I'$(inc_dir)'
+
+simclock.o: simclock.h simclock.c
+
+simpty.o: simpty.h simpty.c
+
+simbus.o: greaseweazle.h simbus.h simbus.c
+
+simgw.o: greaseweazle.h simgw.h simdrive.h simmedia.h simgw.c
+
+simdrive.o: simclock.h simdrive.h simmedia.h simdrive.c
+
+simfdadap.o: simfdadap.h simdrive.h simmedia.h simfdadap.c
+
+simmedia.o: simmedia.h simdmk.h simmedia.c
+
+simdmk.o: dmk.h dmkx.h msg.h msg_levels.h misc.h secsize.h gwencode.h \
+	greaseweazle.h gw.h gwx.h gwmedia.h gwhisto.h gwdecode.h crc.h \
+	simmedia.h simdmk.h simdmk.c
+
+simflux.o: greaseweazle.h gw.h gwx.h misc.h simflux.h simflux.c
+
+simproto.o: greaseweazle.h gw.h gwx.h misc.h simbus.h simclock.h \
+	simdrive.h simflux.h simgw.h simmedia.h simpty.h simproto.h \
+	simproto.c
+
+simctl.o: greaseweazle.h simbus.h simctl.h simdrive.h simgw.h \
+	simmedia.h simctl.c
+
+simmain.o: greaseweazle.h simclock.h simctl.h simdrive.h simfdadap.h \
+	simgw.h simmedia.h simproto.h simpty.h simmain.c
+
+gwsim: $(sim_objs) dmk.o dmkx.o gwdecode.o gwmedia.o secsize.o crc.o \
+	msg.o
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
+
+mkdmk.o: CFLAGS += -I'$(inc_dir)'
+
+mkdmk.o: dmk.h crc.h misc.h mkdmk.c
+
+mkdmk: mkdmk.o dmk.o crc.o
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
+
 %.txt: %
 	$(nroff) -man -Tascii $(nroff_txt_flags) $< | col -b | cat -s > $@
 
@@ -142,6 +206,6 @@ clean clobber distclean:
 	$(call scrub_files_call,$($@_files))
 
 
-.PHONY: FORCE bins mans all release
+.PHONY: FORCE bins mans sim tests all release
 .PHONY: clean clobber distclean
 .DELETE_ON_ERROR:
