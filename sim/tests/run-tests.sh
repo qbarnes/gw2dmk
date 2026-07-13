@@ -9,6 +9,10 @@ top=$(cd "$(dirname "$0")/../.." && pwd)
 bld=${1:-$top/build}
 tmp=$(mktemp -d)
 
+# Isolate the tests from any real user configuration file.
+XDG_CONFIG_HOME=$tmp/xdg
+export XDG_CONFIG_HOME
+
 gwsim_pid=
 
 fail() {
@@ -126,6 +130,58 @@ timeout 240 "$bld/gw2dmk" -G "$tmp/pty" -t 77 --force "$tmp/out8.dmk" \
 	{ cat "$tmp/gw2dmk8.log"; fail "gw2dmk 8-inch"; }
 "$bld/mkdmk" -n 26 -c "$tmp/golden8.dmk" "$tmp/out8.dmk" || \
 	fail "8-inch sector compare"
+stop_gwsim
+
+echo "=== test 7: config file"
+mkdir -p "$tmp/xdg/gw2dmk"
+cat > "$tmp/xdg/gw2dmk/gw2dmk.ini" <<EOF
+; Created by run-tests.sh.
+[global]
+device = $tmp/pty
+
+[gw2dmk]
+tracks = 5
+EOF
+start_gwsim -D 0:525dd -i "0:$tmp/golden.dmk"
+# Default-location config supplies both the device and track count.
+timeout 120 "$bld/gw2dmk" --force "$tmp/outc5.dmk" \
+	> "$tmp/gw2dmkc5.log" 2>&1 || \
+	{ cat "$tmp/gw2dmkc5.log"; fail "gw2dmk with default config"; }
+ntracks=$(od -An -tu1 -j1 -N1 "$tmp/outc5.dmk" | tr -d ' ')
+[ "$ntracks" = 5 ] || fail "config tracks=5 not applied (got $ntracks)"
+# Command line overrides the config file's tracks=5.
+timeout 120 "$bld/gw2dmk" -t 40 --force "$tmp/outc40.dmk" \
+	> "$tmp/gw2dmkc40.log" 2>&1 || \
+	{ cat "$tmp/gw2dmkc40.log"; fail "gw2dmk config CLI override"; }
+"$bld/mkdmk" -c "$tmp/golden.dmk" "$tmp/outc40.dmk" || \
+	fail "config-override sector compare"
+# --config uses the given file instead of the default one.
+cat > "$tmp/alt.ini" <<EOF
+[global]
+device = $tmp/pty
+
+[gw2dmk]
+tracks = 40
+EOF
+timeout 120 "$bld/gw2dmk" --config "$tmp/alt.ini" --force \
+	"$tmp/outalt.dmk" > "$tmp/gw2dmkalt.log" 2>&1 || \
+	{ cat "$tmp/gw2dmkalt.log"; fail "gw2dmk with --config"; }
+"$bld/mkdmk" -c "$tmp/golden.dmk" "$tmp/outalt.dmk" || \
+	fail "--config sector compare"
+# -C is the short form of --config (attached-value form here).
+timeout 120 "$bld/gw2dmk" -C"$tmp/alt.ini" --force \
+	"$tmp/outC.dmk" > "$tmp/gw2dmkC.log" 2>&1 || \
+	{ cat "$tmp/gw2dmkC.log"; fail "gw2dmk with -C"; }
+"$bld/mkdmk" -c "$tmp/golden.dmk" "$tmp/outC.dmk" || \
+	fail "-C sector compare"
+# A misspelled setting must be fatal.
+printf '[gw2dmk]\nmaxretires = 10\n' > "$tmp/bad.ini"
+if timeout 60 "$bld/gw2dmk" --config "$tmp/bad.ini" -t 5 --force \
+	"$tmp/outbad.dmk" > "$tmp/gw2dmkbad.log" 2>&1; then
+	fail "bad config setting not rejected"
+fi
+grep -q "unknown setting" "$tmp/gw2dmkbad.log" || \
+	fail "bad config setting error message"
 stop_gwsim
 
 echo "=== all tests passed"

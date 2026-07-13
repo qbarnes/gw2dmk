@@ -138,6 +138,12 @@ Specify the \fIfilename\fP to capture communication with the
 Greaseweazle device in text form.  The default is not to log any
 communication with the Greaseweazle.
 .TP
+.B \-C|\-\-config \fIfilename\fP
+Read start-up settings from the configuration file \fIfilename\fP
+instead of from the default location.  Unlike the default
+configuration file, \fIfilename\fP must exist.  See the
+\fBCONFIGURATION FILE\fP section.
+.TP
 .B \-R|\-\-replay \fIfilename\fP
 \fB[Feature currently unavailable.]\fP
 
@@ -799,6 +805,69 @@ only \fB\-q\~0x08\%\fP (QUIRK_EXTRA).  UDOS 1526 v5 needs
 a version of UDOS where QUIRK_EXTRA_CRC works, it is preferable to
 use it instead of QUIRK_EXTRA, so that \fBgw2dmk\fP will check the
 extra CRC and retry if it shows an error.
+.SH CONFIGURATION FILE
+On start up, \fBgw2dmk\fP reads default settings from a
+configuration file shared with \fBdmk2gw\fP and \fBgwhist\fP.
+Settings from the file are applied first, so options given on the
+command line override them.
+
+Unless \fB\-\-config\fP is given, the file is looked for at:
+.IP \(bu 3
+On Linux and other Unix-like systems,
+\fB$XDG_CONFIG_HOME/gw2dmk/gw2dmk.ini\%\fP if \fBXDG_CONFIG_HOME\fP
+is set, otherwise \fB$HOME/.config/gw2dmk/gw2dmk.ini\%\fP.
+.IP \(bu
+On Microsoft Windows, \fB%APPDATA%\egw2dmk\egw2dmk.ini\%\fP
+(typically under
+\fBC:\eUsers\e\fIname\fB\eAppData\eRoaming\%\fP).
+.PP
+It is not an error for the default file to be absent.
+
+The file is in INI format.  Settings are grouped into sections: a
+\fB[global]\fP section holding settings common to all three
+programs, and \fB[gw2dmk]\fP, \fB[dmk2gw]\fP, and \fB[gwhist]\fP
+sections holding settings for one program each.  Each program
+applies \fB[global]\fP first, then its own section, and ignores the
+other programs\[aq] sections.
+
+Setting names are the program\[aq]s long option names.  An option
+that takes a value is written as \fIname\fP\~=\~\fIvalue\fP, for
+example \fBbustype\~=\~shugart\%\fP for \fB\-\-bustype\~shugart\%\fP.
+An option that takes no value is written with a boolean value
+(\fBtrue\fP, \fByes\fP, \fBon\fP, \fB1\fP or \fBfalse\fP, \fBno\fP,
+\fBoff\fP, \fB0\fP); a false value selects the option\[aq]s
+opposite, so \fBjoin\~=\~false\%\fP acts as \fB\-\-nojoin\%\fP and
+\fBhd\~=\~false\%\fP as \fB\-\-dd\%\fP.  The \fBconfig\fP setting
+itself is not allowed in the file.
+
+Comment lines start with \fB;\fP or \fB#\fP; the same characters
+after whitespace start a trailing comment.  A value may be enclosed
+in double quotes to protect leading or trailing spaces or comment
+characters.
+
+An unknown section, an unknown setting name, or an invalid value is
+a fatal error naming the file and line, so a \fB[global]\fP setting
+must be recognized by every program that reads the file.
+
+An example configuration file:
+.EX
+.RS 4
+; Settings common to gw2dmk, dmk2gw, and gwhist.
+[global]
+bustype = shugart
+drive = 0
+
+[gw2dmk]
+maxretries = 10
+join = false      ; acts as \-\-nojoin
+
+[dmk2gw]
+precomp = 140
+
+[gwhist]
+revs = 3
+.RE
+.EE
 .SH DIAGNOSTICS
 .TP
 .B \fBgw2dmk\fP: Failed to detect Greaseweazle

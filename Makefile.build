@@ -31,9 +31,9 @@ vpath %.h	$(inc_dir) $(inc_dir)/sim
 vpath %.1	$(src_dir)/sim
 vpath %		$(top_dir)
 
-bin_objs	= cmdutil.o crc.o dmk2gw.o dmkmerge.o dmk.o dmkx.o gw2dmk.o \
-		  gwdecode.o gwdetect.o gwhist.o gwhisto.o gwmedia.o \
-		  gwscan.o gwscan_linux.o gwscan_win.o \
+bin_objs	= cfgfile.o cmdutil.o crc.o dmk2gw.o dmkmerge.o dmk.o \
+		  dmkx.o gw2dmk.o gwdecode.o gwdetect.o gwhist.o gwhisto.o \
+		  gwmedia.o gwscan.o gwscan_linux.o gwscan_win.o \
 		  gw.o gwx.o msg.o parsetracks.o secsize.o
 
 sim_objs	= simmain.o simproto.o simgw.o simbus.o simdrive.o \
@@ -80,6 +80,8 @@ release: $(TARBALLGZ)
 
 msg.o: msg.c msg.h
 
+cfgfile.o: msg.h cfgfile.h cfgfile.c
+
 cmdutil.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwfddrv.h \
 	   cmdutil.h cmdutil.c
 
@@ -96,7 +98,7 @@ gwhisto.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
 gwhist.o gw2dmk.o dmk2gw.o: CFLAGS += '-DVERSION="$(VERSION)"'
 
 gwhist.o: gw.h gwx.h gwhisto.h msg_levels.h msg.h misc.h gwfddrv.h \
-	  cmdutil.h gwdetect.h gwscan.h
+	  cmdutil.h gwdetect.h gwscan.h cfgfile.h
 
 gwdetect.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwmedia.h \
 		gwhisto.h gwfddrv.h gwscan.h gw2dmkcmdset.h gwdetect.h \
@@ -124,23 +126,23 @@ secsize.o: dmk.h misc.h secsize.c
 
 gw2dmk.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
 		gw2dmkcmdset.h gwhisto.h dmk.h cmdutil.h parsetracks.h \
-		gwdetect.h gwscan.h gw2dmk.c
+		gwdetect.h gwscan.h cfgfile.h gw2dmk.c
 
 dmk2gw.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
 		dmk2gwcmdset.h gwhisto.h dmk.h cmdutil.h gwdetect.h gwscan.h \
-		dmk2gw.c
+		cfgfile.h dmk2gw.c
 
 gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan.o gwscan_linux.o \
 	gwscan_win.o gwdecode.o gwmedia.o dmk.o dmkmerge.o secsize.o \
-	parsetracks.o cmdutil.o gw2dmk.o crc.o
+	parsetracks.o cmdutil.o cfgfile.o gw2dmk.o crc.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwscan.o gwscan_linux.o gwscan_win.o \
-	gwmedia.o dmk.o dmkx.o secsize.o cmdutil.o dmk2gw.o
+	gwmedia.o dmk.o dmkx.o secsize.o cmdutil.o cfgfile.o dmk2gw.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan.o gwscan_linux.o \
-	gwscan_win.o cmdutil.o gwhist.o
+	gwscan_win.o cmdutil.o cfgfile.o gwhist.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 $(sim_objs): CFLAGS += -I'$(inc_dir)'

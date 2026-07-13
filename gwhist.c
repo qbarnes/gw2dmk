@@ -15,9 +15,11 @@
 #include "gwfddrv.h"
 #include "cmdutil.h"
 #include "gwdetect.h"
+#include "cfgfile.h"
 
 
 static const struct option cmd_long_args[] = {
+	{ "config",	 required_argument, NULL, 'C' },
 	{ "drive",	 required_argument, NULL, 'd' },
 	{ "revs",	 required_argument, NULL, 'r' },
 	{ "side",	 required_argument, NULL, 's' },
@@ -93,7 +95,8 @@ usage(const char *pgm_name)
 
 
 static void
-parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
+parse_args(int argc, char **argv, struct cmd_settings *cmd_set,
+	   const char *cfgfile)
 {
 
 	int	opt;
@@ -101,10 +104,16 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 	int	opt_bus = BUS_NONE;
 	bool	opt_d_given = false;
 
-	while ((opt = getopt_long(argc, argv, "d:r:s:t:u:v:B:G:T:U:Z:",
+	optind = 0;	/* Reset getopt state; parse_args runs twice. */
+
+	while ((opt = getopt_long(argc, argv, "d:r:s:t:u:v:B:C:G:T:U:Z:",
 		cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
+		case 'C':
+			/* Config file: already handled by cfg_scan_argv(). */
+			break;
+
 		case 0:;
 			const char *name = cmd_long_args[lindex].name;
 
@@ -242,6 +251,10 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 		goto err_usage;
 	}
 
+	/* The rest applies only after the command line is parsed. */
+	if (cfgfile)
+		return;
+
 	if (optind != argc)
 		goto err_usage;
 
@@ -275,6 +288,8 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 	return;
 
 err_usage:
+	if (cfgfile)
+		msg_error("(while processing config file '%s')\n", cfgfile);
 	usage(argv[0]);
 }
 
@@ -290,7 +305,21 @@ main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	parse_args(argc, argv, &cmd_settings);
+	const char *cfgpath = cfg_scan_argv(argc, argv);
+
+	if (!cfgpath)
+		cfgpath = cfg_default_path();
+
+	if (cfgpath) {
+		char	**cargv;
+		int	cargc = cfg_load_argv(cfgpath, "gwhist",
+					      cmd_long_args, &cargv);
+
+		if (cargc > 1)
+			parse_args(cargc, cargv, &cmd_settings, cfgpath);
+	}
+
+	parse_args(argc, argv, &cmd_settings, NULL);
 
 	const char *sdev = NULL;
 

@@ -22,6 +22,7 @@
 #include "dmk.h"
 #include "dmkmerge.h"
 #include "parsetracks.h"
+#include "cfgfile.h"
 
 #if defined(WIN64) || defined(WIN32)
 #include <windows.h>
@@ -34,6 +35,7 @@
 const char version[] = VERSION;
 
 static const struct option cmd_long_args[] = {
+	{ "config",	 required_argument, NULL, 'C' },
 	{ "alternate",	 required_argument, NULL, 'a' },
 	{ "drive",	 required_argument, NULL, 'd' },
 	{ "encoding",	 required_argument, NULL, 'e' },
@@ -370,7 +372,8 @@ static void
 parse_args(int argc,
 	   char **argv,
 	   const char *pgm_name,
-	   struct cmd_settings *cmd_set)
+	   struct cmd_settings *cmd_set,
+	   const char *cfgfile)
 {
 
 	int	opt;
@@ -378,11 +381,17 @@ parse_args(int argc,
 	int	opt_bus = BUS_NONE;
 	bool	opt_d_given = false;
 
+	optind = 0;	/* Reset getopt state; parse_args runs twice. */
+
 	while ((opt = getopt_long(argc, argv,
-			"a:d:e:f:g:i:k:l:m:p:q:s:t:u:v:w:x:z:B:G:M:S:T:U:X:Z:1:2:",
+			"a:d:e:f:g:i:k:l:m:p:q:s:t:u:v:w:x:z:B:C:G:M:S:T:U:X:Z:1:2:",
 			cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
+		case 'C':
+			/* Config file: already handled by cfg_scan_argv(). */
+			break;
+
 		case 0:;
 			const char *name = cmd_long_args[lindex].name;
 
@@ -655,6 +664,10 @@ parse_args(int argc,
 		goto err_usage;
 	}
 
+	/* The rest applies only after the command line is parsed. */
+	if (cfgfile)
+		return;
+
 	if (optind != (argc-1))
 		goto err_usage;
 
@@ -704,6 +717,8 @@ parse_args(int argc,
 	return;
 
 err_usage:
+	if (cfgfile)
+		msg_error("(while processing config file '%s')\n", cfgfile);
 	usage(pgm_name, cmd_set);
 }
 
@@ -1461,7 +1476,21 @@ main(int argc, char **argv)
 	if (atexit(cleanup))
 		msg_fatal("Can't establish atexit() call.\n");
 
-	parse_args(argc, argv, pgm, &cmd_settings);
+	const char *cfgpath = cfg_scan_argv(argc, argv);
+
+	if (!cfgpath)
+		cfgpath = cfg_default_path();
+
+	if (cfgpath) {
+		char	**cargv;
+		int	cargc = cfg_load_argv(cfgpath, "gw2dmk",
+					      cmd_long_args, &cargv);
+
+		if (cargc > 1)
+			parse_args(cargc, cargv, pgm, &cmd_settings, cfgpath);
+	}
+
+	parse_args(argc, argv, pgm, &cmd_settings, NULL);
 
 	msg(MSG_TSUMMARY, "%s version: %s\n", pgm, version);
 	msg(MSG_ERRORS, "Command line:");
