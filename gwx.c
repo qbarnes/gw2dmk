@@ -55,7 +55,7 @@ gw_get_bandwidth(gw_devt gwfd, double *min_bw, double *max_bw)
  * On failure, returns either the negative value of the GW error code
  * or -99 if an internal error occurred.
  *
- * Data returned via fbuf must be free()d when done.
+ * Data returned via fbuf, must be free()d by caller when done.
  */
 
 ssize_t
@@ -113,10 +113,12 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 			goto flux_status;
 		}
 
-		fbuf_new[fbuf_cnt++] = rbuf[0];
+		*fbuf = fbuf_new;
+
+		(*fbuf)[fbuf_cnt++] = rbuf[0];
 
 		if (nrd > 0) {
-			gwr = gw_read(gwfd, fbuf_new + fbuf_cnt, nrd);
+			gwr = gw_read(gwfd, *fbuf + fbuf_cnt, nrd);
 
 			if (gwr == -1) {
 				fbuf_cnt = -1;
@@ -125,8 +127,6 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 
 			fbuf_cnt += nrd;
 		}
-
-		*fbuf = fbuf_new;
 
 	} while ((*fbuf)[fbuf_cnt-1] != 0);
 
