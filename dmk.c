@@ -255,6 +255,8 @@ dmk_track_length_optimal(const struct dmk_file *dmkf)
 
 /*
  * Read in the DMK file to a dmk_file data structure.
+ *
+ * Returns 0 on success or -1 on failure.
  */
 
 int
@@ -268,10 +270,13 @@ fp2dmk(FILE *fp, struct dmk_file *dmkf)
 	if (hret != 1)
 		return -1;
 
-	/* Sanity check. */
+	/* Sanity check values read from the DMK file. */
 	if ((dmkf->header.writeprot != 0x00 &&
 	     dmkf->header.writeprot != 0xff) ||
-	    dmkf->header.real_format != 0) {
+	    dmkf->header.real_format != 0 ||
+	    dmkf->header.ntracks > DMK_MAX_TRACKS ||
+	    dmkf->header.tracklen <= DMK_TKHDR_SIZE ||
+	    dmkf->header.tracklen > DMKRD_TRACKLEN_MAX) {
 		return -1;
 	}
 
@@ -279,7 +284,9 @@ fp2dmk(FILE *fp, struct dmk_file *dmkf)
 
 	for (int t = 0; t < dmkf->header.ntracks; ++t) {
 		for (int s = 0; s < sides; ++s) {
-			dmk_track_fread(&dmkf->header, &dmkf->track[t][s], fp);
+			if (!dmk_track_fread(&dmkf->header,
+					     &dmkf->track[t][s], fp))
+				return -1;
 		}
 	}
 
