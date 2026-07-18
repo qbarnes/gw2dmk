@@ -91,7 +91,7 @@ static struct cmd_settings cmd_settings = {
 #elif defined(WIN64) || defined(WIN32)
 		"\\\\.\\COM3",
 #endif
-		NULL }, 
+		NULL },
 	.fdd.gwfd = GW_DEVT_INVALID,
 	.fdd.device = NULL,
 	.fdd.bus = BUS_IBMPC,
@@ -482,7 +482,17 @@ parse_tracks(const char *ss, int opt_matrix[GW_MAX_TRACKS][2])
 				    range_hyphen ? 1 : range_side[0];
 		}
 
-		/* Check to make sure tracks and sides are in order. */
+		/* Bounds check track and side values from user. */
+
+		if (range_track[0] < 0 || range_track[0] >= GW_MAX_TRACKS ||
+		    range_track[1] < 0 || range_track[1] >= GW_MAX_TRACKS ||
+		    range_side[0]  < 0 || range_side[0]  > 1 ||
+		    range_side[1]  < 0 || range_side[1]  > 1) {
+			err = 3;
+			break;
+		}
+
+		/* Ensure tracks and sides are in order. */
 
 		if (range_track[1] < range_track[0] ||
 		    (range_track[1] == range_track[0] &&
@@ -491,7 +501,7 @@ parse_tracks(const char *ss, int opt_matrix[GW_MAX_TRACKS][2])
 			break;
 		}
 
-		/* Now set the opt_matrix for the range given. */
+		/* Set the opt_matrix for the range given. */
 
 		for (int tm = range_track[0] * 2 + range_side[0];
 		     tm <= range_track[1] * 2 + range_side[1]; ++tm) {
@@ -1654,7 +1664,7 @@ main(int argc, char **argv)
 
 	for (int s = 0; s < COUNT_OF(sigs); ++s) {
 		const struct sigaction *sa_hndlr =
-				(sigs[s] == SIGINT) ? &sa_int : &sa_def;	
+				(sigs[s] == SIGINT) ? &sa_int : &sa_def;
 
 		if (sigaction(sigs[s], sa_hndlr, 0) == -1)
 			msg_fatal("sigaction failed for signal %d.\n", sigs[s]);
@@ -1805,7 +1815,7 @@ main(int argc, char **argv)
 	if (cmd_settings.usr_dmktracklen) {
 		dmkf->header.tracklen = cmd_settings.usr_dmktracklen;
 	} else {
-		dmkf->header.tracklen = 
+		dmkf->header.tracklen =
 			(uint16_t[]){ 0, DMKRD_TRACKLEN_5, DMKRD_TRACKLEN_5,
 				      DMKRD_TRACKLEN_8, DMKRD_TRACKLEN_3HD
 				    }[cmd_settings.fdd.kind];
