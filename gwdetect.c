@@ -54,7 +54,7 @@ gw_openlist(const char **device_list, const char **selected_dev)
 		gwfd = gw_open(*p);
 
 		if (gwfd != GW_DEVT_INVALID) {
-			if (*selected_dev)
+			if (selected_dev)
 				*selected_dev = *p;
 			break;
 		}
@@ -86,7 +86,7 @@ gw_find_open_gw(const char *device,
 			return GW_DEVT_INVALID;
 		}
 
-		if (*selected_dev)
+		if (selected_dev)
 			*selected_dev = device;
 	} else {
 		gwfd = gw_openlist(device_list, selected_dev);
