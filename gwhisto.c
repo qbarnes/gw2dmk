@@ -56,11 +56,11 @@ histo_analyze(const struct histogram *histo,
 	for (; j < HIST_MAX_PEAKS; ++j) {
 		int pwidth = 0, psamps = 0, psampsw = 0;
 
-		for (;(histo->data[i] < min_threshold) &&
-			(i < COUNT_OF(histo->data)); ++i);
+		for (; (i < COUNT_OF(histo->data)) &&
+			(histo->data[i] < min_threshold); ++i);
 
-		for (; (histo->data[i] >= min_threshold) &&
-				(i < COUNT_OF(histo->data)); ++i) {
+		for (; (i < COUNT_OF(histo->data)) &&
+				(histo->data[i] >= min_threshold); ++i) {
 			++pwidth;
 			psamps  += histo->data[i];
 			psampsw += histo->data[i] * i;
