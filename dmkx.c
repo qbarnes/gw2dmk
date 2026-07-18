@@ -58,7 +58,7 @@ encode_bit(struct encode_bit *ebs, bool bit)
 
 	if (!bit)
 		return 0;
-	
+
 	if (ebs->len > 0) {
 		double	abs_adj = ebs->precomp * (double)ebs->freq /
 				  1000000000.0;
@@ -438,11 +438,14 @@ dmk2pulses(struct dmk_track *dmkt,
 			/* Prepare to switch to RX02-modified MFM if needed */
 			if (eti->rx02 && (dmkt->track[datap] == 0xf9 ||
 			    dmkt->track[datap] == 0xfd)) {
-				rx02_data = 2 + (256 << dmkt->track[idamp+4]);
+				rx02_data = 2 + secsize(dmkt->track[idamp+4],
+							RX02, 3, eti->quirks);
 
 				/* Follow CRC with one RX02-MFM FF */
-				dmkt->track[eti->fmtimes +
-					datap + rx02_data++] = 0xff;
+				int ffp = eti->fmtimes + datap + rx02_data++;
+
+				if (ffp < eti->track_len)
+					dmkt->track[ffp] = 0xff;
 			} else {
 				/* Compute expected sector size, including CRC
 				 * and any extra bytes after the CRC.  This
