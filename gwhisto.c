@@ -191,7 +191,7 @@ pulse_fn(uint32_t ticks, void *data)
 	const unsigned int	buckets = COUNT_OF(histo->data);
 	uint32_t		bucket = (int)(ticks / histo->ticks_per_bucket);
 
-	if (bucket > buckets)
+	if (bucket >= buckets)
 		++histo->data_overflow;
 	else if (ticks > 0)
 		++histo->data[bucket];
