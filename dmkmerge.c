@@ -237,6 +237,8 @@ merge_sectors(struct dmk_track *trk_merged,
 		}
 	}
 
+	tmp_track.track_len = tmp_data_p - dmk_tmp_track;
+
 	/* dmk_tmp_track has tmp_stat.errcount errors
 	 * (or is unusable if overflow is set).
 	 * dmk_merged_track has trk_merged_stats->errcount errors.
