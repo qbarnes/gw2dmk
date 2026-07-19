@@ -344,8 +344,15 @@ menu(int failing, int retries[GW_MAX_TRACKS][2])
 
 		char inc;
 		int ret = scanf(" %c", &inc);
+
+		if (ret == EOF) {
+			printf("\n");
+			return MENU_QUIT;
+		}
+
 		if (ret != 1)
 			continue;
+
 		switch (inc) {
 		case 'c': return MENU_NOCHANGE;
 		case 'q': return MENU_QUIT;
@@ -357,6 +364,11 @@ menu(int failing, int retries[GW_MAX_TRACKS][2])
 
 				int rnum;
 				ret = scanf(" %d", &rnum);
+
+				if (ret == EOF) {
+					printf("\n");
+					return MENU_QUIT;
+				}
 
 				if (ret == 1 && rnum >= 0) {
 					for (int i = 0; i < GW_MAX_TRACKS;
@@ -371,6 +383,9 @@ menu(int failing, int retries[GW_MAX_TRACKS][2])
 					return MENU_NEWRETRIES;
 				}
 
+				/* Discard unparsable input so it isn't
+				 * rescanned forever. */
+				scanf("%*[^\n]");
 				printf("Invalid number.\n");
 
 			} while (1);
