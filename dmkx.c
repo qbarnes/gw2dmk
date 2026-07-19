@@ -632,7 +632,8 @@ dmk2pulses(struct dmk_track *dmkt,
 				byte <<= 1;
 			}
 
-			if (enc(dmk_encoding[datap + 1]) != RX02)
+			if (datap + 1 >= eti->track_len ||
+			    enc(dmk_encoding[datap + 1]) != RX02)
 				rx02_bitpair_flush(&rx02bp, ebs);
 
 			break;
