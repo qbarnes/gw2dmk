@@ -572,13 +572,15 @@ gw_motor(gw_devt gwfd, int drive, int motor)
 int
 gw_read_flux(gw_devt gwfd, int revs, int ticks)
 {
-	uint16_t crevs  = htole16(revs ? revs+1 : 0);
-	uint32_t cticks = htole32(ticks);
+	/* The byte shifts below serialize the native values in
+	 * little-endian order, so no htole conversions here. */
+	uint16_t crevs  = revs ? revs+1 : 0;
+	uint32_t cticks = ticks;
 
 	return gw_do_command(gwfd,
 			     &(struct gw_cmd){(uint8_t[])
 			     {CMD_READ_FLUX, 8,
-			     cticks & 0x8,
+			     cticks & 0xff,
 			     (cticks >> 8) & 0xff,
 			     (cticks >> 16) & 0xff,
 			     (cticks >> 24) & 0xff,
