@@ -299,9 +299,10 @@ parse_args(int argc,
 			break;
 
 		case 'f':;
-			const int fill = strtol_strict(optarg, 10, "'i'");
+			const int fill = strtol_strict(optarg, 0, "'f'");
 			if (fill < 0 || (fill > 3 && fill < 0x100) ||
 			    fill > 0x2ff) goto err_usage;
+			cmd_set->fill = fill;
 			break;
 
 		case 'g':;
