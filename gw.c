@@ -437,6 +437,22 @@ gw_do_command(gw_devt gwfd, struct gw_cmd *gw_cmd)
 }
 
 
+/*
+ * Load a little-endian uint32 from a byte buffer without unaligned
+ * or aliasing-unsafe access.
+ */
+
+static uint32_t
+le32_get(const uint8_t *p)
+{
+	uint32_t v;
+
+	memcpy(&v, p, sizeof(v));
+
+	return le32toh(v);
+}
+
+
 int
 gw_get_info(gw_devt gwfd, struct gw_info *gw_info)
 {
@@ -454,7 +470,7 @@ gw_get_info(gw_devt gwfd, struct gw_info *gw_info)
 	gw_info->fw_minor	  = rbuf[1];
 	gw_info->is_main_firmware = rbuf[2];
 	gw_info->max_cmd	  = rbuf[3];
-	gw_info->sample_freq	  = le32toh(*(uint32_t *)&rbuf[4]);
+	gw_info->sample_freq	  = le32_get(&rbuf[4]);
 	gw_info->hw_model	  = rbuf[8];
 	gw_info->hw_submodel	  = rbuf[9];
 	gw_info->usb_speed	  = rbuf[10];
@@ -475,10 +491,10 @@ gw_get_info_bw_stats(gw_devt gwfd, struct gw_bw_stats *gw_bw_stats)
 
 	int ret = gw_do_command(gwfd, &gw_cmd);
 
-	gw_bw_stats->min_bw.bytes = le32toh(*(uint32_t *)&rbuf[0]);
-	gw_bw_stats->min_bw.usecs = le32toh(*(uint32_t *)&rbuf[4]);
-	gw_bw_stats->max_bw.bytes = le32toh(*(uint32_t *)&rbuf[8]);
-	gw_bw_stats->max_bw.usecs = le32toh(*(uint32_t *)&rbuf[12]);
+	gw_bw_stats->min_bw.bytes = le32_get(&rbuf[0]);
+	gw_bw_stats->min_bw.usecs = le32_get(&rbuf[4]);
+	gw_bw_stats->max_bw.bytes = le32_get(&rbuf[8]);
+	gw_bw_stats->max_bw.usecs = le32_get(&rbuf[12]);
 
 	return ret;
 }
