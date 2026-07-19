@@ -364,8 +364,11 @@ main(int argc, char **argv)
 
 	gw_set_bus_type(gwfd, cmd_settings.fdd.bus);
 
-	gw_setdrive(gwfd, cmd_settings.fdd.drive,
-		    cmd_settings.fdd.densel == DS_HD ? DS_HD : DS_DD);
+	if (gw_setdrive(gwfd, cmd_settings.fdd.drive,
+			cmd_settings.fdd.densel == DS_HD ?
+			DS_HD : DS_DD) != ACK_OKAY) {
+		msg_fatal("Failed to select and start drive.\n");
+	}
 
 	msg(MSG_NORMAL, "Reading track %d, side %d...\n",
 		cmd_settings.track, cmd_settings.side);
@@ -391,7 +394,8 @@ main(int argc, char **argv)
 	histo_analyze(&histo, &ha);
 	histo_show(MSG_NORMAL, &histo, &ha);
 
-	gw_unsetdrive(gwfd, cmd_settings.fdd.drive);
+	if (gw_unsetdrive(gwfd, cmd_settings.fdd.drive) != ACK_OKAY)
+		msg_error("Failed to stop and deselect drive.\n");
 
 	gw_close(gwfd);
 

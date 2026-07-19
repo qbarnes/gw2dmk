@@ -1001,11 +1001,19 @@ retry:
 			headpos ^= 1;
 	}
 
-	gw_seek(cmd_set->fdd.gwfd, headpos);
-	// error checking
+	int gwret = gw_seek(cmd_set->fdd.gwfd, headpos);
 
-	gw_head(cmd_set->fdd.gwfd, side ^ cmd_set->reverse_sides);
-	// error checking
+	if (gwret != ACK_OKAY) {
+		msg_fatal("Failed to seek to track %d (%d).\n",
+			  headpos, gwret);
+	}
+
+	gwret = gw_head(cmd_set->fdd.gwfd, side ^ cmd_set->reverse_sides);
+
+	if (gwret != ACK_OKAY) {
+		msg_fatal("Failed to select side %d (%d).\n",
+			  side ^ cmd_set->reverse_sides, gwret);
+	}
 
 	fdecoder_init(&flux2dmk.fdec, sample_freq);
 
@@ -1474,7 +1482,10 @@ redo_kind:;
 
 	/* If densel not set, assume it's DS_DD for now.  Redo if
 	 * guess is wrong. */
-	gw_setdrive(fdd->gwfd, fdd->drive, densel == DS_HD ? DS_HD : DS_DD);
+	if (gw_setdrive(fdd->gwfd, fdd->drive,
+			densel == DS_HD ? DS_HD : DS_DD) != ACK_OKAY) {
+		msg_fatal("Failed to select and start drive.\n");
+	}
 
 	struct histogram	histo;
 
@@ -1720,8 +1731,10 @@ main(int argc, char **argv)
 			cmd_settings.fdd.densel =
 					kind2densel(cmd_settings.fdd.kind);
 
-		gw_setdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive,
-			    cmd_settings.fdd.densel);
+		if (gw_setdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive,
+				cmd_settings.fdd.densel) != ACK_OKAY) {
+			msg_fatal("Failed to select and start drive.\n");
+		}
 	}
 
 	struct gw_media_encoding	*gme = &cmd_settings.gme;
@@ -1856,7 +1869,10 @@ main(int argc, char **argv)
 			  strerror(errno), errno);
 	}
 
-	dmk2fp(dmkf, dmkfp);
+	if (dmk2fp(dmkf, dmkfp) != 0) {
+		msg_fatal("Failed to write DMK file '%s': %s (%d)\n",
+			  cmd_settings.dmkfile, strerror(errno), errno);
+	}
 
 	if (fclose(dmkfp) == EOF) {
 		msg_fatal("Failed to close DMK file '%s': %s (%d)\n",
@@ -1871,7 +1887,10 @@ main(int argc, char **argv)
 	 * Finish up and close out.
 	 */
 
-	gw_unsetdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive);
+	if (gw_unsetdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive) !=
+	    ACK_OKAY) {
+		msg_error("Failed to stop and deselect drive.\n");
+	}
 
 	if (gw_close(cmd_settings.fdd.gwfd)) {
 		msg_fatal("Failed to close Greaseweazle device: %s (%d)\n",

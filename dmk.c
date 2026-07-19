@@ -39,7 +39,9 @@ dmk_header_fread(struct dmk_header *dmkh, FILE *fp)
 {
 	size_t	frsz = 0;
 
-	fseek(fp, 0, SEEK_SET);  // XXX Probably should not do this here.
+	// XXX Probably should not seek here.
+	if (fseek(fp, 0, SEEK_SET) == -1)
+		return false;
 
 	frsz += fread(&dmkh->writeprot, sizeof(dmkh->writeprot), 1, fp);
 	frsz += fread(&dmkh->ntracks, sizeof(dmkh->ntracks), 1, fp);
@@ -71,7 +73,9 @@ dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp)
 {
 	size_t	fwsz = 0;
 
-	fseek(fp, 0, SEEK_SET);  // XXX Probably should not do this here.
+	// XXX Probably should not seek here.
+	if (fseek(fp, 0, SEEK_SET) == -1)
+		return false;
 
 	fwsz += fwrite(&dmkh->writeprot, sizeof(dmkh->writeprot), 1, fp);
 	fwsz += fwrite(&dmkh->ntracks, sizeof(dmkh->ntracks), 1, fp);
@@ -264,9 +268,9 @@ dmk_track_length_optimal(const struct dmk_file *dmkf)
 int
 fp2dmk(FILE *fp, struct dmk_file *dmkf)
 {
-	// XXX Error checking
-
-	fseek(fp, 0, SEEK_SET);  // XXX Do this here?
+	// XXX Do the seek here?
+	if (fseek(fp, 0, SEEK_SET) == -1)
+		return -1;
 
 	size_t hret = dmk_header_fread(&dmkf->header, fp);
 	if (hret != 1)
@@ -303,17 +307,20 @@ fp2dmk(FILE *fp, struct dmk_file *dmkf)
 int
 dmk2fp(struct dmk_file *dmkf, FILE *fp)
 {
-	// XXX Error checking
+	// XXX Do the seek here?
+	if (fseek(fp, 0, SEEK_SET) == -1)
+		return -1;
 
-	fseek(fp, 0, SEEK_SET);  // XXX Do this here?
-
-	dmk_header_fwrite(&dmkf->header, fp);
+	if (!dmk_header_fwrite(&dmkf->header, fp))
+		return -1;
 
 	int sides = 2 - !!(dmkf->header.options & DMK_SSIDE_OPT);
 
 	for (int t = 0; t < dmkf->header.ntracks; ++t) {
 		for (int s = 0; s < sides; ++s) {
-			dmk_track_fwrite(&dmkf->header, &dmkf->track[t][s], fp);
+			if (!dmk_track_fwrite(&dmkf->header,
+					      &dmkf->track[t][s], fp))
+				return -1;
 		}
 	}
 

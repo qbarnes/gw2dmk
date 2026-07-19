@@ -65,7 +65,7 @@ struct cmd_settings cmd_settings = {
 #elif defined(WIN64) || defined(WIN32)
 		"\\\\.\\COM3",
 #endif
-		NULL }, 
+		NULL },
 	.fdd.gwfd = GW_DEVT_INVALID,
 	.fdd.device = NULL,
 	.fdd.bus = BUS_IBMPC,
@@ -700,11 +700,25 @@ write_track(struct cmd_settings *cmd_set,
 	 * Write out 8-bit encoded GW timings to physical track.
 	 */
 
-	gw_seek(cmd_set->fdd.gwfd, eti->track * cmd_set->fdd.steps);
-	// error checking
+	int cmd_ret = gw_seek(cmd_set->fdd.gwfd,
+			      eti->track * cmd_set->fdd.steps);
 
-	gw_head(cmd_set->fdd.gwfd, eti->side ^ cmd_set->reverse_sides);
-	// error checking
+	if (cmd_ret != ACK_OKAY) {
+		msg_error("Failed to seek to track %d (%d).\n",
+			  eti->track * cmd_set->fdd.steps, cmd_ret);
+		free(tes.tbuf);
+		return -1;
+	}
+
+	cmd_ret = gw_head(cmd_set->fdd.gwfd,
+			  eti->side ^ cmd_set->reverse_sides);
+
+	if (cmd_ret != ACK_OKAY) {
+		msg_error("Failed to select side %d (%d).\n",
+			  eti->side ^ cmd_set->reverse_sides, cmd_ret);
+		free(tes.tbuf);
+		return -1;
+	}
 
 	ssize_t wsret = gw_write_stream(cmd_set->fdd.gwfd, tes.tbuf,
 					tes.tbuf_cnt, true, true, 5);
@@ -897,7 +911,7 @@ main(int argc, char **argv)
 
 	for (int s = 0; s < COUNT_OF(sigs); ++s) {
 		const struct sigaction *sa_hndlr =
-				(sigs[s] == SIGINT) ? &sa_int : &sa_def;	
+				(sigs[s] == SIGINT) ? &sa_int : &sa_def;
 
 		if (sigaction(sigs[s], sa_hndlr, 0) == -1)
 			msg_fatal("sigaction failed for signal %d.\n", sigs[s]);
@@ -957,8 +971,11 @@ main(int argc, char **argv)
 
 	// XXX How to manage densel in light of -h?
 	// XXX Probably need to do this somewhere else?
-	gw_setdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive, DS_DD);
+	if (gw_setdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive,
+			DS_DD) != ACK_OKAY) {
+		msg_fatal("Failed to select and start drive.\n");
 		    //(int[]){DS_DD, DS_HD, DS_DD, DS_HD, XX}[cmd_settings.hd];
+	}
 
 	// XXX Write protected drive check here?
 
@@ -1027,7 +1044,10 @@ main(int argc, char **argv)
 	 * Finish up and close out.
 	 */
 
-	gw_unsetdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive);
+	if (gw_unsetdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive) !=
+	    ACK_OKAY) {
+		msg_error("Failed to stop and deselect drive.\n");
+	}
 
 	if (gw_close(cmd_settings.fdd.gwfd)) {
 		msg_fatal("Failed to close Greaseweazle device: %s (%d)\n",

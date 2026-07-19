@@ -11,23 +11,29 @@
 int
 gw_setdrive(gw_devt gwfd, int drive, int densel)
 {
-	// XXX Check function return values.
-	gw_select(gwfd, drive);
-	gw_set_pin(gwfd, 2, densel);
-	gw_motor(gwfd, drive, 1);
+	int cmd_ret = gw_select(gwfd, drive);
 
-	return 0;
+	if (cmd_ret != ACK_OKAY)
+		return cmd_ret;
+
+	cmd_ret = gw_set_pin(gwfd, 2, densel);
+
+	if (cmd_ret != ACK_OKAY)
+		return cmd_ret;
+
+	return gw_motor(gwfd, drive, 1);
 }
 
 
 int
 gw_unsetdrive(gw_devt gwfd, int drive)
 {
-	// XXX Check function return values.
-	gw_motor(gwfd, drive, 0);
-	gw_deselect(gwfd);
+	int cmd_ret = gw_motor(gwfd, drive, 0);
 
-	return 0;
+	if (cmd_ret != ACK_OKAY)
+		return cmd_ret;
+
+	return gw_deselect(gwfd);
 }
 
 

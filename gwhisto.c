@@ -261,11 +261,15 @@ collect_histo_from_track(gw_devt gwfd, struct histogram *histo)
 {
 	uint8_t	*fbuf = 0;
 
-	gw_seek(gwfd, histo->track);
-	// error checking
+	int cmd_ret = gw_seek(gwfd, histo->track);
 
-	gw_head(gwfd, histo->side);
-	// error checking
+	if (cmd_ret != ACK_OKAY)
+		return cmd_ret > 0 ? cmd_ret : -1;
+
+	cmd_ret = gw_head(gwfd, histo->side);
+
+	if (cmd_ret != ACK_OKAY)
+		return cmd_ret > 0 ? cmd_ret : -1;
 
 	ssize_t rd_ret = gw_read_stream(gwfd, histo->revs, 0, &fbuf);
 
