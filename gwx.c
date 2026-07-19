@@ -245,17 +245,18 @@ gw_get_period_ns(gw_devt gwfd, int drive, nsec_type clock_ns,
 			nsec_type *period_ns)
 {
 	uint8_t	*fbuf = NULL;
+	int	ret   = -1;
 
-	gw_motor(gwfd, drive, 1);
+	if (gw_motor(gwfd, drive, 1) != ACK_OKAY)
+		return -1;
 
 	ssize_t bytes_read = gw_read_stream(gwfd, 1, 0, &fbuf);
 
-	if (bytes_read < 0) {
-		// error handling
-		return -1;
-	}
+	if (gw_motor(gwfd, drive, 0) != ACK_OKAY)
+		goto done;
 
-	gw_motor(gwfd, drive, 0);
+	if (bytes_read < 0)
+		goto done;
 
 	uint32_t gw_ticks = 0;
 	uint32_t index[2] = { ~0, ~0 };
@@ -279,31 +280,30 @@ gw_get_period_ns(gw_devt gwfd, int drive, nsec_type clock_ns,
 					break;
 
 				default:
-					// error handling
-					return -1;
+					goto done;
 				}
 			} else {
-				// error handling
-				return -1;
+				goto done;
 			}
 		} else if (c < 250) {
 			gw_ticks += c;
 		} else if ((f + 1 - fbuf) < bytes_read) {
 			gw_ticks += 250 + (c - 250) * 255 + *f++ - 1;
 		} else {
-			// error handling
-			return -1;
+			goto done;
 		}
 	}
 
-	if (index[1] == ~0) {
-		// error handling
-		return -1;
-	}
+	/* Need two index pulses to measure a full rotation. */
+	if (index[0] == ~0 || index[1] == ~0)
+		goto done;
 
 	*period_ns = (index[1] - index[0]) * clock_ns;
+	ret = 0;
 
-	return 0;
+done:
+	free(fbuf);
+	return ret;
 }
 
 
