@@ -203,8 +203,9 @@ merge_sectors(struct dmk_track *trk_merged,
 				replaced = 1;
 				tmp_stat.reused_sectors++;
 				tmp_stat.enc_sec[cur] =
-				    trk_merged_stats->enc_sec[cur];
-				tmp_stat.enc_count[trk_merged_stats->enc_sec[cur]]++;
+				    trk_merged_stats->enc_sec[prev];
+				tmp_stat.enc_count[
+				    trk_merged_stats->enc_sec[prev]]++;
 				/* There should be an error for every bad
 				 * sector, but just to be careful. */
 				if (tmp_stat.errcount > 0)
