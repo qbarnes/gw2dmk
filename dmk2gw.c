@@ -706,11 +706,19 @@ write_track(struct cmd_settings *cmd_set,
 	gw_head(cmd_set->fdd.gwfd, eti->side ^ cmd_set->reverse_sides);
 	// error checking
 
-	gw_write_stream(cmd_set->fdd.gwfd, tes.tbuf, tes.tbuf_cnt,
-			true, true, 5);
-	// error checking
+	ssize_t wsret = gw_write_stream(cmd_set->fdd.gwfd, tes.tbuf,
+					tes.tbuf_cnt, true, true, 5);
 
 	free(tes.tbuf);
+
+	if (wsret < 0) {
+		if (wsret == -ACK_WRPROT)
+			msg_fatal("Disk is write-protected.\n");
+
+		msg_error("Failed to write track %d, side %d (status %zd).\n",
+			  eti->track, eti->side, wsret);
+		return -1;
+	}
 
 	return 0;
 }
@@ -830,7 +838,8 @@ dmk2gw(struct cmd_settings *cmd_set,
 				       eti.track_len - DMK_TKHDR_SIZE);
 			}
 
-			/*int wrv = */write_track(cmd_set, trkp, &eti, &ebs);
+			if (write_track(cmd_set, trkp, &eti, &ebs) != 0)
+				goto leave;
 
 			if (exit_requested)
 				goto leave;
