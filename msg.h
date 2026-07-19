@@ -12,20 +12,12 @@ extern "C" {
 
 
 #ifdef __GNUC__
-int msg_verror(const char *fmt, va_list ap) __attribute__((format(printf,1,0)));
-
-int msg_error(const char *fmt, ...) __attribute__((format(printf,1,2)));
-
-void msg_fatal_ec(int exit_code, const char *fmt, ...)
-					__attribute__((format(printf,2,3)))
-					__attribute__((noreturn));
-
-void msg_fatal(const char *fmt, ...)
-					__attribute__((format(printf,1,2)))
-					__attribute__((noreturn));
-
-void msg(int level, const char *fmt, ...)
-					__attribute__((format(printf,2,3)));
+#define MSG_PRINTF(fmt_idx, arg_idx) \
+			__attribute__((format(printf, fmt_idx, arg_idx)))
+#define MSG_NORETURN	__attribute__((noreturn))
+#else
+#define MSG_PRINTF(fmt_idx, arg_idx)
+#define MSG_NORETURN
 #endif
 
 
@@ -47,15 +39,16 @@ extern int msg_fclose(void);
 
 extern int msg_scrn_flush();
 
-extern int msg_verror(const char *fmt, va_list ap);
+extern int msg_verror(const char *fmt, va_list ap) MSG_PRINTF(1, 0);
 
-extern int msg_error(const char *fmt, ...);
+extern int msg_error(const char *fmt, ...) MSG_PRINTF(1, 2);
 
-extern void msg_fatal_ec(int exit_code, const char *fmt, ...);
+extern void msg_fatal_ec(int exit_code, const char *fmt, ...)
+					MSG_PRINTF(2, 3) MSG_NORETURN;
 
-extern void msg_fatal(const char *fmt, ...);
+extern void msg_fatal(const char *fmt, ...) MSG_PRINTF(1, 2) MSG_NORETURN;
 
-extern void msg(int level, const char *fmt, ...);
+extern void msg(int level, const char *fmt, ...) MSG_PRINTF(2, 3);
 
 #ifdef __cplusplus
 }
