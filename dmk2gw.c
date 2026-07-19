@@ -799,8 +799,10 @@ dmk2gw(struct cmd_settings *cmd_set,
 
 	for (int t = 0; t < tracks; ++t) {
 		eti.track   = t;
-		eti.precomp = ((tracks - 1 - t) * cmd_set->precomp_low +
-				  t * cmd_set->precomp_high) / (t - 1);
+		eti.precomp = tracks > 1 ?
+			((tracks - 1 - t) * cmd_set->precomp_low +
+			    t * cmd_set->precomp_high) / (tracks - 1) :
+			cmd_set->precomp_low;
 
 		for (int s = 0; s < sides; ++s) {
 			struct dmk_track *trkp =  &dmkf->track[t][s];
