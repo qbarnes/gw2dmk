@@ -355,7 +355,7 @@ check_missing_dam(struct flux2dmk_sm *f2dsm)
 	fdec->dbyte = fdec->ibyte = fdec->ebyte = -1;
 	dtsm->trk_working_stats.errcount++;
 
-	if (dtsm->accum_sectors)
+	if (dtsm->accum_sectors && !dmk_idam_list_empty(dtsm))
 		dtsm->idam_p[-1] |= DMK_EXTRA_FLAG;
 }
 
@@ -830,7 +830,8 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 		} else {
 			msg(MSG_ERRORS, "[bad ID CRC] ");
 			dtsm->trk_working_stats.errcount++;
-			if (dtsm->accum_sectors)
+			if (dtsm->accum_sectors &&
+			    !dmk_idam_list_empty(dtsm))
 				dtsm->idam_p[-1] |= DMK_EXTRA_FLAG;
 			fdec->ibyte = -1;
 		}
@@ -881,7 +882,8 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 			msg(MSG_ERRORS, "[bad data CRC] ");
 			dtsm->trk_working_stats.errcount++;
 
-			if (dtsm->accum_sectors) {
+			if (dtsm->accum_sectors &&
+			    !dmk_idam_list_empty(dtsm)) {
 				/* Don't count both header and data CRC errors
 				 * for a sector.  Because otherwise dropping a
 				 * single error for a replacement sector will
@@ -915,7 +917,8 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 		} else {
 			msg(MSG_ERRORS, "[bad extra CRC] ");
 			dtsm->trk_working_stats.errcount++;
-			if (dtsm->accum_sectors) {
+			if (dtsm->accum_sectors &&
+			    !dmk_idam_list_empty(dtsm)) {
 				if (dtsm->idam_p[-1] & DMK_EXTRA_FLAG)
 					dtsm->trk_working_stats.errcount--;
 				dtsm->idam_p[-1] |= DMK_EXTRA_FLAG;
