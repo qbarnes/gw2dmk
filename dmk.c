@@ -131,6 +131,8 @@ dmk_track_fread(const struct dmk_header *dmkh,
 	frsz += fread(trk->track + DMK_TKHDR_SIZE,
 				dmkh->tracklen - DMK_TKHDR_SIZE, 1, fp);
 
+	trk->track_len = dmkh->tracklen;
+
 	return frsz == (DMK_MAX_SECTORS + 1) ? true : false;
 }
 
