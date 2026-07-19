@@ -913,7 +913,7 @@ dmk_file_init(struct dmk_file *dmkf)
 {
 	dmk_header_init(&dmkf->header, 0, DMKRD_TRACKLEN_MAX);
 
-	memset(dmkf->track, 0, sizeof(struct dmk_track));
+	memset(dmkf->track, 0, sizeof(dmkf->track));
 }
 
 
