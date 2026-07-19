@@ -136,7 +136,7 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 			break;
 
 		case 'd':
-			if (optarg[1]) goto d_err;
+			if (optarg[0] && optarg[1]) goto d_err;
 
 			const int loarg = tolower(optarg[0]);
 
