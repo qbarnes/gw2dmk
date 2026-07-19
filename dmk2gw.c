@@ -42,6 +42,7 @@ static const struct option cmd_long_args[] = {
 	{ "maxsides",	required_argument, NULL, 's' },
 	{ "logfile",	required_argument, NULL, 'u' },
 	{ "verbosity",	required_argument, NULL, 'v' },
+	{ "testmode",	required_argument, NULL, 'y' },
 	{ "device",	required_argument, NULL, 'G' },
 	{ "stepdelay",	required_argument, NULL, 'T' },
 	{ "gwlogfile",	required_argument, NULL, 'U' },
@@ -239,7 +240,7 @@ parse_args(int argc,
 	int	lindex = 0;
 
 	while ((opt = getopt_long(argc, argv,
-			"a:d:f:g:h:i:k:l:m:p:s:u:v:G:T:U:",
+			"a:d:f:g:h:i:k:l:m:p:s:u:v:y:G:T:U:",
 			cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -386,6 +387,17 @@ parse_args(int argc,
 			if (optav < 0 || optav > 99) goto err_usage;
 			cmd_set->scrn_verbosity = optav % 10;
 			cmd_set->file_verbosity = optav / 10;
+			break;
+
+		case 'y':;
+			const int test_mode = strtol_strict(optarg, 0, "'y'");
+
+			if (test_mode < 0 || test_mode > 0xff) {
+				msg_error("Option-argument to '%c' must "
+					  "be 0 to 0xff.\n", opt);
+				goto err_usage;
+			}
+			cmd_set->test_mode = test_mode;
 			break;
 
 		case 'G':;
