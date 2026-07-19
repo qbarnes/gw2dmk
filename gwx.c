@@ -40,8 +40,8 @@ gw_get_bandwidth(gw_devt gwfd, double *min_bw, double *max_bw)
 	int cmd_ret = gw_get_info_bw_stats(gwfd, &bw_stats);
 
 	if (cmd_ret == ACK_OKAY) {
-		*min_bw = (8 * bw_stats.min_bw.bytes) / bw_stats.min_bw.usecs;
-		*max_bw = (8 * bw_stats.max_bw.bytes) / bw_stats.max_bw.usecs;
+		*min_bw = (8.0 * bw_stats.min_bw.bytes) / bw_stats.min_bw.usecs;
+		*max_bw = (8.0 * bw_stats.max_bw.bytes) / bw_stats.max_bw.usecs;
 	}
 
 	return cmd_ret;
