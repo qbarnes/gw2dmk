@@ -313,6 +313,7 @@ parse_args(int argc,
 		case 'h':;
 			const int hd = strtol_strict(optarg, 10, "'h'");
 			cmd_set->hd = hd;
+			break;
 
 		case 'i':;
 			const int ipos = strtol_strict(optarg, 10, "'i'");
