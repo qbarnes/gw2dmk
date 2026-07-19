@@ -170,7 +170,8 @@ void
 rx02_bitpair_flush(struct rx02_bitpair *rx02bp,
 		   struct encode_bit *ebs)
 {
-	while (rx02bp->bitcnt--) {
+	while (rx02bp->bitcnt > 0) {
+		--rx02bp->bitcnt;
 		/* clock bit */
 		encode_bit(ebs, (rx02bp->accum & (3 << rx02bp->bitcnt)) == 0);
 		/* data bit */
