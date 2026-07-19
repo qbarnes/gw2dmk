@@ -478,7 +478,7 @@ gw_get_info_bw_stats(gw_devt gwfd, struct gw_bw_stats *gw_bw_stats)
 	gw_bw_stats->min_bw.bytes = le32toh(*(uint32_t *)&rbuf[0]);
 	gw_bw_stats->min_bw.usecs = le32toh(*(uint32_t *)&rbuf[4]);
 	gw_bw_stats->max_bw.bytes = le32toh(*(uint32_t *)&rbuf[8]);
-	gw_bw_stats->max_bw.usecs = le32toh(*(uint32_t *)&rbuf[16]);
+	gw_bw_stats->max_bw.usecs = le32toh(*(uint32_t *)&rbuf[12]);
 
 	return ret;
 }
