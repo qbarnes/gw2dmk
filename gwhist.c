@@ -162,7 +162,7 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 		case 'r':;
 			const int revs = strtol_strict(optarg, 10, "'r'");
 
-			if (revs >= 0) {
+			if (revs > 0) {
 				cmd_set->revs = revs;
 			} else {
 				msg_error("Option-argument to '%c' must "
@@ -186,12 +186,12 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 		case 't':;
 			const int track = strtol_strict(optarg, 10, "'t'");
 
-			if (track >= 0 && track <= GW_MAX_TRACKS) {
+			if (track >= 0 && track < GW_MAX_TRACKS) {
 				cmd_set->track = track;
 			} else {
 				msg_error("Option-argument to '%c' must "
 					  "be between 0 and %d.\n",
-					  opt, GW_MAX_TRACKS);
+					  opt, GW_MAX_TRACKS - 1);
 				goto err_usage;
 			}
 			break;
