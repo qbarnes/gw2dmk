@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -10,7 +11,7 @@
 
 
 void
-histo_init(uint8_t track, uint8_t side, uint8_t revs,
+histo_init(uint8_t track, uint8_t side, uint32_t revs,
 		uint32_t sample_freq,
 		double ticks_per_bucket,
 		struct histogram *histo)
@@ -124,11 +125,13 @@ histo_show(int msg_level,
 	   const struct histogram *histo,
 	   const struct histo_analysis *ha)
 {
-	msg(msg_level, "Track %d, side %d, revolutions %d\n",
+	msg(msg_level, "Track %d, side %d, revolutions %" PRIu32 "\n",
 			histo->track, histo->side, histo->revs);
 	for (int i = 0; i < COUNT_OF(histo->data); i += 8) {
 		msg(msg_level,
-			"%3d: %06d %06d %06d %06d %06d %06d %06d %06d\n", i,
+			"%3d: %06" PRIu32 " %06" PRIu32 " %06" PRIu32
+			" %06" PRIu32 " %06" PRIu32 " %06" PRIu32
+			" %06" PRIu32 " %06" PRIu32 "\n", i,
 			histo->data[i],   histo->data[i+1],
 			histo->data[i+2], histo->data[i+3],
 			histo->data[i+4], histo->data[i+5],

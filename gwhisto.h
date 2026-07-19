@@ -41,7 +41,7 @@ struct histo_analysis {
 };
 
 
-extern void histo_init(uint8_t track, uint8_t side, uint8_t revs,
+extern void histo_init(uint8_t track, uint8_t side, uint32_t revs,
 			uint32_t sample_freq, double ticks_per_bucket,
 			struct histogram *histo);
 
