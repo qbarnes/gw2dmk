@@ -335,6 +335,7 @@ retry:;
 			break;
 		}
 
+		enbuf        += wr_cnt;
 		enbuf_cnt    -= wr_cnt;
 		wr_cnt_total += wr_cnt;
 
