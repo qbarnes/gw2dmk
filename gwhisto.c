@@ -83,13 +83,21 @@ histo_analyze(const struct histogram *histo,
 		}
 	}
 
-	ha->bit_rate_khz = histo->sample_freq / 1000.0 / 
-				histo->ticks_per_bucket / ha->peak[0];
+	ha->peaks          = j;
+	ha->bit_rate_khz   = 0.0;
+	ha->data_clock_khz = 0.0;
 
-	switch ((ha->peaks = j)) {
+	/* With no peaks (e.g. unformatted track), leave the rates zero;
+	 * callers must check ha->peaks before trusting them. */
+	if (j > 0) {
+		ha->bit_rate_khz = histo->sample_freq / 1000.0 /
+					histo->ticks_per_bucket / ha->peak[0];
+	}
+
+	switch (j) {
 	case 2:
 		/* FM encoding */
-		ha->data_clock_khz = 
+		ha->data_clock_khz =
 			histo->sample_freq / 1000.0 / histo->ticks_per_bucket /
 			((ha->peak[0] / 0.5 * ha->ps[0] +
 			  ha->peak[1] / 1.0 * ha->ps[1])
@@ -98,7 +106,7 @@ histo_analyze(const struct histogram *histo,
 
 	case 3:
 		/* MFM encoding */
-		ha->data_clock_khz = 
+		ha->data_clock_khz =
 			histo->sample_freq / 1000.0 / histo->ticks_per_bucket /
 			((ha->peak[0] / 1.0 * ha->ps[0] +
 			ha->peak[1] / 1.5 * ha->ps[1] +
@@ -195,7 +203,7 @@ pulse_fn(uint32_t ticks, void *data)
 		++histo->data_overflow;
 	else if (ticks > 0)
 		++histo->data[bucket];
-		
+
 	return 0;
 }
 
