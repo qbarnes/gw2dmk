@@ -323,10 +323,14 @@ retry:;
 	if (cmd_ret != ACK_OKAY)
 		return cmd_ret < 0 ? -99 : -cmd_ret;
 
+	/* Work on copies so a retry resends the entire stream. */
+	const uint8_t	*wbuf     = enbuf;
+	size_t		wbuf_cnt  = enbuf_cnt;
+
 	ssize_t wr_cnt_total = 0;
 
 	do {
-		int wr_cnt = gw_write(gwfd, enbuf, enbuf_cnt);
+		int wr_cnt = gw_write(gwfd, wbuf, wbuf_cnt);
 
 		if (wr_cnt == -1) {
 			wr_cnt_total = -1;
@@ -335,11 +339,11 @@ retry:;
 			break;
 		}
 
-		enbuf        += wr_cnt;
-		enbuf_cnt    -= wr_cnt;
+		wbuf         += wr_cnt;
+		wbuf_cnt     -= wr_cnt;
 		wr_cnt_total += wr_cnt;
 
-	} while (enbuf_cnt > 0);
+	} while (wbuf_cnt > 0);
 
 flux_status:
 	/* Synchronize with GW */
