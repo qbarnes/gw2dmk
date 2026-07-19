@@ -466,14 +466,16 @@ gw_get_info(gw_devt gwfd, struct gw_info *gw_info)
 
 	ret = gw_do_command(gwfd, &gw_cmd);
 
-	gw_info->fw_major	  = rbuf[0];
-	gw_info->fw_minor	  = rbuf[1];
-	gw_info->is_main_firmware = rbuf[2];
-	gw_info->max_cmd	  = rbuf[3];
-	gw_info->sample_freq	  = le32_get(&rbuf[4]);
-	gw_info->hw_model	  = rbuf[8];
-	gw_info->hw_submodel	  = rbuf[9];
-	gw_info->usb_speed	  = rbuf[10];
+	if (ret == ACK_OKAY) {
+		gw_info->fw_major	  = rbuf[0];
+		gw_info->fw_minor	  = rbuf[1];
+		gw_info->is_main_firmware = rbuf[2];
+		gw_info->max_cmd	  = rbuf[3];
+		gw_info->sample_freq	  = le32_get(&rbuf[4]);
+		gw_info->hw_model	  = rbuf[8];
+		gw_info->hw_submodel	  = rbuf[9];
+		gw_info->usb_speed	  = rbuf[10];
+	}
 
 	return ret;
 }
@@ -491,10 +493,12 @@ gw_get_info_bw_stats(gw_devt gwfd, struct gw_bw_stats *gw_bw_stats)
 
 	int ret = gw_do_command(gwfd, &gw_cmd);
 
-	gw_bw_stats->min_bw.bytes = le32_get(&rbuf[0]);
-	gw_bw_stats->min_bw.usecs = le32_get(&rbuf[4]);
-	gw_bw_stats->max_bw.bytes = le32_get(&rbuf[8]);
-	gw_bw_stats->max_bw.usecs = le32_get(&rbuf[12]);
+	if (ret == ACK_OKAY) {
+		gw_bw_stats->min_bw.bytes = le32_get(&rbuf[0]);
+		gw_bw_stats->min_bw.usecs = le32_get(&rbuf[4]);
+		gw_bw_stats->max_bw.bytes = le32_get(&rbuf[8]);
+		gw_bw_stats->max_bw.usecs = le32_get(&rbuf[12]);
+	}
 
 	return ret;
 }
@@ -561,11 +565,13 @@ gw_get_params(gw_devt gwfd, struct gw_delay *gw_delay)
 
 	ret = gw_do_command(gwfd, &gw_cmd);
 
-	gw_delay->select_delay = le16toh(u.rbuf16[0]);
-	gw_delay->step_delay   = le16toh(u.rbuf16[1]);
-	gw_delay->seek_settle  = le16toh(u.rbuf16[2]);
-	gw_delay->motor_delay  = le16toh(u.rbuf16[3]);
-	gw_delay->auto_off     = le16toh(u.rbuf16[4]);
+	if (ret == ACK_OKAY) {
+		gw_delay->select_delay = le16toh(u.rbuf16[0]);
+		gw_delay->step_delay   = le16toh(u.rbuf16[1]);
+		gw_delay->seek_settle  = le16toh(u.rbuf16[2]);
+		gw_delay->motor_delay  = le16toh(u.rbuf16[3]);
+		gw_delay->auto_off     = le16toh(u.rbuf16[4]);
+	}
 
 	return ret;
 }
