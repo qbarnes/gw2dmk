@@ -313,8 +313,7 @@ dmk2pulses(struct dmk_track *dmkt,
 	 * a 1-sided drive.
 	 */
 
-	// XXX I think this test is wrong.  Should be >=.
-	if (eti->side > eti->max_sides) {
+	if (eti->side >= eti->max_sides) {
 		if (first_idamp == 0) {
 			/* No problem; there is nothing to
 			 * write here. */
