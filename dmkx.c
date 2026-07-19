@@ -336,7 +336,8 @@ dmk2pulses(struct dmk_track *dmkt,
 			/* Read next IDAM pointer */
 			idamp = next_idamp;
 			encoding = next_encoding;
-			next_idamp = le16toh(dmkt->idam_offset[idampp++]);
+			next_idamp = idampp < DMK_MAX_SECTORS ?
+				le16toh(dmkt->idam_offset[idampp++]) : 0;
 
 			if (next_idamp == 0 || next_idamp == 0xffff) {
 				next_encoding  = encoding;
