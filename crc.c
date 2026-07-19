@@ -83,6 +83,11 @@ main(int argc, char **argv)
 	for (;;) {
 		res = scanf("%2x", &c);
 		if (res != 1) break;
+		if (count >= sizeof(buf)) {
+			fprintf(stderr, "Input exceeds %zu bytes.\n",
+				sizeof(buf));
+			return 1;
+		}
 		buf[count++] = c;
 	}
 
