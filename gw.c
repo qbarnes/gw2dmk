@@ -428,9 +428,13 @@ gw_do_command(gw_devt gwfd, struct gw_cmd *gw_cmd)
 
 	} else if (gw_cmd->cmd_ret[1] == ACK_OKAY && gw_cmd->rbuf_cnt) {
 
-		gw_cmd->rbuf_cnt_ret =
-			gw_read(gwfd, gw_cmd->rbuf, gw_cmd->rbuf_cnt);
+		ssize_t prd_cnt = gw_read(gwfd, gw_cmd->rbuf,
+					  gw_cmd->rbuf_cnt);
 
+		if (prd_cnt == -1 || (size_t)prd_cnt != gw_cmd->rbuf_cnt)
+			return -3;
+
+		gw_cmd->rbuf_cnt_ret = prd_cnt;
 	}
 
 	return gw_cmd->cmd_ret[1];
