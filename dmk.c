@@ -162,6 +162,18 @@ dmk_track_fwrite(const struct dmk_header *dmkh,
 }
 
 
+/*
+ * Adjust an IDAM pointer's offset without disturbing its flag bits.
+ */
+
+static uint16_t
+idam_adjust(uint16_t idamp, int adj)
+{
+	return (idamp & ~DMK_IDAMP_BITS) |
+	       (((idamp & DMK_IDAMP_BITS) + adj) & DMK_IDAMP_BITS);
+}
+
+
 void
 dmk_data_rotate(struct dmk_track *trk, uint8_t *data_hole)
 {
@@ -207,21 +219,22 @@ dmk_data_rotate(struct dmk_track *trk, uint8_t *data_hole)
 		for (int i = 0;
 		     i < DMK_MAX_SECTORS && trk->idam_offset[i]; ++i) {
 			tmp_trk.idam_offset[i] =
-				trk->idam_offset[i] + rotate_size;
+				idam_adjust(trk->idam_offset[i], rotate_size);
 		}
 	} else {
 		int	i = idam_rotate;
 
 		for (; i < DMK_MAX_SECTORS && trk->idam_offset[i]; ++i) {
 			tmp_trk.idam_offset[i - idam_rotate] =
-				trk->idam_offset[i] - rotate_amount;
+				idam_adjust(trk->idam_offset[i],
+					    -rotate_amount);
 		}
 
 		int	idam_moved = i - idam_rotate;
 
 		for (int i = 0; i < idam_rotate; ++i) {
 			tmp_trk.idam_offset[i + idam_moved] =
-				trk->idam_offset[i] + rotate_size;
+				idam_adjust(trk->idam_offset[i], rotate_size);
 		}
 	}
 
