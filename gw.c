@@ -693,4 +693,27 @@ gw_reset(gw_devt gwfd)
 }
 
 
+/*
+ * Best-effort reset for use from signal handlers.  Unlike gw_reset(),
+ * uses only async-signal-safe operations: no transaction logging and
+ * no reading of the command response.
+ */
+
+void
+gw_reset_async(gw_devt gwfd)
+{
+	const uint8_t cmd[2] = { CMD_RESET, 2 };
+
+#if defined(WIN64) || defined(WIN32)
+	DWORD	written;
+
+	WriteFile(gwfd, cmd, sizeof(cmd), &written, NULL);
+#else
+	if (write(gwfd, cmd, sizeof(cmd)) < 0) {
+		/* Nothing recoverable from signal context. */
+	}
+#endif
+}
+
+
 /* CMD_ERASE_FLUX, CMD_SOURCE_BYTES, CMD_SINK_BYTES are unused. */

@@ -101,6 +101,8 @@ extern int gw_set_pin(gw_devt gwfd, int pin, int level);
 
 extern int gw_reset(gw_devt gwfd);
 
+extern void gw_reset_async(gw_devt gwfd);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1567,8 +1567,8 @@ gw_detect_sides(struct gw_fddrv *fdd,
 
 
 /*
- * Function cleanup() may be called from signal context, so only
- * async-signal-safe functions should be invoked.
+ * Reset the GW at exit.  Called via atexit() in main context; signal
+ * handlers use the async-signal-safe gw_reset_async() instead.
  */
 
 void
@@ -1604,7 +1604,8 @@ handler(DWORD fdwCtrlType)
 		return TRUE;
 	}
 
-	cleanup();
+	if (cleanup_gwfd != GW_DEVT_INVALID)
+		gw_reset_async(cleanup_gwfd);
 	return FALSE;
 }
 
@@ -1628,7 +1629,8 @@ handler(int sig)
 	struct sigaction sa_dfl = { .sa_handler = SIG_DFL };
 	sigaction(sig, &sa_dfl, NULL);
 
-	cleanup();
+	if (cleanup_gwfd != GW_DEVT_INVALID)
+		gw_reset_async(cleanup_gwfd);
 	raise(sig);
 }
 
