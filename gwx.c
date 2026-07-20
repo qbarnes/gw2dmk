@@ -73,6 +73,7 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 		return cmd_ret < 0 ? -99 : -cmd_ret;
 
 	ssize_t fbuf_cnt = 0;
+	size_t	fbuf_cap = 0;
 
 	do {
 		/*
@@ -111,15 +112,26 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 		}
 #endif
 
-		/* +1 to make room for rbuf[0] byte added below. */
-		uint8_t *fbuf_new = realloc(*fbuf, fbuf_cnt + 1 + nrd);
+		/* +1 to make room for rbuf[0] byte added below.  Grow
+		 * the buffer geometrically to avoid O(n^2) copying. */
+		size_t	need = fbuf_cnt + 1 + nrd;
 
-		if (!fbuf_new) {
-			fbuf_cnt = -1;
-			goto flux_status;
+		if (need > fbuf_cap) {
+			size_t new_cap = fbuf_cap ? fbuf_cap * 2 : 65536;
+
+			while (new_cap < need)
+				new_cap *= 2;
+
+			uint8_t *fbuf_new = realloc(*fbuf, new_cap);
+
+			if (!fbuf_new) {
+				fbuf_cnt = -1;
+				goto flux_status;
+			}
+
+			*fbuf = fbuf_new;
+			fbuf_cap = new_cap;
 		}
-
-		*fbuf = fbuf_new;
 
 		(*fbuf)[fbuf_cnt++] = rbuf[0];
 
