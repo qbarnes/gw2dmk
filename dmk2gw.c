@@ -835,6 +835,18 @@ dmk2gw(struct cmd_settings *cmd_set,
 		msg_fatal("Expected value for kind of drive.\n");
 	};
 
+	/* Nominal DMK track length for the drive kind, used as the
+	 * target length when filling out short tracks. */
+	static const int fill_len_kind[] = { 0,
+		DMKRD_TRACKLEN_5, DMKRD_TRACKLEN_5,
+		DMKRD_TRACKLEN_8, DMKRD_TRACKLEN_3HD };
+	static const int fill_len_kind_sd[] = { 0,
+		DMKRD_TRACKLEN_5SD, DMKRD_TRACKLEN_5SD,
+		DMKRD_TRACKLEN_8SD, DMKRD_TRACKLEN_3HD };
+
+	eti.fill_len = (eti.fmtimes == 1 ?
+			fill_len_kind_sd : fill_len_kind)[cmd_set->fdd.kind];
+
 	struct encode_bit ebs;
 	encode_bit_init(&ebs, sample_freq, mult * rpm_adj);
 

@@ -41,6 +41,7 @@ struct extra_track_info {
 	int		rx02;
 	int		extra_bytes;
 	int		fill;
+	int		fill_len;	/* DMK-byte length to fill out to */
 	uint8_t		quirks;
 	double		precomp;
 };

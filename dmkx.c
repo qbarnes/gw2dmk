@@ -92,15 +92,6 @@ encode_bit(struct encode_bit *ebs, bool bit)
 }
 
 
-void
-encode_bit_flush(struct encode_bit *ebs)
-{
-	encode_bit(ebs, 1);
-	encode_bit(ebs, 1);
-	encode_bit_init(ebs, ebs->freq, ebs->mult);
-}
-
-
 struct rx02_bitpair {
 	uint32_t	accum;
 	int		bitcnt;
@@ -289,6 +280,19 @@ leave:
 	*prev_bit = 0;
 
 	return ret;
+}
+
+
+/*
+ * Emit the pulse for the final pending flux transition, if any.
+ */
+
+static int
+emit_final_pulse(struct encode_bit *ebs, struct dmk_encode_s *des)
+{
+	uint32_t pulse = encode_bit(ebs, 1);
+
+	return pulse ? des->encode_pulse(pulse, des->pulse_data) : 0;
 }
 
 
@@ -584,6 +588,7 @@ dmk2pulses(struct dmk_track *dmkt,
 	// XXX Natural break here?
 
 	bool	bit = 0;
+	int	ret = 0;
 	int	prev_encoding = SKIP;
 	int	ignore = 0;
 	encoding = dmk_encoding[DMK_TKHDR_SIZE];
@@ -628,27 +633,27 @@ dmk2pulses(struct dmk_track *dmkt,
 			break;
 
 		case FM:	/* FM with FF clock */
-			fm_byte(byte, 0xff, ebs, &bit, des);
+			ret = fm_byte(byte, 0xff, ebs, &bit, des);
 			break;
 
 		case FM_IAM:	/* FM with D7 clock (IAM) */
-			fm_byte(byte, 0xd7, ebs, &bit, des);
+			ret = fm_byte(byte, 0xd7, ebs, &bit, des);
 			break;
 
 		case FM_AM:	/* FM with C7 clock (IDAM or DAM) */
-			fm_byte(byte, 0xc7, ebs, &bit, des);
+			ret = fm_byte(byte, 0xc7, ebs, &bit, des);
 			break;
 
 		case MFM:	/* MFM with normal clocking algorithm */
-			mfm_byte(byte, -1, ebs, &bit, des);
+			ret = mfm_byte(byte, -1, ebs, &bit, des);
 			break;
 
 		case MFM_IAM:	/* MFM with missing clock 4 */
-			mfm_byte(byte, 4, ebs, &bit, des);
+			ret = mfm_byte(byte, 4, ebs, &bit, des);
 			break;
 
 		case MFM_AM:	/* MFM with missing clock 5 */
-			mfm_byte(byte, 5, ebs, &bit, des);
+			ret = mfm_byte(byte, 5, ebs, &bit, des);
 			break;
 
 		case RX02:	/* DEC-modified MFM as in RX02 */
@@ -669,10 +674,8 @@ dmk2pulses(struct dmk_track *dmkt,
 			break;
 		}
 
-		if (isend(encoding)) {
-			//if (catweasel_sector_end(&c) < 0)
-			//	msg_fatal("Catweasel memory full\n");
-		}
+		if (ret)
+			return ret;
 	}
 
 	ret = rx02_bitpair_flush(&rx02bp, ebs, des);
@@ -680,25 +683,29 @@ dmk2pulses(struct dmk_track *dmkt,
 	if (ret)
 		return ret;
 
-	/* In case the DMK buffer is shorter than the physical track,
-	   fill the rest of the Catweasel's memory with a fill
-	   pattern. */
+	/*
+	 * In case the DMK buffer is shorter than the physical track,
+	 * fill the remainder of the revolution with a fill pattern up
+	 * to eti->fill_len DMK bytes.  Each DMK byte is 16 encode_bit
+	 * half-cells.  Overshooting the revolution is harmless since
+	 * the GW terminates the write at the index pulse.
+	 */
 
 	switch (eti->fill) {
 	case 0:
 		/* Fill with a standard gap byte in most recent encoding */
 		if (ismfm(encoding)) {
-			//for (;;) {
-			//	if (mfm_byte(0x4e, -1, ebs, &bit, des) < 0)
-			//		break;
-			//}
+			for (; !ret && datap < eti->fill_len; ++datap)
+				ret = mfm_byte(0x4e, -1, ebs, &bit, des);
 		} else {
-			//for (;;) {
-			//	if (fm_byte(0xff, 0xff, ebs, &bit, des) < 0)
-			//		break;
-			//}
+			for (; !ret && datap < eti->fill_len;
+			     datap += eti->fmtimes)
+				ret = fm_byte(0xff, 0xff, ebs, &bit, des);
 		}
 		break;
+
+		if (!ret)
+			ret = emit_final_pulse(ebs, des);
 
 	case 1:
 		/* Erase remainder of track and write nothing. */
@@ -707,49 +714,55 @@ dmk2pulses(struct dmk_track *dmkt,
 		   Maybe the drive just isn't happy not seeing a transition
 		   for a long time and it ends up manufacturing them from
 		   noise? */
-		encode_bit_flush(ebs);
-		//for (;;) {
-		//	if (catweasel_put_byte(&c, 0x81) < 0)
-		//		break;
-		//}
+		ret = emit_final_pulse(ebs, des);
+
+		if (!ret && eti->fill_len > datap) {
+			/* One long pulse; encoded as a GW no-flux area. */
+			uint32_t erase_ticks = (eti->fill_len - datap) *
+						16.0 * ebs->mult;
+
+			ret = des->encode_pulse(erase_ticks, des->pulse_data);
+		}
 		break;
 
 	case 2:
-		/* Fill with a pattern of very long transitions. */
-		encode_bit_flush(ebs);
-		//for (;;) {
-		//	if (catweasel_put_byte(&c, 0) < 0)
-		//		break;
-		//}
+		/* Fill with a pattern of very long (100us) transitions. */
+		ret = emit_final_pulse(ebs, des);
+
+		uint32_t pticks    = 100e-6 * ebs->freq + 0.5;
+		uint32_t remaining = (eti->fill_len > datap) ?
+			(eti->fill_len - datap) * 16.0 * ebs->mult : 0;
+
+		for (uint32_t t = 0; !ret && t < remaining; t += pticks)
+			ret = des->encode_pulse(pticks, des->pulse_data);
 		break;
 
 	case 3:
 		/* Stop writing, leaving whatever was there before. */
-		encode_bit_flush(ebs);
-		//catweasel_put_byte(&c, 0xff);
+		ret = emit_final_pulse(ebs, des);
 		break;
 
 	default:
 		switch (eti->fill >> 8) {
+		case 2:
+			/* Fill with a specified byte in MFM */
+			for (; !ret && datap < eti->fill_len; ++datap)
+				ret = mfm_byte(eti->fill & 0xff, -1,
+					       ebs, &bit, des);
+			break;
 		case 1:
 		default:
 			/* Fill with a specified byte in FM */
-			//for (;;) {
-			//	if (fm_byte(eti->fill & 0xff, 0xff,
-			//		    ebs, &bit, des) < 0)
-			//		break;
-			//}
-			break;
-		case 2:
-			/* Fill with a specified byte in MFM */
-			//for (;;) {
-			//	if (mfm_byte(eti->fill & 0xff, -1,
-			//	    ebs, &bit, des) < 0)
-			//		break;
-	 		//}
+			for (; !ret && datap < eti->fill_len;
+			     datap += eti->fmtimes)
+				ret = fm_byte(eti->fill & 0xff, 0xff,
+					      ebs, &bit, des);
 			break;
 		}
+
+		if (!ret)
+			ret = emit_final_pulse(ebs, des);
 	}
 
-	return 0;  // XXX Fix
+	return ret;
 }
