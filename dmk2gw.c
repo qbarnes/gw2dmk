@@ -313,6 +313,12 @@ parse_args(int argc,
 
 		case 'h':;
 			const int hd = strtol_strict(optarg, 10, "'h'");
+
+			if (hd < 0 || hd > 4) {
+				msg_error("Option-argument to '%c' must "
+					  "be 0 to 4.\n", opt);
+				goto err_usage;
+			}
 			cmd_set->hd = hd;
 			break;
 
@@ -844,6 +850,18 @@ dmk2gw(struct cmd_settings *cmd_set,
 			struct dmk_track *trkp =  &dmkf->track[t][s];
 			eti.side = s;
 
+			/* -h modes 2 and 3 vary density select by side:
+			 * 2 = low/high, 3 = high/low. */
+			if (cmd_set->hd == 2 || cmd_set->hd == 3) {
+				int densel = ((cmd_set->hd == 2) == (s == 1)) ?
+						DS_HD : DS_DD;
+
+				if (gw_set_pin(cmd_set->fdd.gwfd, 2,
+					       densel) != ACK_OKAY)
+					msg_fatal("Failed to set density "
+						  "select.\n");
+			}
+
 			if (cmd_set->test_mode >= 0 &&
 			    cmd_set->test_mode <= 0xff) {
 				/* When testing, fill with constant value
@@ -969,12 +987,12 @@ main(int argc, char **argv)
 	if (cmd_settings.fdd.drive == -1)
 		gw_detect_drive(&cmd_settings.fdd);
 
-	// XXX How to manage densel in light of -h?
-	// XXX Probably need to do this somewhere else?
+	/* Select the drive with DD density for the RPM test below;
+	 * the -h density selection is applied once the drive kind
+	 * is known. */
 	if (gw_setdrive(cmd_settings.fdd.gwfd, cmd_settings.fdd.drive,
 			DS_DD) != ACK_OKAY) {
 		msg_fatal("Failed to select and start drive.\n");
-		    //(int[]){DS_DD, DS_HD, DS_DD, DS_HD, XX}[cmd_settings.hd];
 	}
 
 	// XXX Write protected drive check here?
@@ -1030,6 +1048,29 @@ main(int argc, char **argv)
 	}
 
 	cmd_settings.fdd.kind = kind;
+
+	/* Resolve the -h density selection now that the kind is known. */
+	switch (cmd_settings.hd) {
+	case 0:
+		cmd_settings.fdd.densel = DS_DD;
+		break;
+	case 1:
+		cmd_settings.fdd.densel = DS_HD;
+		break;
+	case 2:
+	case 3:
+		/* Varies by side; set in dmk2gw(). */
+		cmd_settings.fdd.densel = DS_NOTSET;
+		break;
+	case 4:
+		cmd_settings.fdd.densel = kind2densel(kind);
+		break;
+	}
+
+	if (cmd_settings.fdd.densel != DS_NOTSET &&
+	    gw_set_pin(cmd_settings.fdd.gwfd, 2,
+		       cmd_settings.fdd.densel) != ACK_OKAY)
+		msg_fatal("Failed to set density select.\n");
 
 	if (cmd_settings.fdd.steps == -1)
 		cmd_settings.fdd.steps = 1;
