@@ -13,6 +13,7 @@
 #include "msg_levels.h"
 #include "msg.h"
 #include "gwfddrv.h"
+#include "cmdutil.h"
 #include "gwdetect.h"
 
 
@@ -73,31 +74,6 @@ static struct cmd_settings {
 
 
 static void
-fatal_bad_number(const char *name)
-{
-	msg_fatal("%s requires a numeric argument.\n", name);
-}
-
-
-/*
- * Like strtol, but exit with a fatal error message if there are any
- * invalid characters or the string is empty.
- */
-
-static long int
-strtol_strict(const char *nptr, int base, const char *name)
-{
-	char *endptr;
-
-	long int res = strtol(nptr, &endptr, base);
-	if (*nptr == '\0' || *endptr != '\0')
-		fatal_bad_number(name);
-
-	return res;
-}
-
-
-static void
 usage(const char *pgm_name)
 {
 	msg_fatal("Usage: %s [-G device] [-d drive] "
@@ -136,27 +112,8 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 			break;
 
 		case 'd':
-			if (optarg[0] && optarg[1]) goto d_err;
-
-			const int loarg = tolower(optarg[0]);
-
-			switch(loarg) {
-			case '0':
-			case '1':
-			case '2':
-				cmd_set->fdd.bus = BUS_SHUGART;
-				cmd_set->fdd.drive = loarg - '0';
-				break;
-			case 'a':
-			case 'b':
-				cmd_set->fdd.bus = BUS_IBMPC;
-				cmd_set->fdd.drive = loarg - 'a';
-				break;
-			default: d_err:
-				msg_error("Option-argument to '%c' must "
-					  "be 0, 1, 2, a, or b.\n", opt);
+			if (parse_drive_arg(optarg, opt, &cmd_set->fdd))
 				goto err_usage;
-			}
 			break;
 
 		case 'r':;
@@ -229,52 +186,14 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set)
 
 			break;
 
-		case 'G':;
-#if defined(WIN32) || defined(WIN64)
-			/* If the user specified a 2 digit COM device
-			 * without the '\\\\.\\' prefix, prefix their string
-			 * with it.  Always malloc the string on MSW so we
-			 * always know we can free() if it needed on this OS.
-			 */
-
-			char *ds;
-			if (strncasecmp("COM", optarg, 3) == 0 &&
-			    isdigit(optarg[3]) &&
-			    isdigit(optarg[4]) &&
-			    !optarg[5]) {
-				ds = malloc(4 + 5 + 1);
-				if (ds) {
-					strcpy(ds, "\\\\.\\");
-					strcpy(ds + 4, optarg);
-				}
-			} else {
-				ds = strdup(optarg);
-			}
-			if (!ds)
-				msg_fatal("Cannot allocate device name.\n");
-			cmd_set->fdd.device = ds;
-#else
-			cmd_set->fdd.device = optarg;
-#endif
+		case 'G':
+			if (parse_device_arg(optarg, &cmd_set->fdd))
+				goto err_usage;
 			break;
 
-		case 'T':;
-			unsigned int step_ms, settle_ms;
-			int sfn = sscanf(optarg, "%u,%u", &step_ms, &settle_ms);
-
-			switch (sfn) {
-			case 2:
-				if (settle_ms > 65000) goto err_usage;
-				cmd_set->fdd.settle_ms = settle_ms;
-				/* FALLTHRU */
-			case 1:
-				if (step_ms > 65) goto err_usage;
-				cmd_set->fdd.step_ms = step_ms;
-				break;
-			default:
+		case 'T':
+			if (parse_stepdelay_arg(optarg, &cmd_set->fdd))
 				goto err_usage;
-				break;
-			}
 			break;
 
 		case 'U':
