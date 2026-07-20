@@ -11,10 +11,6 @@
 #define EP_OUT 0x02
 #define EP_IN 0x83
 
-//extern Bytes fluxEngineToGreaseweazle(const Bytes& fldata, nanoseconds_t clock);
-//extern Bytes greaseWeazleToFluxEngine(const Bytes& gwdata, nanoseconds_t clock);
-//extern Bytes stripPartialRotation(const Bytes& fldata);
-
 /* Copied from
  * https://github.com/keirf/Greaseweazle/blob/master/inc/cdc_acm_protocol.h.
  *

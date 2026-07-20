@@ -109,9 +109,6 @@ dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwmedia.o dmk.o dmkx.o secsize.o \
 gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o cmdutil.o gwhist.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
-m2$E: msg.o m2.o gw.o gwx.o
-	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
-
 %.txt: %
 	$(nroff) -man -Tascii $(nroff_txt_flags) $< | col -b | cat -s > $@
 
