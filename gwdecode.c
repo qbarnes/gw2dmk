@@ -81,8 +81,6 @@ dmk_track_sm_init(struct dmk_track_sm *dtsm,
 		.trk_merged       = trk_merged,
 		.trk_merged_stats = trk_merged_stats,
 
-		.idam_p           = dtsm->trk_working.idam_offset,
-		.track_data_p     = dtsm->trk_working.track + DMK_TKHDR_SIZE,
 		.track_hole_p     = NULL,
 
 		.dmk_ignored      = 0,
@@ -93,6 +91,9 @@ dmk_track_sm_init(struct dmk_track_sm *dtsm,
 		.dmk_ignore       = 0,
 		.accum_sectors    = 1
 	};
+
+	dtsm->idam_p       = dtsm->trk_working.idam_offset;
+	dtsm->track_data_p = dtsm->trk_working.track + DMK_TKHDR_SIZE;
 }
 
 
@@ -182,7 +183,7 @@ dmk_data(struct flux2dmk_sm *f2dsm, unsigned char byte, int encoding)
 	if (dtsm->track_data_p - dtsm->trk_working.track > dtsm->header->tracklen - 2) {
 printf("dtsm->track_data_p = %p, dtsm->trk_working.track = %p, dtsm->header->tracklen = %d\n", dtsm->track_data_p, dtsm->trk_working.track, dtsm->header->tracklen);
 exit(0);
-	
+
 		/* No room for more bytes after this one */
 		msg(MSG_HEX, "[DMK track buffer full] ");
 		dtsm->dmk_full = 1;
@@ -285,7 +286,7 @@ dmk_iam(struct flux2dmk_sm *f2dsm, unsigned char byte, int encoding)
 			 */
 
 			int iam_pos = dtsm->dmk_iam_pos;
-	 
+
 			if (encoding == FM &&
 			    !(dtsm->header->options & DMK_SDEN_OPT)) {
 				iam_pos *= 2;
