@@ -467,7 +467,7 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 
 		switch (fdec->accum & 0xfffffffffULL) {
 		case 0x8aa222a88ULL:  /* 0xfc / 0xc7: Quirky index address mark */
-			if ((fdec->quirk & QUIRK_IAM) == 0) break;
+			if ((fdec->quirk & DMK_QUIRK_IAM) == 0) break;
 			/* fall through */
 		case 0x8aa2a2a88ULL:  /* 0xfc / 0xd7: Index address mark */
 		case 0x8aa222aa8ULL:  /* 0xfe / 0xc7: ID address mark */
@@ -535,7 +535,7 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 			/* Quirky pre-address mark, 0xa1a1 with missing clock
 			 * in only the first 0xa1. */
 
-			if ((fdec->quirk & QUIRK_PREMARK) == 0) break;
+			if ((fdec->quirk & DMK_QUIRK_PREMARK) == 0) break;
 			/* fall through */
 
 		case 0x44894489:
@@ -558,7 +558,7 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 			break;
 
 		case 0x55555555:
-			if ((fdec->quirk & QUIRK_EXTRA) == 0 &&
+			if ((fdec->quirk & DMK_QUIRK_EXTRA) == 0 &&
 			    fdec->cur_encoding == MFM &&
 			    fdec->mark_after < 0 &&
 			    fdec->ibyte == -1 &&
@@ -570,7 +570,7 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 				 * heuristic is harmful if the disk format has
 				 * meaningful extra bytes in a gap following
 				 * the data CRC and prior to the write splice,
-				 * so suppress it if QUIRK_EXTRA is set.
+				 * so suppress it if DMK_QUIRK_EXTRA is set.
 				 * We'll still bit-align when the premark
 				 * shows up, and if dmk2gw is used to write
 				 * the disk back later, it will force the
@@ -583,7 +583,7 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 			break;
 
 		case 0x92549254:
-			if ((fdec->quirk & QUIRK_EXTRA) == 0 &&
+			if ((fdec->quirk & DMK_QUIRK_EXTRA) == 0 &&
 			    fdec->mark_after < 0 &&
 			    fdec->ibyte == -1 &&
 			    fdec->dbyte == -1 &&
@@ -591,7 +591,7 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 				/* 4e 4e in gap.  This should probably be
 				 * byte-aligned, so do so by dropping bits.
 				 * This heuristic needs to be suppressed
-				 * by QUIRK_EXTRA too, as the extra bytes
+				 * by DMK_QUIRK_EXTRA too, as the extra bytes
 				 * could theoretically contain valid data
 				 * that looks like 4e 4e when read with
 				 * wrong alignment. */
@@ -726,9 +726,9 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 			dmk_idam(f2dsm, val, fdec->cur_encoding);
 
 			/* For normal MFM, premark a1a1a1 is included in the
-			 * ID CRC.  With QUIRK_ID_CRC, it is omitted. */
+			 * ID CRC.  With DMK_QUIRK_ID_CRC, it is omitted. */
 			fdec->crc = calc_crc1((fdec->cur_encoding == MFM &&
-					(fdec->quirk & QUIRK_ID_CRC) == 0) ?
+					(fdec->quirk & DMK_QUIRK_ID_CRC) == 0) ?
 						0xcdb4 : 0xffff, val);
 			fdec->dbyte = -1;
 			fdec->ebyte = -1;
@@ -766,9 +766,9 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 			}
 
 			/* For MFM, premark a1a1a1 is included in the data CRC.
-			 * With QUIRK_DATA_CRC, it is omitted. */
+			 * With DMK_QUIRK_DATA_CRC, it is omitted. */
 			fdec->crc = calc_crc1((fdec->cur_encoding == MFM &&
-					(fdec->quirk & QUIRK_DATA_CRC) == 0) ?
+					(fdec->quirk & DMK_QUIRK_DATA_CRC) == 0) ?
 						0xcdb4 : 0xffff, val);
 			fdec->ibyte = -1;
 			fdec->dbyte = secsize(fdec->sizecode,
@@ -904,7 +904,7 @@ gwflux_decode_bit(struct flux2dmk_sm *f2dsm, int bit)
 			change_encoding(fdec, FM);
 		}
 
-		if (fdec->quirk & QUIRK_EXTRA_CRC) {
+		if (fdec->quirk & DMK_QUIRK_EXTRA_CRC) {
 			fdec->ebyte = 6;
 			fdec->crc = 0xffff;
 		}
@@ -981,7 +981,7 @@ gwflux_decode_pulse(uint32_t pulse,
 			len = 4;
 		}
 	} else {
-		if ((fdec->quirk & QUIRK_MFM_CLOCK) &&
+		if ((fdec->quirk & DMK_QUIRK_MFM_CLOCK) &&
 			pulse + gme->thresh_adj <= gme->mfmthresh0) {
 			/* Tiny: output 1 */
 			len = 1;

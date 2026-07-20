@@ -660,10 +660,10 @@ dmk2gw(struct cmd_settings *cmd_set,
 
 	int	extra_bytes = 0;
 
-	if (dmkf->header.quirks & QUIRK_EXTRA_CRC) {
+	if (dmkf->header.quirks & DMK_QUIRK_EXTRA_CRC) {
 		extra_bytes = 6;
-	} else if (dmkf->header.quirks & QUIRK_EXTRA) {
-		/* unspecified, use 6 in case really QUIRK_EXTRA_CRC */
+	} else if (dmkf->header.quirks & DMK_QUIRK_EXTRA) {
+		/* unspecified, use 6 in case really DMK_QUIRK_EXTRA_CRC */
 		extra_bytes = 6;
 	}
 

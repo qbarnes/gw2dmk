@@ -38,7 +38,7 @@ secsize(int sizecode, int encoding, int maxsize, unsigned int quirk)
 		break;
 	}
 
-	if (quirk & QUIRK_EXTRA_DATA)
+	if (quirk & DMK_QUIRK_EXTRA_DATA)
 		size += 4;
 
 	return size;

@@ -161,6 +161,7 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 				cmd_set->fdd.device ? cmd_set->fdd.device :
 				cmd_set->device_list[0]);
 	u("  -d drive        Drive unit {a,b,0,1,2} [%c]\n",
+				cmd_set->fdd.drive == -1 ? '?' :
 				cmd_set->fdd.bus == BUS_SHUGART ?
 				cmd_set->fdd.drive + '0' :
 				cmd_set->fdd.drive + 'a');
@@ -454,7 +455,7 @@ parse_args(int argc,
 				cmd_set->fdd.kind = kind;
 			} else {
 				msg_error("Option-argument to '%c' must "
-					  "be 1 or 4.\n", opt);
+					  "be 1 to 4.\n", opt);
 				goto err_usage;
 			}
 			break;
@@ -490,14 +491,14 @@ parse_args(int argc,
 
 		case 'q':;
 			const int quirk = strtol_strict(optarg, 0, "'q'");
-			if (quirk & ~QUIRK_ALL) goto err_usage;
+			if (quirk & ~DMK_QUIRK_ALL) goto err_usage;
 
-			if (((quirk & QUIRK_EXTRA) != 0) +
-			    ((quirk & QUIRK_EXTRA_CRC) != 0) +
-			    ((quirk & QUIRK_EXTRA_DATA) != 0) > 1) {
+			if (((quirk & DMK_QUIRK_EXTRA) != 0) +
+			    ((quirk & DMK_QUIRK_EXTRA_CRC) != 0) +
+			    ((quirk & DMK_QUIRK_EXTRA_DATA) != 0) > 1) {
 				msg_fatal("Quirks %#x, %#x, and %#x "
 				"cannot be used together.\n",
-				QUIRK_EXTRA, QUIRK_EXTRA_CRC, QUIRK_EXTRA_DATA);
+				DMK_QUIRK_EXTRA, DMK_QUIRK_EXTRA_CRC, DMK_QUIRK_EXTRA_DATA);
 			}
 			cmd_set->quirk = quirk;
 			break;
@@ -554,7 +555,7 @@ parse_args(int argc,
 
 			if (maxsize < 0 || maxsize > 255) {
 				msg_error("Option-argument to '%c' must "
-					  "be >= and <= 255.\n", opt);
+					  "be >= 0 and <= 255.\n", opt);
 				goto err_usage;
 			}
 

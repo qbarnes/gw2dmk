@@ -187,7 +187,7 @@ gw_init_gw(struct gw_fddrv *fdd, struct gw_info *gw_info, bool reset)
 		cmd_ret = gw_set_params(gwfd, &gw_delay);
 
 		if (cmd_ret != ACK_OKAY) {
-			msg_error("Failed to get parameters of Greaseweazle "
+			msg_error("Failed to set parameters of Greaseweazle "
 				  "(%d).\n", cmd_ret);
 			return GW_DEVT_INVALID;
 		}

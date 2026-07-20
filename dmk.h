@@ -72,17 +72,16 @@ extern "C" {
 #define DMK_EXTRA_FLAG	0x4000  /* unused */
 #define DMK_IDAMP_BITS	0x3fff
 
-// XXX Should these get a DMK_ prefix?
 /* Bit assignments in quirks byte */
-#define QUIRK_ID_CRC		0x01
-#define QUIRK_DATA_CRC		0x02
-#define QUIRK_PREMARK		0x04
-#define QUIRK_EXTRA		0x08
-#define QUIRK_EXTRA_CRC		0x10
-#define QUIRK_EXTRA_DATA	0x20
-#define QUIRK_IAM		0x40
-#define QUIRK_MFM_CLOCK		0x80
-#define QUIRK_ALL		0xff
+#define DMK_QUIRK_ID_CRC	0x01
+#define DMK_QUIRK_DATA_CRC	0x02
+#define DMK_QUIRK_PREMARK	0x04
+#define DMK_QUIRK_EXTRA		0x08
+#define DMK_QUIRK_EXTRA_CRC	0x10
+#define DMK_QUIRK_EXTRA_DATA	0x20
+#define DMK_QUIRK_IAM		0x40
+#define DMK_QUIRK_MFM_CLOCK	0x80
+#define DMK_QUIRK_ALL		0xff
 
 
 enum dmk_encoding_mode {
@@ -165,7 +164,7 @@ extern bool dmk_header_fread(struct dmk_header *dmkh, FILE *fp);
 
 extern bool dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp);
 
-extern long dwk_track_file_offset(struct dmk_header *dmkh, int track, int side);
+extern long dmk_track_file_offset(struct dmk_header *dmkh, int track, int side);
 
 int dmk_track_fseek(struct dmk_header *dmkh, int track, int side, FILE *fp);
 

@@ -92,7 +92,7 @@ dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp)
 
 
 long
-dwk_track_file_offset(struct dmk_header *dmkh, int track, int side)
+dmk_track_file_offset(struct dmk_header *dmkh, int track, int side)
 {
 	return DMK_HDR_SIZE +
 		((track * (2 - !!(dmkh->options & DMK_SSIDE_OPT))) + side) *
@@ -105,7 +105,7 @@ dmk_track_fseek(struct dmk_header *dmkh,
 		int track, int side,
 		FILE *fp)
 {
-	return fseek(fp, dwk_track_file_offset(dmkh, track, side), SEEK_SET);
+	return fseek(fp, dmk_track_file_offset(dmkh, track, side), SEEK_SET);
 }
 
 
