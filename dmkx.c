@@ -107,7 +107,7 @@ struct rx02_bitpair {
 };
 
 
-void
+static void
 rx02_bitpair_init(struct rx02_bitpair *rx02bp)
 {
 	*rx02bp = (struct rx02_bitpair){
@@ -118,15 +118,29 @@ rx02_bitpair_init(struct rx02_bitpair *rx02bp)
 
 
 /*
+ * Encode one bit and emit its pulse, if any, to the encode callback.
+ */
+
+static int
+rx02_bit(struct encode_bit *ebs, bool bit, struct dmk_encode_s *des)
+{
+	return des->encode_pulse(encode_bit(ebs, bit), des->pulse_data);
+}
+
+
+/*
  * RX02 encoding requires some buffering
  * to encode data sequence 011110 specially.
  */
 
-void
+static int
 rx02_bitpair(struct rx02_bitpair *rx02bp,
 	     bool bit,
-	     struct encode_bit *ebs)
+	     struct encode_bit *ebs,
+	     struct dmk_encode_s *des)
 {
+	int	ret = 0;
+
 	rx02bp->accum = (rx02bp->accum << 1) | bit;
 	rx02bp->bitcnt++;
 
@@ -144,39 +158,54 @@ rx02_bitpair(struct rx02_bitpair *rx02bp,
 			 * last CRC byte of each sector, so the case
 			 * of ending with 01111 does not arise. */
 
-			encode_bit(ebs, 1);
-			encode_bit(ebs, 0);
-			encode_bit(ebs, 0);
-			encode_bit(ebs, 0);
-			encode_bit(ebs, 1);
-			encode_bit(ebs, 0);
-			encode_bit(ebs, 0);
-			encode_bit(ebs, 0);
-			encode_bit(ebs, 1);
-			encode_bit(ebs, 0);
+			static const bool seq[10] =
+				{ 1, 0, 0, 0, 1, 0, 0, 0, 1, 0 };
+
+			for (int i = 0; !ret && i < 10; ++i)
+				ret = rx02_bit(ebs, seq[i], des);
+
 			rx02bp->bitcnt = 0;
 		} else {
 			/* clock bit */
-			encode_bit(ebs, (rx02bp->accum & (3 << 4)) == 0);
+			ret = rx02_bit(ebs,
+				       (rx02bp->accum & (3 << 4)) == 0, des);
 			/* data bit */
-			encode_bit(ebs, (rx02bp->accum & (1 << 4)) != 0);
+			if (!ret) {
+				ret = rx02_bit(ebs,
+					       (rx02bp->accum & (1 << 4)) != 0,
+					       des);
+			}
 			--rx02bp->bitcnt;
 		}
 	}
+
+	return ret;
 }
 
 
-void
+static int
 rx02_bitpair_flush(struct rx02_bitpair *rx02bp,
-		   struct encode_bit *ebs)
+		   struct encode_bit *ebs,
+		   struct dmk_encode_s *des)
 {
-	while (rx02bp->bitcnt > 0) {
+	int	ret = 0;
+
+	while (!ret && rx02bp->bitcnt > 0) {
 		--rx02bp->bitcnt;
 		/* clock bit */
-		encode_bit(ebs, (rx02bp->accum & (3 << rx02bp->bitcnt)) == 0);
+		ret = rx02_bit(ebs,
+			       (rx02bp->accum & (3 << rx02bp->bitcnt)) == 0,
+			       des);
 		/* data bit */
-		encode_bit(ebs, (rx02bp->accum & (1 << rx02bp->bitcnt)) != 0);
+		if (!ret) {
+			ret = rx02_bit(ebs,
+				       (rx02bp->accum &
+					(1 << rx02bp->bitcnt)) != 0,
+				       des);
+		}
 	}
+
+	return ret;
 }
 
 
@@ -626,15 +655,16 @@ dmk2pulses(struct dmk_track *dmkt,
 			if (enc(dmk_encoding[datap - 1]) != RX02)
 				rx02_bitpair_init(&rx02bp);
 
-			for (int i = 0; i < 8; i++) {
+			for (int i = 0; !ret && i < 8; i++) {
 				bit = (byte & 0x80) != 0;
-				rx02_bitpair(&rx02bp, bit, ebs);
+				ret = rx02_bitpair(&rx02bp, bit, ebs, des);
 				byte <<= 1;
 			}
 
-			if (datap + 1 >= eti->track_len ||
-			    enc(dmk_encoding[datap + 1]) != RX02)
-				rx02_bitpair_flush(&rx02bp, ebs);
+			if (!ret &&
+			    (datap + 1 >= eti->track_len ||
+			     enc(dmk_encoding[datap + 1]) != RX02))
+				ret = rx02_bitpair_flush(&rx02bp, ebs, des);
 
 			break;
 		}
@@ -645,7 +675,10 @@ dmk2pulses(struct dmk_track *dmkt,
 		}
 	}
 
-	rx02_bitpair_flush(&rx02bp, ebs);
+	ret = rx02_bitpair_flush(&rx02bp, ebs, des);
+
+	if (ret)
+		return ret;
 
 	/* In case the DMK buffer is shorter than the physical track,
 	   fill the rest of the Catweasel's memory with a fill
