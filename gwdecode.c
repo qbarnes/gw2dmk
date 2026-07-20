@@ -49,7 +49,6 @@ fdecoder_init(struct fdecoder *fdec,
 		.flippy = 0,
 
 		.use_hole = true,
-		.quirk = 0x00,
 
 		.curcyl = 0,
 		.cyl_seen = -1,
