@@ -6,8 +6,6 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <ctype.h>
-#include <regex.h>
-#include <limits.h>
 #include <signal.h>
 
 #include "greaseweazle.h"
@@ -23,6 +21,7 @@
 #include "gwdecode.h"
 #include "dmk.h"
 #include "dmkmerge.h"
+#include "parsetracks.h"
 
 #if defined(WIN64) || defined(WIN32)
 #include <windows.h>
@@ -353,136 +352,6 @@ menu(int failing, int retries[GW_MAX_TRACKS][2])
 		}
 
 	} while (1);
-}
-
-
-/*
- * Parse a list of track ranges.
- *
- * Returns:
- *   0 - Success
- *   1 - regcomp failure (internal error)
- *   2 - Parse list failure (internal error)
- *   3 - Track or side parameter out of range (user error)
- */
-
-static int
-parse_tracks(const char *ss, int opt_matrix[GW_MAX_TRACKS][2])
-{
-	int err = 0;
-	regex_t regex;
-	static const char re[] =
-	    "^([0-9]+)" "(:[0-9]+((/[01])?(-([0-9]+(/[01])?)?)?)?)?" "(,|$)";
-
-	if (regcomp(&regex, re, REG_EXTENDED | REG_NEWLINE))
-		return 1;
-
-	while (!err && *ss != '\0') {
-		regmatch_t pmatch[9];
-
-		if (regexec(&regex, ss, COUNT_OF(pmatch), pmatch, 0)) {
-			err = 1;
-			break;
-		}
-
-		int range_value    = -1;
-		int range_track[2] = { -1, -1 };
-		int range_side[2]  = { -1, -1 };
-		int range_hyphen   = 0;
-
-		regoff_t old_soff = INT_MAX;
-
-		for (int i = 1; i < COUNT_OF(pmatch); ++i) {
-			regoff_t soff = pmatch[i].rm_so;
-			regoff_t eoff = pmatch[i].rm_eo;
-			const char *p = ss + soff;
-			char *eip;
-
-			if (soff == -1)
-				break;
-
-			/*
-			 * Skip if its a null entry or if it's an
-			 * entry that's a repeat.
-			 */
-
-			if (soff == eoff || soff == old_soff)
-				continue;
-
-			if (range_value == -1) {
-				range_value = strtol(p, &eip, 0);
-			} else if (range_track[0] == -1 && p[0] == ':') {
-				range_track[0] = strtol(&p[1], &eip, 0);
-			} else if (range_side[0] == -1 && p[0] == '/') {
-				range_side[0] = strtol(&p[1], &eip, 0);
-			} else if (p[0] == '-') {
-				range_hyphen = 1;
-			} else if (range_track[1] == -1) {
-				range_track[1] = strtol(&p[0], &eip, 0);
-			} else if (range_side[1] == -1 && p[0] == '/') {
-				range_side[1] = strtol(&p[1], &eip, 0);
-			} else if (p[0] == ',') {
-				break;
-			} else {
-				err = 2;
-				break;
-			}
-
-			old_soff = soff;
-		}
-
-		if (err)
-			break;
-
-		if (range_track[0] == -1) {
-			range_track[0] = 0;
-			range_side[0]  = 0;
-			range_track[1] = GW_MAX_TRACKS - 1;
-			range_side[1]  = 1;
-		} else {
-			if (range_side[0] == -1)
-				range_side[0] = 0;
-
-			if (range_track[1] == -1)
-				range_track[1] =
-				    range_hyphen ? GW_MAX_TRACKS -
-				    1 : range_track[0];
-
-			if (range_side[1] == -1)
-				range_side[1] =
-				    range_hyphen ? 1 : range_side[0];
-		}
-
-		/* Bounds check track and side values from user. */
-
-		if (range_track[0] < 0 || range_track[0] >= GW_MAX_TRACKS ||
-		    range_track[1] < 0 || range_track[1] >= GW_MAX_TRACKS ||
-		    range_side[0]  < 0 || range_side[0]  > 1 ||
-		    range_side[1]  < 0 || range_side[1]  > 1) {
-			err = 3;
-			break;
-		}
-
-		/* Ensure tracks and sides are in order. */
-
-		if (range_track[1] < range_track[0] ||
-		    (range_track[1] == range_track[0] &&
-		     range_side[1] < range_side[0])) {
-			err = 3;
-			break;
-		}
-
-		/* Set the opt_matrix for the range given. */
-
-		for (int tm = range_track[0] * 2 + range_side[0];
-		     tm <= range_track[1] * 2 + range_side[1]; ++tm) {
-			opt_matrix[tm / 2][tm % 2] = range_value;
-		}
-
-		ss += pmatch[0].rm_eo;
-	}
-
-	return err;
 }
 
 

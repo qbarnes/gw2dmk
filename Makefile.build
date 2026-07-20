@@ -5,7 +5,7 @@ CPPFLAGS =
 CFLAGS   = -O -g -Wall -Werror -Wfatal-errors
 LDLIBS  += -lm
 ifdef E
-LDLIBS  += -static -lregex
+LDLIBS  += -static
 endif
 
 nroff ?= nroff
@@ -31,7 +31,7 @@ vpath %		$(top_dir)
 
 obj_targets	= cmdutil.o crc.o dmk2gw.o dmkmerge.o dmk.o dmkx.o gw2dmk.o \
 		  gwdecode.o gwdetect.o gwhist.o gwhisto.o gwmedia.o \
-		  gw.o gwx.o msg.o secsize.o
+		  gw.o gwx.o msg.o parsetracks.o secsize.o
 
 bins		= gw2dmk dmk2gw gwhist
 bin_targets	= $(foreach b,$(bins), $b$E)
@@ -60,6 +60,9 @@ msg.o: msg.c msg.h
 
 cmdutil.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwfddrv.h \
 	   cmdutil.h cmdutil.c
+
+parsetracks.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h \
+	   parsetracks.h parsetracks.c
 
 gw.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gw.c
 
@@ -90,13 +93,13 @@ dmkx.o: dmk.h msg.h msg_levels.h misc.h dmkx.c
 secsize.o: dmk.h misc.h secsize.c
 
 gw2dmk.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
-		gw2dmkcmdset.h gwhisto.h dmk.h cmdutil.h gw2dmk.c
+		gw2dmkcmdset.h gwhisto.h dmk.h cmdutil.h parsetracks.h gw2dmk.c
 
 dmk2gw.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
 		dmk2gwcmdset.h gwhisto.h dmk.h cmdutil.h dmk2gw.c
 
 gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwdecode.o gwmedia.o dmk.o \
-	dmkmerge.o secsize.o cmdutil.o gw2dmk.o crc.o
+	dmkmerge.o secsize.o cmdutil.o parsetracks.o gw2dmk.o crc.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwmedia.o dmk.o dmkx.o secsize.o \

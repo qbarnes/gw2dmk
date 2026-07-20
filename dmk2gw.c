@@ -6,8 +6,6 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <ctype.h>
-#include <regex.h>
-#include <limits.h>
 #include <signal.h>
 
 #include "greaseweazle.h"

@@ -15,7 +15,7 @@ oci_LINUX_X86_64  = $(oci_base)/ubuntu-20.04-crossbuild-aarch64:$(oci_tag)
 oci_LINUX_AARCH64 = $(oci_base)/ubuntu-20.04-crossbuild-aarch64:$(oci_tag)
 oci_LINUX_ARMV7L  = $(oci_base)/ubuntu-20.04-crossbuild-armv7l:$(oci_tag)
 oci_MSDOS         = $(oci_base)/ubuntu-22.04-crossbuild-msdos:$(oci_tag)
-oci_mswindows     = $(oci_base)/fedora-40-crossbuild-mswindows_regex:$(oci_tag)
+oci_mswindows     = $(oci_base)/ubuntu-22.04-crossbuild-mswindows:$(oci_tag)
 oci_MSWIN32       = $(oci_mswindows)
 oci_MSWIN64       = $(oci_mswindows)
 
