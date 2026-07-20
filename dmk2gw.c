@@ -698,8 +698,15 @@ write_track(struct cmd_settings *cmd_set,
 				eti->track, eti->side);
 
 		FILE *gwfp = fopen(fns, "wb");
-		fwrite(tes.tbuf, tes.tbuf_cnt, 1, gwfp);
-		fclose(gwfp);
+
+		if (!gwfp) {
+			msg_error("Failed to create debug file '%s': %s\n",
+				  fns, strerror(errno));
+		} else if (fwrite(tes.tbuf, tes.tbuf_cnt, 1, gwfp) != 1 ||
+			   fclose(gwfp) == EOF) {
+			msg_error("Failed to write debug file '%s': %s\n",
+				  fns, strerror(errno));
+		}
 	}
 
 	/*
