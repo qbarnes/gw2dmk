@@ -385,7 +385,10 @@ menu(int failing, int retries[GW_MAX_TRACKS][2])
 
 				/* Discard unparsable input so it isn't
 				 * rescanned forever. */
-				scanf("%*[^\n]");
+				if (scanf("%*[^\n]") == EOF) {
+					printf("\n");
+					return MENU_QUIT;
+				}
 				printf("Invalid number.\n");
 
 			} while (1);

@@ -12,12 +12,20 @@ extern "C" {
 
 
 #ifdef __GNUC__
+
+#ifndef __MINGW_PRINTF_FORMAT
+#define __MINGW_PRINTF_FORMAT printf
+#endif
 #define MSG_PRINTF(fmt_idx, arg_idx) \
-			__attribute__((format(printf, fmt_idx, arg_idx)))
+			__attribute__((format(__MINGW_PRINTF_FORMAT, \
+							fmt_idx, arg_idx)))
 #define MSG_NORETURN	__attribute__((noreturn))
+
 #else
+
 #define MSG_PRINTF(fmt_idx, arg_idx)
 #define MSG_NORETURN
+
 #endif
 
 
