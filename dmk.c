@@ -32,16 +32,14 @@ dmk_header_init(struct dmk_header *dmkh,
 
 /*
  * Returns 1 when header read correctly, 0 on failure.
+ *
+ * The caller is responsible for positioning the stream at the header.
  */
 
 bool
 dmk_header_fread(struct dmk_header *dmkh, FILE *fp)
 {
 	size_t	frsz = 0;
-
-	// XXX Probably should not seek here.
-	if (fseek(fp, 0, SEEK_SET) == -1)
-		return false;
 
 	frsz += fread(&dmkh->writeprot, sizeof(dmkh->writeprot), 1, fp);
 	frsz += fread(&dmkh->ntracks, sizeof(dmkh->ntracks), 1, fp);
@@ -66,16 +64,14 @@ dmk_header_fread(struct dmk_header *dmkh, FILE *fp)
 
 /*
  * Returns 1 when header written correctly, 0 on failure.
+ *
+ * The caller is responsible for positioning the stream at the header.
  */
 
 bool
 dmk_header_fwrite(const struct dmk_header *dmkh, FILE *fp)
 {
 	size_t	fwsz = 0;
-
-	// XXX Probably should not seek here.
-	if (fseek(fp, 0, SEEK_SET) == -1)
-		return false;
 
 	fwsz += fwrite(&dmkh->writeprot, sizeof(dmkh->writeprot), 1, fp);
 	fwsz += fwrite(&dmkh->ntracks, sizeof(dmkh->ntracks), 1, fp);
@@ -268,7 +264,6 @@ dmk_track_length_optimal(const struct dmk_file *dmkf)
 int
 fp2dmk(FILE *fp, struct dmk_file *dmkf)
 {
-	// XXX Do the seek here?
 	if (fseek(fp, 0, SEEK_SET) == -1)
 		return -1;
 
@@ -307,7 +302,6 @@ fp2dmk(FILE *fp, struct dmk_file *dmkf)
 int
 dmk2fp(struct dmk_file *dmkf, FILE *fp)
 {
-	// XXX Do the seek here?
 	if (fseek(fp, 0, SEEK_SET) == -1)
 		return -1;
 
