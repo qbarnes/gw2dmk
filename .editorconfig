@@ -14,9 +14,6 @@ max_line_length = 80
 [{Makefile,Makefile.*,*.mk}]
 indent_style = tab
 indent_size = 8
-# defines.mk uses trailing spaces inside "define nl" to construct newline
-# sequences for use in foreach calls; don't trim them.
-trim_trailing_whitespace = false
 
 [*.{1..8}]
 indent_style = tab
