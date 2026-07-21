@@ -577,18 +577,8 @@ parse_args(int argc,
 			break;
 
 		case 'B':
-			if (!strcasecmp(optarg, "i") ||
-			    !strcasecmp(optarg, "ibm")) {
-				opt_bus = BUS_IBMPC;
-			} else if (!strcasecmp(optarg, "s") ||
-				   !strcasecmp(optarg, "shugart")) {
-				opt_bus = BUS_SHUGART;
-			} else {
-				msg_error("Option-argument to '%c' must be "
-					  "'i', 'ibm', 's', or 'shugart'.\n",
-					  opt);
+			if (parse_bustype_arg(optarg, opt, &opt_bus))
 				goto err_usage;
-			}
 			break;
 
 		case 'G':

@@ -32,6 +32,8 @@ extern int u(const char *fmt, ...) MSG_PRINTF(1, 2);
 
 extern int parse_drive_arg(const char *arg, int opt, struct gw_fddrv *fdd);
 
+extern int parse_bustype_arg(const char *arg, int opt, int *bus);
+
 extern int parse_device_arg(const char *arg, struct gw_fddrv *fdd);
 
 extern int parse_stepdelay_arg(const char *arg, struct gw_fddrv *fdd);

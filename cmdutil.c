@@ -91,6 +91,29 @@ parse_drive_arg(const char *arg, int opt, struct gw_fddrv *fdd)
 
 
 /*
+ * Parse a -B bustype argument, case-insensitive 'i'/'ibm' selecting
+ * BUS_IBMPC or 's'/'shugart' selecting BUS_SHUGART, storing the result
+ * in *bus.
+ */
+
+int
+parse_bustype_arg(const char *arg, int opt, int *bus)
+{
+	if (!strcasecmp(arg, "i") || !strcasecmp(arg, "ibm")) {
+		*bus = BUS_IBMPC;
+	} else if (!strcasecmp(arg, "s") || !strcasecmp(arg, "shugart")) {
+		*bus = BUS_SHUGART;
+	} else {
+		msg_error("Option-argument to '%c' must be "
+			  "'i', 'ibm', 's', or 'shugart'.\n", opt);
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/*
  * Parse a -G device argument.
  */
 
