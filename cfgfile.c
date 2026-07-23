@@ -181,10 +181,34 @@ is_config_opt(const char *arg, const char **valp)
 }
 
 
+/*
+ * Match the "--noconfig" option, including the unambiguous
+ * abbreviations getopt_long() accepts.  It takes no value.
+ */
+
+static bool
+is_noconfig_opt(const char *arg)
+{
+	if (arg[0] != '-' || arg[1] != '-' || !arg[2])
+		return false;
+
+	const char	*p = arg + 2;
+	size_t		n = strlen(p);
+
+	if (n == 0 || n > strlen("noconfig") || strncmp(p, "noconfig", n))
+		return false;
+
+	return true;
+}
+
+
 const char *
-cfg_scan_argv(int argc, char **argv)
+cfg_scan_argv(int argc, char **argv, bool *noconfig)
 {
 	const char	*path = NULL;
+	bool		seen_config = false;
+
+	*noconfig = false;
 
 	for (int i = 1; i < argc; ++i) {
 		const char	*val;
@@ -192,8 +216,20 @@ cfg_scan_argv(int argc, char **argv)
 		if (!strcmp(argv[i], "--"))
 			break;
 
+		if (is_noconfig_opt(argv[i])) {
+			*noconfig = true;
+			continue;
+		}
+
 		if (!is_config_opt(argv[i], &val))
 			continue;
+
+		if (seen_config)
+			msg_fatal("Option '-C' ('--config') given more than "
+				  "once.  Only one config file may be "
+				  "specified.\n");
+
+		seen_config = true;
 
 		if (val) {
 			path = val;
@@ -205,6 +241,10 @@ cfg_scan_argv(int argc, char **argv)
 			path = argv[++i];
 		}
 	}
+
+	if (seen_config && *noconfig)
+		msg_fatal("Options '-C' ('--config') and '--noconfig' are "
+			  "mutually exclusive.\n");
 
 	return path;
 }

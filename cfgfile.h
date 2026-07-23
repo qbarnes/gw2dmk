@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <getopt.h>
+#include <stdbool.h>
 
 /*
  * Startup configuration file support.
@@ -19,12 +20,15 @@ extern "C" {
  */
 
 /*
- * Scan argv for "--config FILE" or "--config=FILE" ahead of
- * getopt_long() (the file must be loaded before normal parsing
- * begins).  Returns the file path, or NULL if not given.  A missing
- * file argument is fatal.
+ * Scan argv for the config-file options ahead of getopt_long() (the
+ * file must be loaded before normal parsing begins).  Recognizes
+ * "-C FILE", "-CFILE", "--config FILE", "--config=FILE", and
+ * "--noconfig".  Returns the "-C"/"--config" file path, or NULL if
+ * not given, and sets *noconfig to true if "--noconfig" was given.
+ * A missing file argument, a repeated "-C", or combining "-C" with
+ * "--noconfig" is fatal.
  */
-extern const char *cfg_scan_argv(int argc, char **argv);
+extern const char *cfg_scan_argv(int argc, char **argv, bool *noconfig);
 
 /*
  * Return the malloc'd default config file path if such a file

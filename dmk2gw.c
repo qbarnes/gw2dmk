@@ -50,6 +50,7 @@ static const struct option cmd_long_args[] = {
 	{ "gwlogfile",	required_argument, NULL, 'U' },
 	{ "serial",	required_argument, NULL, 'Z' },
 	/* Start of binary long options without single letter counterparts. */
+	{ "noconfig",	no_argument, NULL, 0 },
 	{ "dither",	no_argument, NULL, 0 },
 	{ "nodither",	no_argument, NULL, 0 },
 	{ "gwdebug",	no_argument, NULL, 0 },
@@ -220,7 +221,9 @@ parse_args(int argc,
 		case 0:;
 			const char *name = cmd_long_args[lindex].name;
 
-			if (!strcmp(name, "dither")) {
+			if (!strcmp(name, "noconfig")) {
+				/* Handled by cfg_scan_argv(). */
+			} else if (!strcmp(name, "dither")) {
 				cmd_set->dither = true;
 			} else if (!strcmp(name, "nodither")) {
 				cmd_set->dither = false;
@@ -873,18 +876,22 @@ main(int argc, char **argv)
 	if (atexit(cleanup))
 		msg_fatal("Can't establish atexit() call.\n");
 
-	const char *cfgpath = cfg_scan_argv(argc, argv);
+	bool		noconfig = false;
+	const char	*cfgpath = cfg_scan_argv(argc, argv, &noconfig);
 
-	if (!cfgpath)
-		cfgpath = cfg_default_path();
+	if (!noconfig) {
+		if (!cfgpath)
+			cfgpath = cfg_default_path();
 
-	if (cfgpath) {
-		char	**cargv;
-		int	cargc = cfg_load_argv(cfgpath, "dmk2gw",
-					      cmd_long_args, &cargv);
+		if (cfgpath) {
+			char	**cargv;
+			int	cargc = cfg_load_argv(cfgpath, "dmk2gw",
+						      cmd_long_args, &cargv);
 
-		if (cargc > 1)
-			parse_args(cargc, cargv, pgm, &cmd_settings, cfgpath);
+			if (cargc > 1)
+				parse_args(cargc, cargv, pgm, &cmd_settings,
+					   cfgpath);
+		}
 	}
 
 	parse_args(argc, argv, pgm, &cmd_settings, NULL);

@@ -32,6 +32,7 @@ static const struct option cmd_long_args[] = {
 	{ "gwlogfile",	 required_argument, NULL, 'U' },
 	{ "serial",	 required_argument, NULL, 'Z' },
 	/* Start of binary long options without single letter counterparts. */
+	{ "noconfig",	 no_argument, NULL, 0 },
 	{ "hd",		 no_argument, NULL, 0 },
 	{ "dd",		 no_argument, NULL, 0 },
 	{ "reset",	 no_argument, NULL, 0 },
@@ -117,7 +118,9 @@ parse_args(int argc, char **argv, struct cmd_settings *cmd_set,
 		case 0:;
 			const char *name = cmd_long_args[lindex].name;
 
-			if (!strcmp(name, "hd")) {
+			if (!strcmp(name, "noconfig")) {
+				/* Handled by cfg_scan_argv(). */
+			} else if (!strcmp(name, "hd")) {
 				cmd_set->fdd.densel = DS_HD;
 			} else if (!strcmp(name, "dd")) {
 				cmd_set->fdd.densel = DS_DD;
@@ -305,18 +308,21 @@ main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	const char *cfgpath = cfg_scan_argv(argc, argv);
+	bool		noconfig = false;
+	const char	*cfgpath = cfg_scan_argv(argc, argv, &noconfig);
 
-	if (!cfgpath)
-		cfgpath = cfg_default_path();
+	if (!noconfig) {
+		if (!cfgpath)
+			cfgpath = cfg_default_path();
 
-	if (cfgpath) {
-		char	**cargv;
-		int	cargc = cfg_load_argv(cfgpath, "gwhist",
-					      cmd_long_args, &cargv);
+		if (cfgpath) {
+			char	**cargv;
+			int	cargc = cfg_load_argv(cfgpath, "gwhist",
+						      cmd_long_args, &cargv);
 
-		if (cargc > 1)
-			parse_args(cargc, cargv, &cmd_settings, cfgpath);
+			if (cargc > 1)
+				parse_args(cargc, cargv, &cmd_settings, cfgpath);
+		}
 	}
 
 	parse_args(argc, argv, &cmd_settings, NULL);

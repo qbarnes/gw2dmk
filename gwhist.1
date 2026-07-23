@@ -128,15 +128,23 @@ communication with the Greaseweazle.
 .B \-C|\-\-config \fIfilename\fP
 Read start-up settings from the configuration file \fIfilename\fP
 instead of from the default location.  Unlike the default
-configuration file, \fIfilename\fP must exist.  See the
-\fBCONFIGURATION FILE\fP section.
+configuration file, \fIfilename\fP must exist.  Giving \fB\-C\fP
+more than once is an error.  See the \fBCONFIGURATION FILE\fP
+section.
+.TP
+.B \-\-noconfig
+Do not read any configuration file, neither the default one nor a
+file named with \fB\-C\%\fP.  Combining \fB\-\-noconfig\fP with
+\fB\-C\fP is an error.  Use this to ignore a default configuration
+file for a single run, for example when testing.
 .SH CONFIGURATION FILE
 On start up, \fBgwhist\fP reads default settings from a
 configuration file shared with \fBgw2dmk\fP and \fBdmk2gw\fP.
 Settings from the file are applied first, so options given on the
 command line override them.
 
-Unless \fB\-\-config\fP is given, the file is looked for at:
+Unless \fB\-\-config\fP is given (or \fB\-\-noconfig\fP is
+used to suppress it), the file is looked for at:
 .IP \(bu 3
 On Linux and other Unix-like systems,
 \fB$XDG_CONFIG_HOME/gw2dmk/gw2dmk.ini\%\fP if \fBXDG_CONFIG_HOME\fP

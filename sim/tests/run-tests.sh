@@ -174,6 +174,27 @@ timeout 120 "$bld/gw2dmk" -C"$tmp/alt.ini" --force \
 	{ cat "$tmp/gw2dmkC.log"; fail "gw2dmk with -C"; }
 "$bld/mkdmk" -c "$tmp/golden.dmk" "$tmp/outC.dmk" || \
 	fail "-C sector compare"
+# --noconfig ignores the default-location config entirely: the config's
+# device and tracks=5 are dropped, so both must be given explicitly.
+timeout 120 "$bld/gw2dmk" --noconfig -G "$tmp/pty" -t 40 --force \
+	"$tmp/outnc.dmk" > "$tmp/gw2dmknc.log" 2>&1 || \
+	{ cat "$tmp/gw2dmknc.log"; fail "gw2dmk with --noconfig"; }
+"$bld/mkdmk" -c "$tmp/golden.dmk" "$tmp/outnc.dmk" || \
+	fail "--noconfig sector compare"
+# Repeating -C is fatal (reserves future series-reading semantics).
+if timeout 60 "$bld/gw2dmk" -C "$tmp/alt.ini" -C "$tmp/alt.ini" \
+	--force "$tmp/outdup.dmk" > "$tmp/gw2dmkdup.log" 2>&1; then
+	fail "repeated -C not rejected"
+fi
+grep -q "given more than once" "$tmp/gw2dmkdup.log" || \
+	fail "repeated -C error message"
+# -C combined with --noconfig is fatal.
+if timeout 60 "$bld/gw2dmk" -C "$tmp/alt.ini" --noconfig \
+	--force "$tmp/outx.dmk" > "$tmp/gw2dmkx.log" 2>&1; then
+	fail "-C with --noconfig not rejected"
+fi
+grep -q "mutually exclusive" "$tmp/gw2dmkx.log" || \
+	fail "-C/--noconfig error message"
 # A misspelled setting must be fatal.
 printf '[gw2dmk]\nmaxretires = 10\n' > "$tmp/bad.ini"
 if timeout 60 "$bld/gw2dmk" --config "$tmp/bad.ini" -t 5 --force \
