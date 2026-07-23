@@ -25,9 +25,9 @@ endif
 src_dir		?= $(top_dir)
 inc_dir		?= $(top_dir)
 
-vpath %.c	$(src_dir) $(src_dir)/sim $(src_dir)/sim/tests
+vpath %.c	$(src_dir) $(src_dir)/tests $(src_dir)/sim $(src_dir)/sim/tests
 vpath %.sh	$(src_dir)/sim/tests
-vpath %.h	$(inc_dir) $(inc_dir)/sim
+vpath %.h	$(inc_dir) $(inc_dir)/tests $(inc_dir)/sim
 vpath %.1	$(src_dir)/sim
 vpath %		$(top_dir)
 
@@ -51,6 +51,12 @@ endif
 
 test_bins	= mkdmk run-tests
 
+# Standalone unit tests for the hardware-independent code, run by
+# "make check".  Each links only the objects it exercises.
+check_bins	= test_crc test_secsize test_dmk test_gwx test_gwmedia \
+		  test_gwhisto test_gwdecode test_dmkmerge test_parsetracks
+check_objs	= $(addsuffix .o,$(check_bins))
+
 
 # Deliverables
 basebins	= gw2dmk dmk2gw gwhist
@@ -63,7 +69,8 @@ tar_files	= $(deliverables) $(tar_extras)
 
 
 clean_files	= $(bins) $(mans) $(sim_bins) $(test_bins) \
-		  $(bin_objs) $(sim_objs) $(test_objs)
+		  $(bin_objs) $(sim_objs) $(test_objs) \
+		  $(check_bins) $(check_objs)
 
 
 all: bins mans sim tests
@@ -75,6 +82,15 @@ mans: $(mans)
 sim: $(sim_bins) $(sim_mans) $(test_bins)
 
 tests: $(test_bins)
+
+check: $(check_bins)
+	@rc=0; \
+	for t in $(check_bins); do \
+		./$$t || rc=1; \
+	done; \
+	[ $$rc -eq 0 ] && echo 'All unit tests passed.' || \
+		echo 'UNIT TESTS FAILED.'; \
+	exit $$rc
 
 release: $(TARBALLGZ)
 
@@ -188,6 +204,56 @@ mkdmk.o: dmk.h crc.h misc.h mkdmk.c
 mkdmk: mkdmk.o dmk.o crc.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
+# Unit tests: sources live in tests/ but include the code under test
+# from the repository root, so they need -I to find those headers.
+$(check_objs): CFLAGS += -I'$(inc_dir)'
+
+test_crc.o: crc.h test.h test_crc.c
+
+test_secsize.o: secsize.h dmk.h misc.h test.h test_secsize.c
+
+test_dmk.o: dmk.h misc.h test.h test_dmk.c
+
+test_gwx.o: misc.h greaseweazle.h gw.h gwx.h test.h test_gwx.c
+
+test_gwmedia.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
+		gwhisto.h gwmedia.h test.h test_gwmedia.c
+
+test_gwhisto.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
+		gwhisto.h test.h test_gwhisto.c
+
+test_gwdecode.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
+		crc.h secsize.h dmk.h gwhisto.h gwmedia.h gwdecode.h \
+		test.h test_gwdecode.c
+
+test_dmkmerge.o: misc.h msg_levels.h msg.h dmk.h dmkmerge.h test.h \
+		test_dmkmerge.c
+
+test_parsetracks.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h \
+		parsetracks.h test.h test_parsetracks.c
+
+test_crc: test_crc.o crc.o
+
+test_secsize: test_secsize.o secsize.o
+
+test_dmk: test_dmk.o dmk.o
+
+test_gwx: test_gwx.o gwx.o gw.o msg.o
+
+test_gwmedia: test_gwmedia.o gwmedia.o gwhisto.o gwx.o gw.o msg.o
+
+test_gwhisto: test_gwhisto.o gwhisto.o gwx.o gw.o msg.o
+
+test_gwdecode: test_gwdecode.o gwdecode.o gwmedia.o dmk.o secsize.o \
+		crc.o msg.o
+
+test_dmkmerge: test_dmkmerge.o dmkmerge.o dmk.o msg.o
+
+test_parsetracks: test_parsetracks.o parsetracks.o
+
+$(check_bins):
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
+
 %.txt: %
 	$(nroff) -man -Tascii $(nroff_txt_flags) $< | col -b | cat -s > $@
 
@@ -208,6 +274,6 @@ clean clobber distclean:
 	$(call scrub_files_call,$($@_files))
 
 
-.PHONY: FORCE bins mans sim tests all release
+.PHONY: FORCE bins mans sim tests check all release
 .PHONY: clean clobber distclean
 .DELETE_ON_ERROR:
