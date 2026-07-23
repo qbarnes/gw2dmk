@@ -116,6 +116,23 @@ rd_db_dump(const uint8_t *buf, size_t buf_cnt)
 }
 
 
+static const struct gw_backend_ops	*backend_ops = NULL;
+static void				*backend_ctx = NULL;
+
+
+/*
+ * Register an I/O backend substituting for the serial device, or
+ * deregister it by passing NULL ops.
+ */
+
+void
+gw_set_backend(const struct gw_backend_ops *ops, void *ctx)
+{
+	backend_ops = ops;
+	backend_ctx = ctx;
+}
+
+
 static void
 wr_db_dump(const uint8_t *buf, size_t buf_cnt)
 {
@@ -188,6 +205,9 @@ gw_open(const char *gw_devname)
 int
 gw_close(gw_devt gwfd)
 {
+	if (backend_ops)
+		return 0;
+
 #if defined(WIN64) || defined(WIN32)
 
 	BOOL cret = CloseHandle(gwfd);
@@ -217,6 +237,9 @@ int
 gw_init(gw_devt gwfd)
 {
 	int		err = 0;
+
+	if (backend_ops)
+		return 0;
 
 #if defined(WIN64) || defined(WIN32)
 
@@ -315,6 +338,16 @@ err:
 ssize_t
 gw_read(gw_devt gwfd, uint8_t *rbuf, size_t rbuf_cnt)
 {
+	if (backend_ops) {
+		ssize_t brd_cnt = backend_ops->bread(backend_ctx, rbuf,
+						     rbuf_cnt);
+
+		if (brd_cnt != -1)
+			rd_db_dump(rbuf, brd_cnt);
+
+		return brd_cnt;
+	}
+
 #if defined(WIN64) || defined(WIN32)
 
 	DWORD rd_cnt = 0;
@@ -368,6 +401,9 @@ gw_write(gw_devt gwfd, const uint8_t *wbuf, size_t wbuf_cnt)
 {
 	wr_db_dump(wbuf, wbuf_cnt);
 
+	if (backend_ops)
+		return backend_ops->bwrite(backend_ctx, wbuf, wbuf_cnt);
+
 #if defined(WIN64) || defined(WIN32)
 
 	DWORD	dwBytesWritten;
@@ -401,6 +437,42 @@ gw_write(gw_devt gwfd, const uint8_t *wbuf, size_t wbuf_cnt)
 #endif
 
 	return wr_cnt;
+}
+
+
+/*
+ * Return the number of bytes waiting to be read from the GW without
+ * blocking, or -1 on failure with a possible reason in "errno".
+ */
+
+ssize_t
+gw_bytes_waiting(gw_devt gwfd)
+{
+	if (backend_ops)
+		return backend_ops->bytes_waiting(backend_ctx);
+
+#if defined(WIN64) || defined(WIN32)
+
+	DWORD	errors;
+	COMSTAT	comStat;
+
+	if (!ClearCommError(gwfd, &errors, &comStat)) {
+		errno = getlasterror2errno(GetLastError());
+		return -1;
+	}
+
+	return comStat.cbInQue;
+
+#else
+
+	int	nrd;
+
+	if (ioctl(gwfd, FIONREAD, &nrd) == -1)
+		return -1;
+
+	return nrd;
+
+#endif
 }
 
 
@@ -710,6 +782,10 @@ void
 gw_reset_async(gw_devt gwfd)
 {
 	const uint8_t cmd[2] = { CMD_RESET, 2 };
+
+	/* Backends aren't async-signal-safe; nothing to reset anyway. */
+	if (backend_ops)
+		return;
 
 #if defined(WIN64) || defined(WIN32)
 	DWORD	written;

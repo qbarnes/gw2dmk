@@ -58,10 +58,12 @@ struct cmd_settings {
 	int			usr_dmktracklen;
 	const char		*logfile;
 	const char		*devlogfile;
+	const char		*replayfile;
 	const char		*dmkfile;
 	struct gw_media_encoding	gme;
 	int			min_sectors[DMK_MAX_TRACKS][2];
 	int			retries[DMK_MAX_TRACKS][2];
+	bool			retries_set;
 	int			min_retries[DMK_MAX_TRACKS][2];
 };
 

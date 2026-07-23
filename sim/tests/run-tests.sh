@@ -214,4 +214,29 @@ grep -q "unknown setting" "$tmp/gw2dmkbad.log" || \
 	fail "bad config setting error message"
 stop_gwsim
 
+echo "=== test 8: replay (-R) of a -U capture matches the live read"
+start_gwsim -D 0:525dd -i "0:$tmp/golden.dmk"
+timeout 120 "$bld/gw2dmk" -G "$tmp/pty" -t 40 --force \
+	-U "$tmp/cap.gwlog" "$tmp/live.dmk" > "$tmp/gw2dmkcap.log" 2>&1 || \
+	{ cat "$tmp/gw2dmkcap.log"; fail "gw2dmk -U capture"; }
+stop_gwsim
+# Replay with the capture's options reproduces the DMK byte for byte.
+timeout 120 "$bld/gw2dmk" --noconfig -R "$tmp/cap.gwlog" -t 40 --force \
+	"$tmp/replay.dmk" > "$tmp/gw2dmkrep.log" 2>&1 || \
+	{ cat "$tmp/gw2dmkrep.log"; fail "gw2dmk replay"; }
+cmp -s "$tmp/live.dmk" "$tmp/replay.dmk" || fail "replay DMK differs"
+# Full autodetection (no -t) works from the replayed flux alone.
+timeout 120 "$bld/gw2dmk" --noconfig -R "$tmp/cap.gwlog" --force \
+	"$tmp/replay2.dmk" > "$tmp/gw2dmkrep2.log" 2>&1 || \
+	{ cat "$tmp/gw2dmkrep2.log"; fail "gw2dmk replay autodetect"; }
+"$bld/mkdmk" -c "$tmp/golden.dmk" "$tmp/replay2.dmk" || \
+	fail "replay autodetect sector compare"
+# Hardware-only options must be rejected in replay mode.
+if timeout 60 "$bld/gw2dmk" --noconfig -R "$tmp/cap.gwlog" -d a --force \
+	"$tmp/replaybad.dmk" > "$tmp/gw2dmkrbad.log" 2>&1; then
+	fail "-R with -d not rejected"
+fi
+grep -q "does not support" "$tmp/gw2dmkrbad.log" || \
+	fail "-R with -d error message"
+
 echo "=== all tests passed"

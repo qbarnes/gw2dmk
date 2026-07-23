@@ -136,7 +136,8 @@ the same output is logged to the file and to the screen.
 .B \-U|\-\-gwlogfile \fIfilename\fP
 Specify the \fIfilename\fP to capture communication with the
 Greaseweazle device in text form.  The default is not to log any
-communication with the Greaseweazle.
+communication with the Greaseweazle.  A logfile captured with
+\fB\-U\%\fP can later be replayed with \fB\-R\%\fP.
 .TP
 .B \-C|\-\-config \fIfilename\fP
 Read start-up settings from the configuration file \fIfilename\fP
@@ -152,20 +153,40 @@ file named with \fB\-C\%\fP.  Combining \fB\-\-noconfig\fP with
 file for a single run, for example when testing.
 .TP
 .B \-R|\-\-replay \fIfilename\fP
-\fB[Feature currently unavailable.]\fP
+Replay a Greaseweazle transaction logfile instead of reading a new
+disk from the Greaseweazle.  This option can be useful to retry
+decoding a disk using different command line options, without
+physically rereading the disk.  First capture a transaction logfile
+using the \fB\-U\%\fP option.  Then run \fBgw2dmk\fP as many times
+as desired, using the \fB\-R\fP option to replay the logfile,
+together with other command line options as desired.  No
+Greaseweazle device or drive is needed to replay.
 
-Replay a level 7 verbosity logfile instead of reading a new disk
-from the Greaseweazle.  This option can be useful to retry decoding
-a disk using different command line options, without physically
-rereading the disk.  First capture a logfile at verbosity level 7
-using the \fB\-v\%\fP and \fB\-u\%\fP options.  Then run \fBgw2dmk\fP
-as many times as desired, using the \fB\-R\fP option to replay
-the logfile, together with other command line options as desired.
-The \fB\-k\%\fP option is always required with \fB\-R\%\fP, and the
-\fB\-\-nohole\%\fP option generally should be used if the
-original capture was performed with \fB\-\-nohole\%\fP, while the
-\fB\-m\%\fP, \fB\-T\%\fP, \fB\-M\%\fP, \fB\-d\%\fP, \fB\-a\%\fP,
-\fB\-\-reverse\%\fP, and \fB\-x\%\fP options are not allowed.
+The logfile contains the raw flux streams recorded from the drive,
+so drive kind, thresholds, sides, stepping, and track count are
+autodetected from the replayed flux just as when reading a real
+disk; \fB\-k\%\fP and related options may still be given to
+override the autodetection, and \fB\-\-usehisto\%\fP,
+\fB\-\-nohole\%\fP, encodings, and threshold options may be varied
+freely between replays.  Replaying with the same decoding options
+as the original capture reproduces the same DMK file.
+
+The \fB\-m\%\fP, \fB\-T\%\fP, \fB\-M\%\fP, \fB\-d\%\fP, \fB\-a\%\fP,
+\fB\-\-reverse\%\fP, \fB\-x\%\fP, \fB\-G\%\fP, and \fB\-Z\%\fP
+options are meaningless without a physical drive and are not
+allowed with \fB\-R\%\fP; the same settings coming from a
+configuration file are ignored.
+
+Each replayed track read consumes the next flux stream recorded at
+that track position, in the captured order.  When no recorded
+reads remain for a track being retried, \fBgw2dmk\fP reports
+\[lq][end of replay data]\[rq] and keeps the passes merged so far;
+when a track has no recorded reads at all, the DMK file is
+truncated at that point.  The \fB\-X\%\fP option can be used to
+force merging of additional recorded passes (see \fB\-X\%\fP).
+A capture made with a nonzero \fB\-a\%\fP option or with
+\fB\-\-reverse\%\fP will not replay usefully, since those options
+are unavailable during replay.
 .TP
 .B \-M|\-\-menu {i,e,d}
 Controls interactive menu mode through using \fBi\fP, \fBe\fP,
@@ -431,9 +452,9 @@ value as specified by the \fB\-x\%\fP option.  The \fImin_retry\%\fP
 argument accepts the same syntax as the \fImax_retry\%\fP argument.
 The default value is 0.
 
-This feature can be useful when gathering a level 7 verbosity log
-for later replay, in order to be sure that each track is captured
-multiple times.
+This feature can be useful when capturing a Greaseweazle
+transaction logfile (\fB\-U\%\fP) for later replay (\fB\-R\%\fP),
+in order to be sure that each track is captured multiple times.
 .TP
 .B \-a|\-\-alternate {0,1,2,3}
 This option is used only when when reading a 40-track disk in

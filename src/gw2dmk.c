@@ -23,6 +23,7 @@
 #include "dmkmerge.h"
 #include "parsetracks.h"
 #include "cfgfile.h"
+#include "gwreplay.h"
 
 #if defined(WIN64) || defined(WIN32)
 #include <windows.h>
@@ -138,6 +139,7 @@ static struct cmd_settings cmd_settings = {
 	.usr_dmktracklen = 0,
 	.logfile = NULL,
 	.devlogfile = NULL,
+	.replayfile = NULL,
 	.dmkfile = NULL,
 	.gme.rpm = 0.0,
 	.gme.data_clock = 0.0,
@@ -149,6 +151,7 @@ static struct cmd_settings cmd_settings = {
 	.gme.thresh_adj = 0.0,
 	.min_sectors = {[0 ... DMK_MAX_TRACKS-1] = {[0 ... 1] = 0}},
 	.retries     = {[0 ... DMK_MAX_TRACKS-1] = {[0 ... 1] = 4}},
+	.retries_set = false,
 	.min_retries = {[0 ... DMK_MAX_TRACKS-1] = {[0 ... 1] = 0}}
 };
 
@@ -195,7 +198,8 @@ usage(const char *pgm_name, struct cmd_settings *cmd_set)
 	u("  -U gwlogfile    Greaseweazle transaction logfile [%s]\n",
 				cmd_set->devlogfile ? cmd_set->devlogfile :
 				"none");
-	//u("  -R logfile      Replay logfile\n");
+	u("  -R gwlogfile    Replay a Greaseweazle transaction logfile "
+				"(see -U)\n");
 	u("  -M {i,e,d}      Menu control [d]\n");
 	u("                  i = Interrupt (^C) invokes menu\n");
 	u("                  e = Errors equals retries invokes menu\n");
@@ -381,11 +385,13 @@ parse_args(int argc,
 	int	lindex = 0;
 	int	opt_bus = BUS_NONE;
 	bool	opt_d_given = false;
+	/* Options meaningless without hardware, rejected with -R. */
+	bool	opt_hw_given = false;
 
 	optind = 0;	/* Reset getopt state; parse_args runs twice. */
 
 	while ((opt = getopt_long(argc, argv,
-			"a:d:e:f:g:i:k:l:m:p:q:s:t:u:v:w:x:z:B:C:G:M:S:T:U:X:Z:1:2:",
+			"a:d:e:f:g:i:k:l:m:p:q:s:t:u:v:w:x:z:B:C:G:M:R:S:T:U:X:Z:1:2:",
 			cmd_long_args, &lindex)) != -1) {
 
 		switch(opt) {
@@ -432,6 +438,7 @@ parse_args(int argc,
 				cmd_set->reset_on_init = false;
 			} else if (!strcmp(name, "reverse")) {
 				cmd_set->reverse_sides = true;
+				opt_hw_given = true;
 			} else if (!strcmp(name, "noreverse")) {
 				cmd_set->reverse_sides = false;
 			} else {
@@ -443,6 +450,7 @@ parse_args(int argc,
 			const int alt = strtol_strict(optarg, 10, "'a'");
 			if (alt < 0 || alt > 3) goto err_usage;
 			cmd_set->alternate = alt;
+			opt_hw_given = true;
 			break;
 
 		case 'd':
@@ -450,6 +458,7 @@ parse_args(int argc,
 				goto err_usage;
 
 			opt_d_given = true;
+			opt_hw_given = true;
 			break;
 
 		case 'e':;
@@ -504,6 +513,7 @@ parse_args(int argc,
 					  "be 1 or 2.\n", opt);
 				goto err_usage;
 			}
+			opt_hw_given = true;
 			break;
 
 		case 'p':;
@@ -574,6 +584,8 @@ parse_args(int argc,
 		case 'x':
 			if (parse_tracks(optarg, cmd_set->retries))
 				goto err_usage;
+			cmd_set->retries_set = true;
+			opt_hw_given = true;
 			break;
 
 		case 'z':;
@@ -596,19 +608,26 @@ parse_args(int argc,
 		case 'G':
 			if (parse_device_arg(optarg, &cmd_set->fdd))
 				goto err_usage;
+			opt_hw_given = true;
 			break;
 
 		case 'M':
 			if (!strcmp(optarg, "i")) {
 				cmd_set->menu_intr_enabled = true;
+				opt_hw_given = true;
 			} else if (!strcmp(optarg, "e")) {
 				cmd_set->menu_err_enabled = true;
+				opt_hw_given = true;
 			} else if (!strcmp(optarg, "d")) {
 				cmd_set->menu_intr_enabled = false;
 				cmd_set->menu_err_enabled = false;
 			} else {
 				goto err_usage;
 			}
+			break;
+
+		case 'R':
+			cmd_set->replayfile = optarg;
 			break;
 
 		case 'S':
@@ -619,6 +638,7 @@ parse_args(int argc,
 		case 'T':
 			if (parse_stepdelay_arg(optarg, &cmd_set->fdd))
 				goto err_usage;
+			opt_hw_given = true;
 			break;
 
 		case 'U':
@@ -632,6 +652,7 @@ parse_args(int argc,
 
 		case 'Z':
 			cmd_set->fdd.serial = optarg;
+			opt_hw_given = true;
 			break;
 
 		case '1':;
@@ -670,6 +691,40 @@ parse_args(int argc,
 	/* The rest applies only after the command line is parsed. */
 	if (cfgfile)
 		return;
+
+	if (cmd_set->replayfile) {
+		if (opt_hw_given) {
+			msg_error("Replay (-R) mode does not support options "
+				  "-m, -T, -M, -d, -a,\n--reverse, -x, -G, "
+				  "or -Z.\n");
+			goto err_usage;
+		}
+
+		/*
+		 * The same options coming from the configuration file
+		 * are hardware-only settings that don't apply to a
+		 * replay; quietly ignore them.
+		 */
+
+		cmd_set->fdd.device	   = NULL;
+		cmd_set->fdd.serial	   = NULL;
+		cmd_set->fdd.drive	   = -1;
+		cmd_set->fdd.steps	   = -1;
+		cmd_set->fdd.step_ms	   = -1;
+		cmd_set->fdd.settle_ms	   = -1;
+		cmd_set->menu_intr_enabled = false;
+		cmd_set->menu_err_enabled  = false;
+		cmd_set->alternate	   = 0;
+		cmd_set->reverse_sides	   = false;
+
+		if (cmd_set->retries_set) {
+			for (int t = 0; t < DMK_MAX_TRACKS; ++t) {
+				cmd_set->retries[t][0] = 4;
+				cmd_set->retries[t][1] = 4;
+			}
+			cmd_set->retries_set = false;
+		}
+	}
 
 	if (optind != (argc-1))
 		goto err_usage;
@@ -824,6 +879,31 @@ retry:
 
 		if ((retry > 0) && (cmd_set->alternate & 2))
 			headpos ^= 1;
+	}
+
+	if (gw_replay_active()) {
+		switch (gw_replay_flux_avail(headpos, side)) {
+		case GW_REPLAY_AVAIL:
+			break;
+
+		case GW_REPLAY_NEVER:
+			/* A synthetic empty read feeds the existing
+			 * step-probing logic. */
+			if (retry == 0 && cmd_set->guess_steps)
+				break;
+			/* FALLTHRU */
+
+		case GW_REPLAY_EXHAUSTED:
+			msg(MSG_TSUMMARY, " [end of replay data]\n");
+
+			if (retry == 0) {
+				dmkf->header.ntracks =
+					(side == 1) ? track + 1 : track;
+				return 1;
+			}
+
+			goto leave;
+		}
 	}
 
 	int gwret = gw_seek(cmd_set->fdd.gwfd, headpos);
@@ -1051,7 +1131,9 @@ retry:
 		((flux2dmk.dtsm.trk_merged_stats->errcount > 0) ||
 		(retry < cmd_set->min_retries[track][side]) ||
 		(dts.good_sectors < cmd_set->min_sectors[track][side])) &&
-		(retry < cmd_set->retries[track][side]);
+		(retry < cmd_set->retries[track][side] ||
+		 (gw_replay_active() &&
+		  retry < cmd_set->min_retries[track][side]));
 
 	/* Generally just reporting on the latest read. */
 	if (failing) {
@@ -1547,12 +1629,23 @@ main(int argc, char **argv)
 	struct gw_info	gw_info;
 	const char	*sdev = NULL;
 
-	cmd_settings.fdd.gwfd = gw_find_open_gw(cmd_settings.fdd.device,
+	if (cmd_settings.replayfile) {
+		if (gw_replay_start(cmd_settings.replayfile))
+			msg_fatal("Failed to parse replay log '%s'.\n",
+				  cmd_settings.replayfile);
+
+		msg(MSG_NORMAL, "Replaying '%s'.\n", cmd_settings.replayfile);
+
+		cmd_settings.fdd.gwfd = GW_REPLAY_DEVT;
+	} else {
+		cmd_settings.fdd.gwfd = gw_find_open_gw(
+					cmd_settings.fdd.device,
 					cmd_settings.fdd.serial,
 					cmd_settings.device_list, &sdev);
 
-	if (cmd_settings.fdd.gwfd == GW_DEVT_INVALID)
-		exit(EXIT_FAILURE);
+		if (cmd_settings.fdd.gwfd == GW_DEVT_INVALID)
+			exit(EXIT_FAILURE);
+	}
 
 	cmd_settings.fdd.gwfd = gw_init_gw(&cmd_settings.fdd, &gw_info,
 					   cmd_settings.reset_on_init);
@@ -1562,9 +1655,12 @@ main(int argc, char **argv)
 
 	cleanup_gwfd = cmd_settings.fdd.gwfd;
 
-	if (cmd_settings.fdd.drive == -1 &&
-	    gw_detect_drive(&cmd_settings.fdd, false))
-		exit(EXIT_FAILURE);
+	if (cmd_settings.fdd.drive == -1) {
+		if (cmd_settings.replayfile)
+			cmd_settings.fdd.drive = 0;
+		else if (gw_detect_drive(&cmd_settings.fdd, false))
+			exit(EXIT_FAILURE);
+	}
 
 	/*
 	 * Detect drive kind and characteristics.
@@ -1748,6 +1844,8 @@ main(int argc, char **argv)
 	}
 
 	cleanup_gwfd = GW_DEVT_INVALID;
+
+	gw_replay_finish();
 
 #if defined(WIN64) || defined(WIN32)
 	free((char *)cmd_settings.fdd.device);

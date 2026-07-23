@@ -33,7 +33,7 @@ vpath %		$(top_dir)
 
 bin_objs	= cfgfile.o cmdutil.o crc.o dmk2gw.o dmkmerge.o dmk.o \
 		  dmkx.o gw2dmk.o gwdecode.o gwdetect.o gwhist.o gwhisto.o \
-		  gwmedia.o gwscan.o gwscan_linux.o gwscan_win.o \
+		  gwmedia.o gwreplay.o gwscan.o gwscan_linux.o gwscan_win.o \
 		  gw.o gwx.o msg.o parsetracks.o secsize.o
 
 sim_objs	= simmain.o simproto.o simgw.o simbus.o simdrive.o \
@@ -54,7 +54,8 @@ test_bins	= mkdmk run-tests
 # Standalone unit tests for the hardware-independent code, run by
 # "make check".  Each links only the objects it exercises.
 check_bins	= test_crc test_secsize test_dmk test_gwx test_gwmedia \
-		  test_gwhisto test_gwdecode test_dmkmerge test_parsetracks
+		  test_gwhisto test_gwdecode test_gwreplay test_dmkmerge \
+		  test_parsetracks
 check_objs	= $(addsuffix .o,$(check_bins))
 
 
@@ -108,6 +109,9 @@ gw.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gw.c
 
 gwx.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwx.c
 
+gwreplay.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
+	   gwreplay.h gwreplay.c
+
 gwhisto.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
 	   gwhisto.h gwhisto.c
 
@@ -142,15 +146,15 @@ secsize.o: dmk.h misc.h secsize.c
 
 gw2dmk.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
 		gw2dmkcmdset.h gwhisto.h dmk.h cmdutil.h parsetracks.h \
-		gwdetect.h gwscan.h cfgfile.h gw2dmk.c
+		gwdetect.h gwscan.h cfgfile.h gwreplay.h gw2dmk.c
 
 dmk2gw.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
 		dmk2gwcmdset.h gwhisto.h dmk.h cmdutil.h gwdetect.h gwscan.h \
 		cfgfile.h dmk2gw.c
 
 gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan.o gwscan_linux.o \
-	gwscan_win.o gwdecode.o gwmedia.o dmk.o dmkmerge.o secsize.o \
-	parsetracks.o cmdutil.o cfgfile.o gw2dmk.o crc.o
+	gwscan_win.o gwdecode.o gwmedia.o gwreplay.o dmk.o dmkmerge.o \
+	secsize.o parsetracks.o cmdutil.o cfgfile.o gw2dmk.o crc.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwscan.o gwscan_linux.o gwscan_win.o \
@@ -226,6 +230,9 @@ test_gwdecode.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
 		crc.h secsize.h dmk.h gwhisto.h gwmedia.h gwdecode.h \
 		test.h test_gwdecode.c
 
+test_gwreplay.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h \
+		gwreplay.h test.h test_gwreplay.c
+
 test_dmkmerge.o: misc.h msg_levels.h msg.h dmk.h dmkmerge.h test.h \
 		test_dmkmerge.c
 
@@ -246,6 +253,8 @@ test_gwhisto: test_gwhisto.o gwhisto.o gwx.o gw.o msg.o
 
 test_gwdecode: test_gwdecode.o gwdecode.o gwmedia.o dmk.o secsize.o \
 		crc.o msg.o
+
+test_gwreplay: test_gwreplay.o gwreplay.o gw.o msg.o
 
 test_dmkmerge: test_dmkmerge.o dmkmerge.o dmk.o msg.o
 

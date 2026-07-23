@@ -93,24 +93,12 @@ gw_read_stream(gw_devt gwfd, int revs, int ticks, uint8_t **fbuf)
 			goto flux_status;
 		}
 
-		int	nrd;
+		ssize_t	nrd = gw_bytes_waiting(gwfd);
 
-#if defined(WIN64) || defined(WIN32)
-		DWORD	errors;
-		COMSTAT	comStat;
-
-		if (!ClearCommError(gwfd, &errors, &comStat)) {
+		if (nrd == -1) {
 			fbuf_cnt = -1;
 			goto flux_status;
 		}
-
-		nrd = comStat.cbInQue;
-#else
-		if (ioctl(gwfd, FIONREAD, &nrd) == -1) {
-			fbuf_cnt = -1;
-			goto flux_status;
-		}
-#endif
 
 		/* +1 to make room for rbuf[0] byte added below.  Grow
 		 * the buffer geometrically to avoid O(n^2) copying. */

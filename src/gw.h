@@ -50,6 +50,19 @@ struct gw_cmd {
 };
 
 
+/*
+ * Optional I/O backend substituting for the serial device.  When
+ * registered, all device I/O is routed through these operations
+ * instead of the fd, which is never touched by a syscall.
+ */
+
+struct gw_backend_ops {
+	ssize_t	(*bread)(void *ctx, uint8_t *rbuf, size_t rbuf_cnt);
+	ssize_t	(*bwrite)(void *ctx, const uint8_t *wbuf, size_t wbuf_cnt);
+	ssize_t	(*bytes_waiting)(void *ctx);
+};
+
+
 extern const char *gw_cmd_name(uint8_t cmd);
 
 extern const char *gw_cmd_ack(uint8_t response);
@@ -57,6 +70,8 @@ extern const char *gw_cmd_ack(uint8_t response);
 extern FILE *gw_set_logfp(FILE *fp);
 
 extern FILE *gw_get_logfp(void);
+
+extern void gw_set_backend(const struct gw_backend_ops *ops, void *ctx);
 
 extern gw_devt gw_open(const char *gw_devname);
 
@@ -67,6 +82,8 @@ extern int gw_init(gw_devt gwfd);
 extern ssize_t gw_read(gw_devt gwfd, uint8_t *rbuf, size_t rbuf_cnt);
 
 extern ssize_t gw_write(gw_devt gwfd, const uint8_t *wbuf, size_t wbuf_cnt);
+
+extern ssize_t gw_bytes_waiting(gw_devt gwfd);
 
 extern int gw_do_command(gw_devt gwfd, struct gw_cmd *gw_cmd);
 
