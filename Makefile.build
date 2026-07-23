@@ -22,13 +22,13 @@ else
 top_dir		:= $(shell realpath --relative-to '$(CURDIR)' '$(top_dir)')
 endif
 
-src_dir		?= $(top_dir)
-inc_dir		?= $(top_dir)
+src_dir		?= $(top_dir)/src
+inc_dir		?= $(top_dir)/src
 
-vpath %.c	$(src_dir) $(src_dir)/tests $(src_dir)/sim $(src_dir)/sim/tests
-vpath %.sh	$(src_dir)/sim/tests
-vpath %.h	$(inc_dir) $(inc_dir)/tests $(inc_dir)/sim
-vpath %.1	$(src_dir)/sim
+vpath %.c	$(src_dir) $(top_dir)/tests $(top_dir)/sim $(top_dir)/sim/tests
+vpath %.sh	$(top_dir)/sim/tests
+vpath %.h	$(inc_dir) $(top_dir)/tests $(top_dir)/sim
+vpath %.1	$(top_dir)/sim
 vpath %		$(top_dir)
 
 bin_objs	= cfgfile.o cmdutil.o crc.o dmk2gw.o dmkmerge.o dmk.o \
@@ -205,7 +205,7 @@ mkdmk: mkdmk.o dmk.o crc.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 # Unit tests: sources live in tests/ but include the code under test
-# from the repository root, so they need -I to find those headers.
+# from src/, so they need -I to find those headers.
 $(check_objs): CFLAGS += -I'$(inc_dir)'
 
 test_crc.o: crc.h test.h test_crc.c

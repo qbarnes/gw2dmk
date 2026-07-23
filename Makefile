@@ -11,8 +11,8 @@ top_dir		:= $(shell realpath \
 			--relative-to '$(CURDIR)/$(build_dir)' '$(top_dir)')
 endif
 
-src_dir		?= $(top_dir)
-inc_dir		?= $(top_dir)
+src_dir		?= $(top_dir)/src
+inc_dir		?= $(top_dir)/src
 
 clean_files	 =
 clobber_files	 = $(clean_files) $(build_dir)
@@ -23,8 +23,8 @@ build_make_goals = $(or $(filter-out $(skip_goals),$(MAKECMDGOALS)), all)
 
 build_make = $(MAKE) \
 		-C '$(build_dir)' \
-		-I '$(inc_dir)' \
-		-f '$(src_dir)/Makefile.build' \
+		-I '$(top_dir)' \
+		-f '$(top_dir)/Makefile.build' \
 		'src_dir=$(src_dir)' \
 		'inc_dir=$(inc_dir)'
 
