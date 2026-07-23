@@ -5,8 +5,17 @@
 #
 # Usage: sim/tests/run-tests.sh [build_dir]
 
-top=$(cd "$(dirname "$0")/../.." && pwd)
-bld=${1:-$top/build}
+# Locate the build directory holding the tools.  The build copies this
+# script to build/run-tests via make's built-in "%: %.sh" rule, so it may
+# run either from its source path (sim/tests/) or from inside build/.
+self_dir=$(cd "$(dirname "$0")" && pwd)
+if [ -n "$1" ]; then
+	bld=$1				# explicit build dir wins
+elif [ -x "$self_dir/gwsim" ]; then
+	bld=$self_dir			# running as the copy inside build/
+else
+	bld=$(cd "$self_dir/../.." && pwd)/build   # running from sim/tests/
+fi
 tmp=$(mktemp -d)
 
 # Isolate the tests from any real user configuration file.
