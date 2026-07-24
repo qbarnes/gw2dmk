@@ -92,6 +92,8 @@ struct cmd_settings cmd_settings = {
 	.reverse_sides = false,
 	.iam_pos = -1,
 	.fill = 0,
+	.precomp_low = 140.0,
+	.precomp_high = 140.0,
 	.rate_adj = 1.0,
 	.ignore = 0,
 	.dither = false,
@@ -247,7 +249,7 @@ parse_args(int argc,
 		case 'a':;
 			double rate_adj;
 			const int aret = sscanf(optarg, "%lf", &rate_adj);
-			if (aret != 1 || rate_adj < 0.0) goto err_usage;
+			if (aret != 1 || rate_adj <= 0.0) goto err_usage;
 			cmd_set->rate_adj = rate_adj;
 			break;
 
@@ -600,6 +602,8 @@ write_track(struct cmd_settings *cmd_set,
 	msg_scrn_flush();
 
 	encode_bit_init(ebs, ebs->freq, ebs->mult);
+	ebs->precomp     = eti->precomp;	/* per-track interpolated */
+	ebs->dither      = cmd_set->dither;
 	ebs->extra_bytes = eti->extra_bytes;
 
 	uint32_t nfa_thresh = 150e-6 * ebs->freq + 0.5;   /* 150us */
@@ -742,13 +746,6 @@ dmk2gw(struct cmd_settings *cmd_set,
 		.quirks	     = dmkf->header.quirks
 	};
 
-#if 0
-	// XXX Need to finish this.
-	mult = (kd->mfmshort / 2.0) * cwclock / rate_adj;
-	if (hd == 4) {
-		hd = kd->hd;
-	}
-#endif
 	// XXX Need better cases here and documentation here.
 	// Maybe use and better flesh out gw_media_encoding struct.
 	// Hardcode for now.
@@ -800,8 +797,11 @@ dmk2gw(struct cmd_settings *cmd_set,
 	eti.fill_len = (eti.fmtimes == 1 ?
 			fill_len_kind_sd : fill_len_kind)[cmd_set->fdd.kind];
 
+	/* rate_adj is a user fine-tune on the average data rate: a larger
+	 * value shortens the intervals (faster rate), matching dmk2cw's
+	 * mult = ... / rate_adj. */
 	struct encode_bit ebs;
-	encode_bit_init(&ebs, sample_freq, mult * rpm_adj);
+	encode_bit_init(&ebs, sample_freq, mult * rpm_adj / cmd_set->rate_adj);
 
 	/*
 	 * Loop over tracks.

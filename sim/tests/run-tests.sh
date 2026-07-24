@@ -239,4 +239,42 @@ fi
 grep -q "does not support" "$tmp/gw2dmkrbad.log" || \
 	fail "-R with -d error message"
 
+echo "=== test 9: dmk2gw write-timing options affect the encoded flux"
+# -p/--precomp, --dither, and -a/--rateadj were once parsed but discarded.
+# Encode the same DMK with different values and confirm the --gwdebug flux
+# dump for a mid track changes.  --gwdebug writes gwflux-NN-S.bin into the
+# current directory, so each run happens in its own scratch dir.
+d2g_flux() {
+	# d2g_flux OUTFILE ARGS...: encode golden.dmk and copy the track-20
+	# side-0 flux dump to OUTFILE.
+	_out=$1; shift
+	rm -rf "$tmp/d9" && mkdir -p "$tmp/d9"
+	"$bld/mkdmk" -t 40 -s 2 -n 1 "$tmp/d9tgt.dmk"
+	start_gwsim -D 0:525dd -i "0:$tmp/d9tgt.dmk"
+	( cd "$tmp/d9" && timeout 120 "$bld/dmk2gw" --gwdebug -G "$tmp/pty" \
+		-d a "$@" "$tmp/golden.dmk" ) > "$tmp/d9.log" 2>&1 || \
+		{ cat "$tmp/d9.log"; fail "dmk2gw --gwdebug ($_out)"; }
+	stop_gwsim
+	[ -f "$tmp/d9/gwflux-20-0.bin" ] || fail "no flux dump ($_out)"
+	cp "$tmp/d9/gwflux-20-0.bin" "$_out"
+}
+d2g_flux "$tmp/f_base.bin"			# defaults: -p 140 -a 1.0, no dither
+d2g_flux "$tmp/f_precomp.bin" -p 0,600		# interpolated precomp
+d2g_flux "$tmp/f_rateadj.bin" -a 1.02		# faster data rate
+# Dither only perturbs the flux when the tick math is fractional, so pair it
+# with a precomp value (-p 90) that produces sub-tick rounding to correct.
+d2g_flux "$tmp/f_p90.bin"     -p 90
+d2g_flux "$tmp/f_dither.bin"  -p 90 --dither
+cmp -s "$tmp/f_base.bin" "$tmp/f_precomp.bin" && \
+	fail "precomp (-p) did not change the flux"
+cmp -s "$tmp/f_base.bin" "$tmp/f_rateadj.bin" && \
+	fail "rateadj (-a) did not change the flux"
+cmp -s "$tmp/f_p90.bin" "$tmp/f_dither.bin" && \
+	fail "dither (--dither) did not change the flux"
+# A zero rate adjustment (divide-by-zero) must be rejected, not accepted.
+if timeout 60 "$bld/dmk2gw" -a 0 -d a "$tmp/golden.dmk" \
+	> "$tmp/d9zero.log" 2>&1; then
+	fail "rateadj -a 0 not rejected"
+fi
+
 echo "=== all tests passed"
