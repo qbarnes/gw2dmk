@@ -30,7 +30,15 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      # Safe despite the tag push below: action-create-tag rewrites
+      # origin's URL with its own github_token input (defaulted to
+      # ${{ github.token }}) and never reads the credential checkout
+      # would have persisted.  Note this only removes checkout's copy --
+      # that action puts the token back into .git/config itself, in
+      # cleartext in the remote URL.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Show package name and version
         run: |
@@ -41,7 +49,7 @@ jobs:
         run: mkdir github_artifacts
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: github_artifacts
 

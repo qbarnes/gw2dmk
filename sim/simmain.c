@@ -11,6 +11,7 @@
 #define _GNU_SOURCE
 
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <poll.h>
 #include <signal.h>
@@ -177,10 +178,12 @@ err:
 static int
 ctl_socket_open(const char *path)
 {
-	int	fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	int	fd = socket(AF_UNIX, SOCK_STREAM, 0);
 
 	if (fd == -1)
 		return -1;
+
+	fcntl(fd, F_SETFD, FD_CLOEXEC);
 
 	struct sockaddr_un	sa = { .sun_family = AF_UNIX };
 

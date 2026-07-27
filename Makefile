@@ -3,12 +3,20 @@ include product.mk
 
 build_dir	?= build
 
+REALPATH	?= $(call find_tool_call,grealpath realpath)
+
 ifndef top_dir
-top_dir		:= $(shell realpath \
+  top_dir	:= $(shell $(REALPATH) \
 			--relative-to '$(CURDIR)/$(build_dir)' '$(CURDIR)')
 else
-top_dir		:= $(shell realpath \
+  top_dir	:= $(shell $(REALPATH) \
 			--relative-to '$(CURDIR)/$(build_dir)' '$(top_dir)')
+endif
+
+ifeq ($(top_dir),)
+  $(error Could not resolve top_dir.  "$(REALPATH) --relative-to" failed; \
+    on macOS install GNU coreutils (brew install coreutils, or \
+    port install coreutils) or set REALPATH to a GNU realpath)
 endif
 
 src_dir		?= $(top_dir)/src
@@ -29,8 +37,10 @@ build_make = $(MAKE) \
 		'inc_dir=$(inc_dir)'
 
 
+# The leading "+" marks this as a recursive make, necessary for older
+# GNU make versions not recognizing the embedded $(MAKE).
 $(build_make_goals): FORCE | $(build_dir)
-	$(build_make) $(build_make_goals)
+	+$(build_make) $(build_make_goals)
 
 $(build_dir):
 	mkdir -p -- '$@'

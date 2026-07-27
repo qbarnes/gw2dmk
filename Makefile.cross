@@ -4,14 +4,17 @@ build_dir  ?= build
 
 BUILDS     ?= LINUX_X86_64 LINUX_ARMV7L LINUX_AARCH64 MSWIN32 MSWIN64
 
-native_os   := $(shell uname -o)
+native_os   := $(shell uname -s)
 native_arch := $(shell uname -m)
 
 LINUX_X86_64_CC  ?= x86_64-linux-gnu-gcc
 LINUX_ARMV7L_CC  ?= arm-linux-gnueabi-gcc
 LINUX_AARCH64_CC ?= aarch64-linux-gnu-gcc
+# osxcross toolchain wrappers.
+DARWIN_ARM64_CC  ?= oa64-clang
+DARWIN_X86_64_CC ?= o64-clang
 
-ifeq ($(native_os),GNU/Linux)
+ifeq ($(native_os),Linux)
   ifeq ($(native_arch),x86_64)
     LINUX_X86_64_CC  = $(CC)
   else ifeq ($(native_arch),armv7l)
@@ -21,11 +24,18 @@ ifeq ($(native_os),GNU/Linux)
   endif
 endif
 
+target_os_linux  = Linux
+target_os_win    = Windows
+target_os_darwin = Darwin
+
 define cross_settings
+$(if $(target_os_$(2)),,$(error cross_settings($(1)): \
+	no target_os_$(2) defined for cross_os '$(2)'))
 $(eval $(1)_cross_os        = $(2))
 $(eval $(1)_cross_arch      = $(3))
 $(eval $(1)_cross_cc        = $(4))
 $(eval $(1)_exe             = $(6))
+$(eval $(1)_target_os       = $(target_os_$(2)))
 $(eval $(1)_dir_suffix      = $$($(1)_cross_os).$$($(1)_cross_arch))
 $(eval $(1)_build_dir       = $$(build_dir).$(5))
 $(eval $(1)_release_targz   = $(patsubst %.tar.gz,%,$(TARBALLGZ))-$(5).tar.gz)
@@ -41,12 +51,17 @@ $(call cross_settings,MSWIN32,win,x86,\
 			i686-w64-mingw32-gcc,$$(MSWIN32_cross_os)32,.exe)
 $(call cross_settings,MSWIN64,win,x64,\
 			x86_64-w64-mingw32-gcc,$$(MSWIN64_cross_os)64,.exe)
+$(call cross_settings,DARWIN_ARM64,darwin,arm64,\
+			$(DARWIN_ARM64_CC),$$(DARWIN_ARM64_dir_suffix),)
+$(call cross_settings,DARWIN_X86_64,darwin,x86_64,\
+			$(DARWIN_X86_64_CC),$$(DARWIN_X86_64_dir_suffix),)
 
 BUILD_CMD_call = $(MAKE) \
 		CC='$($(1)_cross_cc)' \
 		NATIVE_CC='$(CC)' \
 		build_dir='$($(1)_build_dir)' \
 		E='$($(1)_exe)' \
+		target_os='$($(1)_target_os)' \
 		tar_extras='$($(1)_tar_extras)' \
 		TARBALLGZ='$($(1)_release_targz)' \
 		VERSION='$(VERSION)'

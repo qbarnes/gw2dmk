@@ -7,6 +7,7 @@ extern "C" {
 
 
 #include <stdbool.h>
+#include <stdint.h>
 
 
 #if !defined(WIN64) && !defined(WIN32)
@@ -29,8 +30,14 @@ extern "C" {
 #define MEMBER_SIZE(type, member) sizeof(((type *)0)->member)
 
 
-#if linux
+#if defined(__linux__)
 #include <endian.h>
+#elif defined(__APPLE__)
+  #include <libkern/OSByteOrder.h>
+  #define htole16(x) OSSwapHostToLittleInt16(x)
+  #define htole32(x) OSSwapHostToLittleInt32(x)
+  #define le16toh(x) OSSwapLittleToHostInt16(x)
+  #define le32toh(x) OSSwapLittleToHostInt32(x)
 #elif defined(WIN64) || defined(WIN32)
   #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
     /* These can be considered no-ops. */
@@ -41,13 +48,15 @@ extern "C" {
   #else
     #error "Need macros for BE MSW."
   #endif
+#else
+  #error "Need htole/letoh macros for this platform."
 #endif
 
 
 typedef double	nsec_type;
 
 
-inline const char *
+static inline const char *
 plu(int val)
 {
 	return (val == 1) ? "" : "s";
@@ -67,7 +76,7 @@ plu(int val)
 
 /* Could these approx_* functions below be replaced with macro expansion? */
 
-inline bool
+static inline bool
 approx_int(int a, int b, double tol)
 {
 	int diff = (a > b) ? (a - b) : (b - a);
@@ -75,7 +84,7 @@ approx_int(int a, int b, double tol)
 }
 
 
-inline bool
+static inline bool
 approx_float(float a, float b, double tol)
 {
 	int diff = (a > b) ? (a - b) : (b - a);
@@ -83,7 +92,7 @@ approx_float(float a, float b, double tol)
 }
 
 
-inline bool
+static inline bool
 approx_double(double a, double b, double tol)
 {
 	int diff = (a > b) ? (a - b) : (b - a);
@@ -91,7 +100,7 @@ approx_double(double a, double b, double tol)
 }
 
 
-inline bool
+static inline bool
 approx_default(void *a, void *b, double tol)
 {
 	return false;  /* Unsupported type */
@@ -109,31 +118,31 @@ approx_default(void *a, void *b, double tol)
 	default: approx04_default \
 )(a,b)
 
-inline bool
+static inline bool
 approx04_int(int a, int b)
 {
 	return approx(a, b, 0.04);
 }
 
 
-inline bool
+static inline bool
 approx04_float(float a, float b)
 {
 	return approx(a, b, 0.04);
 }
 
 
-inline bool
+static inline bool
 approx04_double(double a, double b)
 {
 	return approx(a, b, 0.04);
 }
 
 
-inline bool
+static inline bool
 approx04_default(void *a, void *b)
 {
-	return NULL;  /* Unsupported type */
+	return false;  /* Unsupported type */
 }
 
 

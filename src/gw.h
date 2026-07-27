@@ -20,9 +20,6 @@ extern "C" {
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <termios.h>
-  #if linux
-  #include <linux/usb/ch9.h>
-  #endif
 #endif
 
 #include "misc.h"

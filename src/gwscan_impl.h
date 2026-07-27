@@ -9,7 +9,7 @@
 
 #include "gwscan.h"
 
-#if linux || defined(WIN64) || defined(WIN32)
+#if defined(__linux__) || defined(__APPLE__) || defined(WIN64) || defined(WIN32)
 #define GW_SCAN_HAVE_BACKEND	1
 #endif
 

@@ -287,7 +287,12 @@ err:
 
 	t.c_iflag = 0;
 	t.c_oflag = 0;
-	t.c_cflag = CREAD;
+	/*
+	 * CLOCAL matters on macOS: without it the driver waits for
+	 * carrier detect on a USB CDC node.  CDC-ACM ignores the line
+	 * settings, so CS8 is just correctness.
+	 */
+	t.c_cflag = CS8 | CREAD | CLOCAL;
 	t.c_lflag = 0;
 	t.c_cc[VMIN] = 1;
 	t.c_cc[VTIME] = 0;

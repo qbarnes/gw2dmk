@@ -1,15 +1,36 @@
 include defines.mk
 include product.mk
 
-CPPFLAGS =
+# Target OS: "Windows", "Darwin", or "Linux".  Cross builds pass this
+# in on the command line; a native build infers it from the host.  "E"
+# (the executable suffix) is only ever set for Windows.
+ifdef E
+  target_os ?= Windows
+else
+  target_os ?= $(shell uname -s)
+endif
+
 CFLAGS   = -O -g -Wall -Werror -Wfatal-errors
 LDLIBS  += -lm
-ifdef E
-LDLIBS  += -static -lsetupapi
+
+ifeq ($(target_os),Windows)
+  LDLIBS  += -static -lsetupapi
+endif
+
+ifeq ($(target_os),Darwin)
+  # 11.0 is the oldest release the arm64 slice can target at all.
+  # $(LINK.c) passes CFLAGS to the link too, so this covers both.
+  macos_min ?= 11.0
+  CFLAGS    += -mmacosx-version-min=$(macos_min)
+  # gwscan_darwin.c enumerates USB serial devices through IOKit.
+  LDLIBS    += -framework IOKit -framework CoreFoundation
 endif
 
 nroff ?= nroff
 groff ?= groff
+
+REALPATH ?= $(call find_tool_call,grealpath realpath)
+TAR	 ?= $(call find_tool_call,gtar gnutar tar)
 
 nroff_txt_flags	?= -c
 groff_pdf_flags	?=
@@ -17,9 +38,14 @@ groff_pdf_flags	?=
 build_dir	?= build
 
 ifndef top_dir
-top_dir		:= ..
+  top_dir	:= ..
 else
-top_dir		:= $(shell realpath --relative-to '$(CURDIR)' '$(top_dir)')
+  top_dir	:= $(shell $(REALPATH) --relative-to '$(CURDIR)' '$(top_dir)')
+  ifeq ($(top_dir),)
+    $(error Could not resolve top_dir.  "$(REALPATH) --relative-to" failed. \
+      on macOS install GNU coreutils (brew install coreutils, or \
+      port install coreutils) or set REALPATH to a GNU realpath)
+  endif
 endif
 
 src_dir		?= $(top_dir)/src
@@ -33,7 +59,8 @@ vpath %		$(top_dir)
 
 bin_objs	= cfgfile.o cmdutil.o crc.o dmk2gw.o dmkmerge.o dmk.o \
 		  dmkx.o gw2dmk.o gwdecode.o gwdetect.o gwhist.o gwhisto.o \
-		  gwmedia.o gwreplay.o gwscan.o gwscan_linux.o gwscan_win.o \
+		  gwmedia.o gwreplay.o gwscan.o gwscan_darwin.o \
+		  gwscan_linux.o gwscan_win.o \
 		  gw.o gwx.o msg.o parsetracks.o secsize.o
 
 sim_objs	= simmain.o simproto.o simgw.o simbus.o simdrive.o \
@@ -42,11 +69,10 @@ sim_objs	= simmain.o simproto.o simgw.o simbus.o simdrive.o \
 
 test_objs	= mkdmk.o
 
-# The simulator is native Linux only (it serves a pty).
-ifeq ($E,)
-ifeq ($(shell uname -s),Linux)
-sim_bins	= gwsim
-endif
+# The simulator serves a pty, so it builds natively on Linux and macOS
+# but not for Windows.
+ifneq ($(filter Linux Darwin,$(target_os)),)
+  sim_bins	= gwsim
 endif
 
 test_bins	= mkdmk run-tests
@@ -126,6 +152,8 @@ gwdetect.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwmedia.h \
 
 gwscan.o: gwscan.h gwscan_impl.h gwscan.c
 
+gwscan_darwin.o: gwscan.h gwscan_impl.h greaseweazle.h gwscan_darwin.c
+
 gwscan_linux.o: gwscan.h gwscan_impl.h greaseweazle.h gwscan_linux.c
 
 gwscan_win.o: gwscan.h gwscan_impl.h greaseweazle.h gwscan_win.c
@@ -152,17 +180,18 @@ dmk2gw.o: misc.h msg_levels.h msg.h greaseweazle.h gw.h gwx.h gwfddrv.h \
 		dmk2gwcmdset.h gwhisto.h dmk.h cmdutil.h gwdetect.h gwscan.h \
 		cfgfile.h dmk2gw.c
 
-gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan.o gwscan_linux.o \
-	gwscan_win.o gwdecode.o gwmedia.o gwreplay.o dmk.o dmkmerge.o \
-	secsize.o parsetracks.o cmdutil.o cfgfile.o gw2dmk.o crc.o
+gw2dmk$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan.o gwscan_darwin.o \
+	gwscan_linux.o gwscan_win.o gwdecode.o gwmedia.o gwreplay.o dmk.o \
+	dmkmerge.o secsize.o parsetracks.o cmdutil.o cfgfile.o gw2dmk.o crc.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
-dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwscan.o gwscan_linux.o gwscan_win.o \
+dmk2gw$E: msg.o gw.o gwx.o gwdetect.o gwscan.o gwscan_darwin.o \
+	gwscan_linux.o gwscan_win.o \
 	gwmedia.o dmk.o dmkx.o secsize.o cmdutil.o cfgfile.o dmk2gw.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
-gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan.o gwscan_linux.o \
-	gwscan_win.o cmdutil.o cfgfile.o gwhist.o
+gwhist$E: msg.o gw.o gwx.o gwhisto.o gwdetect.o gwscan.o gwscan_darwin.o \
+	gwscan_linux.o gwscan_win.o cmdutil.o cfgfile.o gwhist.o
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o '$@'
 
 $(sim_objs): CFLAGS += -I'$(inc_dir)'
@@ -274,7 +303,7 @@ $(check_bins):
 
 
 $(TARBALLGZ): $(tar_files)
-	tar -czP \
+	$(TAR) -czP \
 		--transform='s:^$(top_dir)/::' \
 		-f '$@' $^
 

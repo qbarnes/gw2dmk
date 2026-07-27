@@ -42,7 +42,7 @@ static const struct option cmd_long_args[] = {
 
 /* Only used on platforms without a USB scan backend. */
 static const char *device_list[] = {
-#if linux
+#if defined(__linux__)
 	"/dev/greaseweazle",
 	"/dev/ttyACM0",
 #elif defined(WIN64) || defined(WIN32)

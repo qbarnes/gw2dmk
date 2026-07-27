@@ -32,7 +32,10 @@ typically be a device under the \fB/dev\fP path such as
 \fB/dev/ttyACM0\%\fP.
 .hy
 On Microsoft Windows, it will typically be a \fBCOM\fP device such as
-\fBCOM3\fP.
+\fBCOM3\fP.  On macOS, it will be a callout device such as
+\fB/dev/cu.usbmodem\fIXXXX\fP\%.  Use the callout
+(\fB/dev/cu.*\%\fP) node, not the dial-in (\fB/dev/tty.*\%\fP) one,
+which blocks waiting for carrier detect.
 
 By default, no device name is needed: attached Greaseweazles are
 detected automatically by scanning the USB bus.  If exactly one is
@@ -247,7 +250,7 @@ Possible \fIdrivetype\fP values for \fB\-k\%\fP:
 5.25-inch SD/DD disk in 1.2MB drive
 .TP
 2
-5.25-inch SD/DD disk in 360KB/720KB drive, or 3.5-inch SD/DD disk 
+5.25-inch SD/DD disk in 360KB/720KB drive, or 3.5-inch SD/DD disk
 .TP
 3
 5.25-inch HD disk, or 8-inch SD/DD disk
@@ -504,7 +507,7 @@ give the \fB\-k\%\fP option to specify the type as well as giving
 For an additional use of the \fB\-\-nohole\%\fP option with flippy
 disks in a custom modified drive, see \[lq]Flippy Disks\[rq] in
 section \fBNOTES\fP.
-.TP 
+.TP
 .B \-g|\-\-ignore \fIcount\fP
 Causes \fBgw2dmk\fP to ignore the first \fIcount\fP bytes decoded on
 each track.  If \fIcount\fP is negative, an extra \-count bytes of

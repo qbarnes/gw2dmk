@@ -4,7 +4,7 @@
 
 #include "gwscan_impl.h"
 
-#if linux
+#if defined(__linux__)
 
 #include <dirent.h>
 #include <errno.h>

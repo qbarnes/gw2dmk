@@ -5,6 +5,11 @@ BUILDS    ?= LINUX_X86_64 LINUX_ARMV7L LINUX_AARCH64 MSWIN32 MSWIN64
 
 repo_dir  ?= /tmp/$(PRODUCT)
 
+# Set container_cmd or container_cmd_defaults on the make command
+# line if you have a preference or preferences.
+container_cmd          ?=
+container_cmd_defaults ?= podman docker
+
 oci_base  ?= ghcr.io/qbarnes/containers-for-cross-compiling
 oci_tag   ?= latest
 
@@ -19,15 +24,25 @@ oci_mswindows     = $(oci_base)/ubuntu-22.04-crossbuild-mswindows:$(oci_tag)
 oci_MSWIN32       = $(oci_mswindows)
 oci_MSWIN64       = $(oci_mswindows)
 
+# The macOS image is built from the same containers-for-cross-compiling
+# repo as the others, but embeds Apple's macOS SDK, so its package is
+# `private` and is built there by its own manually triggered workflow
+# rather than alongside the other five.  Log in first:
+#
+#   podman login ghcr.io
+#
+# DARWIN_* are deliberately absent from the default BUILDS, so none of
+# this affects the usual five-platform flow.
 
-container_cmd_defaults = podman docker
-container_cmd_default_paths := \
-	$(shell bash -c "command -v $(container_cmd_defaults)")
+oci_macos         = $(oci_base)/ubuntu-22.04-crossbuild-macos:$(oci_tag)
+oci_DARWIN_ARM64  = $(oci_macos)
+oci_DARWIN_X86_64 = $(oci_macos)
+
 
 ifndef container_cmd
-  container_cmd = $(firstword $(container_cmd_default_paths))
+  container_cmd := $(call find_tool_call,$(container_cmd_defaults))
   ifeq ($(container_cmd),)
-    $(error Must install docker or podman)
+    $(error Must install podman or docker)
   endif
 endif
 

@@ -48,7 +48,12 @@ jobs:
       package_name: ${{ steps.package_and_version.outputs.package_name }}
       package_version: ${{ steps.package_and_version.outputs.package_version }}
     steps:
-      - uses: actions/checkout@v4
+      # persist-credentials defaults to true, which leaves the job's
+      # GITHUB_TOKEN in .git/config where every later step can read it.
+      # This job only reads the tree to run make, so drop it.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - id: package_and_version
         run: |
@@ -59,6 +64,10 @@ jobs:
   build_platform:
     runs-on: ubuntu-latest
     needs: build_name_version
+    # Needed to pull the private macOS cross-build image.
+    permissions:
+      contents: read
+      packages: read
     outputs:
       build_artifacts_name: ${{ steps.build_artifacts_name.outputs.build_artifacts_name }}
     env:
@@ -68,7 +77,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [linux_x86_64, linux_armv7l, linux_aarch64, mswin32, mswin64]
+        platform: [linux_x86_64, linux_armv7l, linux_aarch64, mswin32,
+                   mswin64, darwin_arm64, darwin_x86_64]
         include:
           - platform: linux_x86_64
             # Use crossbuild-aarch64 for native builds.
@@ -94,20 +104,50 @@ jobs:
             container: ${{ inputs.container_base }}/fedora-40-crossbuild-mswindows_regex
             target_platform_name: win64
             target_platform: MSWIN64
+          - platform: darwin_arm64
+            container: ${{ inputs.container_base }}/ubuntu-22.04-crossbuild-macos
+            target_platform_name: darwin
+            target_platform: DARWIN_ARM64
+            target_arch: .arm64
+          - platform: darwin_x86_64
+            container: ${{ inputs.container_base }}/ubuntu-22.04-crossbuild-macos
+            target_platform_name: darwin
+            target_platform: DARWIN_X86_64
+            target_arch: .x86_64
     container:
       image: ${{ matrix.container }}
+      # Required for the private macOS image; a no-op for the public
+      # ones beyond an extra ghcr.io login.
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      # Runs inside the cross-build container, so the runner injects its
+      # own node24 into the image; all of ours are new enough for it
+      # (node24 needs glibc >= 2.28, ubuntu-20.04 has 2.31).  Watch this
+      # if an image ever moves to an older base.  persist-credentials is
+      # off for the same reason as the job above: nothing here pushes.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Build target
         id: build_target
+        # Read the input from the environment rather than interpolating
+        # it into the script: ${{ }} is substituted before the shell
+        # sees the line, so an input value could otherwise inject shell.
+        # Dispatching already requires write access, which makes this
+        # defense in depth rather than a privilege boundary.  The matrix
+        # values are set in this file and are safe interpolated.
+        env:
+          make_build_target: ${{ inputs.make_build_target }}
         run: |
           make -f Makefile.cross \
-            "BUILDS=${{ matrix.target_platform }}" "${{ inputs.make_build_target }}"
+            "BUILDS=${{ matrix.target_platform }}" "$make_build_target"
           echo "build_artifacts_name=${package}-${version}-${target_platform_full_name}-build-artifacts" >> $GITHUB_OUTPUT
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.build_target.outputs.build_artifacts_name }}
           path: build.${{ env.target_platform_full_name }}/${{ env.package }}-${{ env.version }}-${{ env.target_platform_full_name }}.tar.gz

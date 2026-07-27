@@ -15,7 +15,10 @@ This utility is primarily used for aiding with debugging.
 Specify the Greaseweazle's device \fIname\fP.  On Linux, this will
 typically be a device under the \fB/dev\%\fP path such as
 \fB/dev/ttyACM0\%\fP.  On Microsoft Windows, it will typically be a
-\fBCOM\fP device such as \fBCOM3\fP.
+\fBCOM\fP device such as \fBCOM3\fP.  On macOS, it will be a callout
+device such as \fB/dev/cu.usbmodem\fIXXXX\fP\%.  Use the callout
+(\fB/dev/cu.*\%\fP) node, not the dial-in (\fB/dev/tty.*\%\fP) one,
+which blocks waiting for carrier detect.
 
 By default, no device name is needed: attached Greaseweazles are
 detected automatically by scanning the USB bus.  If exactly one is

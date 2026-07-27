@@ -23,9 +23,12 @@ sim_pty_open(struct sim_pty *pty, const char *link_path)
 	if (grantpt(pty->mfd) == -1 || unlockpt(pty->mfd) == -1)
 		goto err_mfd;
 
-	if (ptsname_r(pty->mfd, pty->slave_path,
-		      sizeof(pty->slave_path)) != 0)
+	const char	*sname = ptsname(pty->mfd);
+
+	if (!sname || strlen(sname) >= sizeof(pty->slave_path))
 		goto err_mfd;
+
+	strcpy(pty->slave_path, sname);
 
 	/*
 	 * Keepalive open of the slave so the master never sees EIO
