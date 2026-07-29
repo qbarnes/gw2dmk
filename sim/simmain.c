@@ -211,6 +211,25 @@ struct ctl_client {
 
 
 /*
+ * Read more input into cc's line buffer at its current fill point.
+ *
+ * ctl_feed() already guarantees cnt < sizeof(line) on return, so the
+ * bound below is never taken.  Stating it anyway is what keeps the
+ * unsigned subtraction bounded for the optimizer.  Without it, gcc 13
+ * can flag a false overflow.
+ */
+
+static ssize_t
+ctl_read(struct ctl_client *cc, int fd)
+{
+	if (cc->cnt >= sizeof(cc->line))
+		return 0;
+
+	return read(fd, cc->line + cc->cnt, sizeof(cc->line) - cc->cnt);
+}
+
+
+/*
  * Split buffered input into lines and run each.  Returns 1 if a
  * command requested shutdown.
  */
@@ -473,9 +492,7 @@ main(int argc, char **argv)
 		}
 
 		if (pfds[1].revents & (POLLIN | POLLHUP)) {
-			ssize_t	rd = read(0,
-				stdin_cc.line + stdin_cc.cnt,
-				sizeof(stdin_cc.line) - stdin_cc.cnt);
+			ssize_t	rd = ctl_read(&stdin_cc, 0);
 
 			if (rd > 0) {
 				stdin_cc.cnt += rd;
@@ -514,8 +531,7 @@ main(int argc, char **argv)
 				continue;
 
 			struct ctl_client	*cc = &clients[i];
-			ssize_t	rd = read(cc->fd, cc->line + cc->cnt,
-					  sizeof(cc->line) - cc->cnt);
+			ssize_t	rd = ctl_read(cc, cc->fd);
 
 			if (rd <= 0) {
 				close(cc->fd);
