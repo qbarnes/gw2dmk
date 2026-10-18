@@ -141,6 +141,37 @@ test_parse_junk(void)
 }
 
 
+static void
+test_parse_crlf(void)
+{
+	/* Logs written on Windows have CRLF line endings. */
+	char	*crlf_log = malloc(2 * sizeof(basic_log));
+	char	*d = crlf_log;
+
+	for (const char *s = basic_log; *s; ++s) {
+		if (*s == '\n')
+			*d++ = '\r';
+		*d++ = *s;
+	}
+	*d = '\0';
+
+	struct gw_replay_log	log;
+
+	memset(&log, 0, sizeof(log));
+	CHECK_EQ(parse_string(crlf_log, &log), 0);
+
+	CHECK(log.have_getinfo);
+	CHECK_EQ(log.sample_freq, 72000000);
+	CHECK_EQ(log.warnings, 0);
+	CHECK_EQ(log.nstreams, 2);
+	CHECK_EQ(log.pos[2][1].cnt, 2);
+	CHECK_EQ(log.pos[2][1].flux[1].status, 4);
+
+	gw_replay_log_free(&log);
+	free(crlf_log);
+}
+
+
 /*
  * Drive the responder through the public gw I/O entry points, as
  * gw2dmk would: command writes, exact-count ack reads, and the
@@ -268,6 +299,7 @@ main(void)
 	test_parse_basic();
 	test_parse_truncated();
 	test_parse_junk();
+	test_parse_crlf();
 	test_responder();
 
 	return test_exit("test_gwreplay");

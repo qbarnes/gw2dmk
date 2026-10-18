@@ -299,7 +299,8 @@ hex_line(const char *p, uint8_t *bytes, int bytes_cap)
 		while (*p == ' ')
 			++p;
 
-		if (*p == '\n' || *p == '\0')
+		/* CRLF line endings come from logs written on Windows. */
+		if (*p == '\r' || *p == '\n' || *p == '\0')
 			return cnt;
 
 		if (cnt == bytes_cap || p[0] != '0' || p[1] != 'x')
@@ -659,8 +660,11 @@ gw_replay_start(const char *path)
 {
 	FILE	*fp = fopen(path, "r");
 
-	if (!fp)
+	if (!fp) {
+		msg_error("Can't open replay log '%s': %s\n",
+			  path, strerror(errno));
 		return -1;
+	}
 
 	struct gw_replay_log	log;
 
@@ -670,8 +674,18 @@ gw_replay_start(const char *path)
 
 	fclose(fp);
 
-	if (ret == 0)
+	if (ret != 0) {
+		msg_error("Out of memory parsing replay log.\n");
+	} else if (!log.have_getinfo || log.nstreams == 0) {
+		msg_error("Replay log has %s (%d unparsable "
+			  "line%s or exchange%s).\n",
+			  !log.have_getinfo ? "no GET_INFO response" :
+					      "no flux streams",
+			  log.warnings, plu(log.warnings), plu(log.warnings));
+		ret = -1;
+	} else {
 		ret = gw_replay_start_parsed(&log);
+	}
 
 	if (ret != 0) {
 		gw_replay_log_free(&log);
